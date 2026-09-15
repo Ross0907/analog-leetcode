@@ -6,6 +6,8 @@ AnaCode includes or references open-source software from multiple projects. The 
 
 ## Direct runtime dependencies
 
+The primary schematic editor and live solver are the self-hosted [CircuitJS1](https://github.com/pfalstad/circuitjs1) build pinned at `5bdb1296ce6a82f79515f4f1dd1b9a86e03236f7`, licensed GPL-2.0-or-later. Its complete upstream source, GPL integration patch, build script, license texts and compiled-asset inventory are distributed in `public/circuitjs/` and linked from its `NOTICE.html`. The root MIT license does not apply to that distribution. The JavaScript adapter exposes existing native solver and editor state; it does not replace the upstream electrical implementation.
+
 | Component | Pinned version | License / status | Upstream |
 |---|---:|---|---|
 | `@xyflow/react` | 12.11.6 | MIT | [xyflow/xyflow](https://github.com/xyflow/xyflow) |
@@ -17,6 +19,9 @@ AnaCode includes or references open-source software from multiple projects. The 
 | `lucide-react` | 1.34.0 | ISC | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) |
 | `zod` | 4.4.3 | MIT | [colinhacks/zod](https://github.com/colinhacks/zod) |
 | `vinext` | 1.0.0-beta.8 | MIT | [cloudflare/vinext](https://github.com/cloudflare/vinext) |
+| `@supabase/ssr` | 0.12.7 | MIT | [supabase/ssr](https://github.com/supabase/ssr) |
+| `@supabase/supabase-js` | 2.116.0 | MIT | [supabase/supabase-js](https://github.com/supabase/supabase-js) |
+| `fft.js` | 4.0.4 | MIT | [indutny/fft.js](https://github.com/indutny/fft.js) |
 
 The UI uses Geist and Geist Mono through framework font tooling. Geist is distributed under the SIL Open Font License 1.1; upstream information is available from [vercel/geist-font](https://github.com/vercel/geist-font).
 

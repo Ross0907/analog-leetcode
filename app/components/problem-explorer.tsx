@@ -1,25 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, ChevronRight, Filter, Search, SlidersHorizontal } from "lucide-react";
 import { challenges, type Difficulty, type Domain } from "../../lib/challenges";
+import { readPracticeProgress } from "../../lib/practice-progress";
 
 const difficulties: Array<Difficulty | "All"> = ["All", "Foundation", "Intermediate", "Advanced", "Expert"];
 const domains: Array<Domain | "All"> = ["All", "DC", "AC", "Semiconductors", "Op-amps", "Digital"];
 
 export function ProblemExplorer() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty | "All">("All");
   const [domain, setDomain] = useState<Domain | "All">("All");
+  const [status, setStatus] = useState<"All" | "Solved" | "Unsolved">("All");
+  const [solved, setSolved] = useState<string[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    let serverSolved: string[] = [];
+    const update = () => setSolved([...new Set([...serverSolved, ...readPracticeProgress()])]);
+    const timer = window.setTimeout(update, 0);
+    window.addEventListener("storage", update);
+    window.addEventListener("anacode-progress", update);
+    fetch("/api/progress", { signal: controller.signal }).then(async (response) => {
+      if (!response.ok) return;
+      const data = await response.json() as { solvedSlugs?: unknown };
+      if (Array.isArray(data.solvedSlugs)) serverSolved = data.solvedSlugs.filter((slug): slug is string => typeof slug === "string");
+      update();
+    }).catch(() => { /* Local practice progress remains available offline. */ });
+    return () => { controller.abort(); clearTimeout(timer); window.removeEventListener("storage", update); window.removeEventListener("anacode-progress", update); };
+  }, []);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return challenges.filter((challenge) => {
       const matchesSearch = !needle || `${challenge.title} ${challenge.summary} ${challenge.topics.join(" ")}`.toLowerCase().includes(needle);
-      return matchesSearch && (difficulty === "All" || challenge.difficulty === difficulty) && (domain === "All" || challenge.domain === domain);
+      return matchesSearch && (difficulty === "All" || challenge.difficulty === difficulty) && (domain === "All" || challenge.domain === domain) && (status === "All" || (status === "Solved" ? solved.includes(challenge.slug) : !solved.includes(challenge.slug)));
     });
-  }, [query, difficulty, domain]);
+  }, [query, difficulty, domain, status, solved]);
 
   return (
     <div className="catalog-layout">
@@ -44,7 +64,9 @@ export function ProblemExplorer() {
             </label>
           ))}
         </fieldset>
-        <button className="clear-filters" type="button" onClick={() => { setDifficulty("All"); setDomain("All"); setQuery(""); }}>Clear filters</button>
+        <fieldset><legend>Progress</legend>{(["All", "Solved", "Unsolved"] as const).map((item) => <label key={item}><input type="radio" name="progress" checked={status === item} onChange={() => setStatus(item)} /><span>{item}</span></label>)}</fieldset>
+        <p className="result-count">{challenges.filter((challenge) => solved.includes(challenge.slug)).length} / {challenges.length} completed</p>
+        <button className="clear-filters" type="button" onClick={() => { setDifficulty("All"); setDomain("All"); setStatus("All"); setQuery(""); }}>Clear filters</button>
       </aside>
 
       <div className="catalog-main">
@@ -55,6 +77,10 @@ export function ProblemExplorer() {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles, topics, or skills…" />
           </label>
           <span className="result-count"><SlidersHorizontal size={16} /> {filtered.length} problems</span>
+          <button type="button" className="button button-small button-quiet" disabled={!filtered.length} onClick={() => {
+            const chosen = filtered[Math.floor(Math.random() * filtered.length)];
+            if (chosen) router.push(`/problems/${chosen.slug}`);
+          }}>Random problem</button>
         </div>
 
         <div className="catalog-table" role="table" aria-label="Analog electronics problems">
@@ -63,8 +89,8 @@ export function ProblemExplorer() {
           </div>
           {filtered.map((challenge) => (
             <Link className="catalog-row" href={`/problems/${challenge.slug}`} key={challenge.slug} role="row">
-              <span className="catalog-status" aria-label={challenge.judge ? "Fixed-topology server judge available" : "Practice simulation available"}>
-                {challenge.judge ? <span className="ranked-dot" /> : <CheckCircle2 size={17} />}
+              <span className="catalog-status" aria-label={solved.includes(challenge.slug) ? "Solved" : "Unsolved"}>
+                {solved.includes(challenge.slug) ? <CheckCircle2 size={17} /> : <span className="ranked-dot" />}
               </span>
               <span className="catalog-problem">
                 <strong><i>{String(challenge.id).padStart(2, "0")}</i>{challenge.title}</strong>

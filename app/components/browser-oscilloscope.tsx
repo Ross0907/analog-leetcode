@@ -3,6 +3,7 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -11,6 +12,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Activity, Eye, EyeOff, RotateCcw, SlidersHorizontal, Zap } from "lucide-react";
+import { crossings, interpolateWaveform, measureWaveform } from "../../lib/waveform-analysis";
+import { probeColor } from "../../lib/probe-colors";
 
 export type OscilloscopeDomain = "time" | "frequency" | "sweep";
 export type OscilloscopeCoupling = "DC" | "AC";
@@ -87,6 +90,7 @@ type TraceMeasurements = {
   rms: number | null;
   frequency: number | null;
   peakAt: number | null;
+  dutyCycle: number | null;
 };
 
 type PlotRect = { left: number; top: number; width: number; height: number };
@@ -117,7 +121,7 @@ export function BrowserOscilloscope({
   initialTrigger,
   initialCursors = [0.25, 0.75],
   maxDevicePixelRatio = 2,
-  maxChannels = 8,
+  maxChannels = 32,
   maxSamples = 250_000,
   onTriggerChange,
   onCursorsChange,
@@ -127,6 +131,10 @@ export function BrowserOscilloscope({
   const viewportRef = useRef<HTMLDivElement>(null);
   const plotRectRef = useRef<PlotRect | null>(null);
   const draggingCursorRef = useRef<"a" | "b" | null>(null);
+  const panningRef = useRef<{ clientX: number; center: number } | null>(null);
+  const [xCenter, setXCenter] = useState<number | null>(null);
+  const [removed, setRemoved] = useState<Set<string>>(() => new Set());
+  const [names, setNames] = useState<Record<string, string>>({});
   const [viewportWidth, setViewportWidth] = useState(760);
   const [xPerDivision, setXPerDivision] = useState<number | null>(toScaleState(initialXPerDivision));
   const [yPerDivision, setYPerDivision] = useState<number | null>(toScaleState(initialYPerDivision));
@@ -143,14 +151,16 @@ export function BrowserOscilloscope({
   const [triggerEdge, setTriggerEdge] = useState<OscilloscopeTriggerEdge>(initialTrigger?.edge ?? "rising");
   const [cursorA, setCursorA] = useState(clamp(initialCursors[0], 0, 1));
   const [cursorB, setCursorB] = useState(clamp(initialCursors[1], 0, 1));
+  const [yCursorA, setYCursorA] = useState(0.25);
+  const [yCursorB, setYCursorB] = useState(0.75);
 
   const effectiveXScale = xScale ?? (domain === "frequency" ? "log" : "linear");
   const effectiveXUnit = xUnit ?? (domain === "time" ? "s" : domain === "frequency" ? "Hz" : "");
   const effectiveXLabel = xLabel ?? (domain === "time" ? "Time" : domain === "frequency" ? "Frequency" : "Sweep");
-  const channelLimit = clamp(Math.trunc(maxChannels), 1, 16);
+  const channelLimit = clamp(Math.trunc(maxChannels), 1, 32);
   const sampleLimit = clamp(Math.trunc(maxSamples), 1_000, 1_000_000);
   const boundedHeight = clamp(height, 260, 720);
-  const activeTraces = useMemo(() => traces.slice(0, channelLimit), [channelLimit, traces]);
+  const activeTraces = useMemo(() => traces.length > channelLimit ? [] : traces.filter((trace) => !removed.has(trace.id)).map((trace) => ({ ...trace, name: names[trace.id] ?? trace.name })), [channelLimit, traces, removed, names]);
   const resolvedVisibility = useMemo(
     () => Object.fromEntries(activeTraces.map((trace) => [trace.id, visibility[trace.id] ?? trace.initiallyVisible !== false])),
     [activeTraces, visibility],
@@ -168,9 +178,9 @@ export function BrowserOscilloscope({
   const xView = useMemo(() => {
     const requestedSpan = xPerDivision === null ? fullTransformedSpan : xPerDivision * HORIZONTAL_DIVISIONS;
     const span = clamp(requestedSpan, fullTransformedSpan * 1e-9, fullTransformedSpan);
-    const center = (xBounds.transformedMin + xBounds.transformedMax) / 2;
+    const center = clamp(xCenter ?? (xBounds.transformedMin + xBounds.transformedMax) / 2, xBounds.transformedMin + span / 2, xBounds.transformedMax - span / 2);
     return { minimum: center - span / 2, maximum: center + span / 2 };
-  }, [fullTransformedSpan, xBounds.transformedMax, xBounds.transformedMin, xPerDivision]);
+  }, [fullTransformedSpan, xBounds.transformedMax, xBounds.transformedMin, xPerDivision, xCenter]);
 
   const preparedTraces = useMemo(
     () => prepareTraces({
@@ -239,11 +249,15 @@ export function BrowserOscilloscope({
     [automaticYPerDivision],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     const updateSize = () => {
-      const nextWidth = Math.max(300, Math.floor(viewport.getBoundingClientRect().width));
+      const measuredWidth = viewport.getBoundingClientRect().width;
+      // A hidden tab has no measurable width. Keep its last valid acquisition
+      // size until ResizeObserver sees the visible viewport again.
+      if (measuredWidth <= 0) return;
+      const nextWidth = Math.max(1, Math.floor(measuredWidth));
       setViewportWidth((current) => current === nextWidth ? current : nextWidth);
     };
     updateSize();
@@ -260,15 +274,18 @@ export function BrowserOscilloscope({
     onCursorsChange?.(cursorReadout);
   }, [cursorReadout, onCursorsChange]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = clamp(window.devicePixelRatio || 1, 1, clamp(maxDevicePixelRatio, 1, 3));
-    const width = viewportWidth;
+    const measuredWidth = viewportRef.current?.getBoundingClientRect().width ?? 0;
+    const width = measuredWidth > 0 ? Math.max(1, Math.floor(measuredWidth)) : viewportWidth;
     const canvasHeight = boundedHeight;
     canvas.width = Math.max(1, Math.round(width * dpr));
     canvas.height = Math.max(1, Math.round(canvasHeight * dpr));
-    canvas.style.width = `${width}px`;
+    // The layout stays responsive independently of the backing bitmap. A
+    // deferred resize must never leave a narrow canvas in a full-width panel.
+    canvas.style.width = "100%";
     canvas.style.height = `${canvasHeight}px`;
     const context = canvas.getContext("2d");
     if (!context) return;
@@ -292,6 +309,14 @@ export function BrowserOscilloscope({
       triggerColor: safeColor(triggerColor, CHANNEL_COLORS[0]),
       triggerEdge,
     });
+    context.save();
+    context.strokeStyle = "#9aa7b7";
+    context.setLineDash([2, 6]);
+    for (const position of [yCursorA, yCursorB]) {
+      const y = plot.top + (1 - position) * plot.height;
+      context.beginPath(); context.moveTo(plot.left, y); context.lineTo(plot.left + plot.width, y); context.stroke();
+    }
+    context.restore();
   }, [
     boundedHeight,
     cursorA,
@@ -307,6 +332,8 @@ export function BrowserOscilloscope({
     xView,
     yBounds,
     yUnit,
+    yCursorA,
+    yCursorB,
   ]);
 
   function updateTrigger(next: Partial<OscilloscopeTrigger>) {
@@ -323,10 +350,13 @@ export function BrowserOscilloscope({
 
   function resetView() {
     setXPerDivision(null);
+    setXCenter(null);
     setYPerDivision(null);
     setTriggerLevel(null);
     setCursorA(0.25);
     setCursorB(0.75);
+    setYCursorA(0.25);
+    setYCursorB(0.75);
   }
 
   function updateCursorFromPointer(event: ReactPointerEvent<HTMLCanvasElement>, cursor: "a" | "b") {
@@ -344,6 +374,12 @@ export function BrowserOscilloscope({
     const canvas = canvasRef.current;
     const plot = plotRectRef.current;
     if (!canvas || !plot) return;
+    if (event.button === 1 || event.shiftKey) {
+      event.preventDefault();
+      panningRef.current = { clientX: event.clientX, center: (xView.minimum + xView.maximum) / 2 };
+      canvas.setPointerCapture(event.pointerId);
+      return;
+    }
     const bounds = canvas.getBoundingClientRect();
     const normalized = clamp((event.clientX - bounds.left - plot.left) / plot.width, 0, 1);
     const cursor = Math.abs(normalized - cursorA) <= Math.abs(normalized - cursorB) ? "a" : "b";
@@ -353,10 +389,15 @@ export function BrowserOscilloscope({
   }
 
   function handlePointerMove(event: ReactPointerEvent<HTMLCanvasElement>) {
+    if (panningRef.current && plotRectRef.current) {
+      setXCenter(panningRef.current.center - (event.clientX - panningRef.current.clientX) / plotRectRef.current.width * (xView.maximum - xView.minimum));
+      return;
+    }
     if (draggingCursorRef.current) updateCursorFromPointer(event, draggingCursorRef.current);
   }
 
   function stopDragging(event: ReactPointerEvent<HTMLCanvasElement>) {
+    panningRef.current = null;
     draggingCursorRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
@@ -385,6 +426,8 @@ export function BrowserOscilloscope({
           </div>
         </div>
         <div className="anacode-scope__controls" style={styles.controls}>
+          <button type="button" style={styles.iconButton} onClick={() => setXPerDivision((xView.maximum - xView.minimum) / 20)} aria-label="Zoom in waveform">Zoom +</button>
+          <button type="button" style={styles.iconButton} onClick={() => setXPerDivision((xView.maximum - xView.minimum) / 5)} aria-label="Zoom out waveform">Zoom −</button>
           <label style={styles.compactLabel} htmlFor={`${controlId}-x-scale`}>
             <span>{effectiveXScale === "log" ? "Decades/div" : `${effectiveXLabel}/div`}</span>
             <select
@@ -420,9 +463,9 @@ export function BrowserOscilloscope({
       </header>
 
       <div className="anacode-scope__channel-rack" style={styles.channelRack} aria-label="Oscilloscope channels">
-        {activeTraces.map((trace, index) => {
+        {activeTraces.map((trace) => {
           const isVisible = resolvedVisibility[trace.id] ?? true;
-          const color = safeColor(trace.color, CHANNEL_COLORS[index % CHANNEL_COLORS.length]);
+          const color = safeColor(trace.color, probeColor(trace.id));
           const coupling = resolvedCouplings[trace.id] ?? "DC";
           return (
             <div className="anacode-scope__channel" style={{ ...styles.channel, borderColor: `${color}80` }} key={trace.id}>
@@ -436,16 +479,18 @@ export function BrowserOscilloscope({
                 {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
                 <span>{trace.name}</span>
               </button>
+              <input aria-label={`Rename ${trace.name}`} value={trace.name} maxLength={48} style={{ ...styles.numberInput, width: 110 }} onChange={(event) => { const value = event.currentTarget.value; setNames((current) => ({ ...current, [trace.id]: value })); }} />
+              <button type="button" style={styles.iconButton} aria-label={`Remove ${trace.name}`} onClick={() => setRemoved((current) => new Set([...current, trace.id]))}>×</button>
               {domain === "time" && <>
                 <label style={styles.srOnly} htmlFor={`${controlId}-${trace.id}-coupling`}>{trace.name} input coupling</label>
                 <select
                   id={`${controlId}-${trace.id}-coupling`}
                   aria-label={`${trace.name} input coupling`}
                   value={coupling}
-                  onChange={(event) => setCouplings((current) => ({
+                  onChange={(event) => { const value = event.currentTarget.value as OscilloscopeCoupling; setCouplings((current) => ({
                     ...current,
-                    [trace.id]: event.currentTarget.value as OscilloscopeCoupling,
-                  }))}
+                    [trace.id]: value,
+                  })); }}
                   title="AC presentation removes the captured DC mean; DC preserves the full waveform."
                   style={styles.couplingSelect}
                 >
@@ -456,7 +501,8 @@ export function BrowserOscilloscope({
             </div>
           );
         })}
-        {traces.length > channelLimit && <span style={styles.limitNote}>Showing the first {channelLimit} channels</span>}
+        {removed.size > 0 && <button type="button" style={styles.iconButton} onClick={() => setRemoved(new Set())}>Restore removed traces</button>}
+        {traces.length > channelLimit && <span role="alert" style={styles.limitNote}>This capture exceeds {channelLimit} channels. Remove probes and capture again.</span>}
       </div>
 
       {domain === "time" && <div className="anacode-scope__trigger" style={styles.triggerBar}>
@@ -497,9 +543,25 @@ export function BrowserOscilloscope({
         </button>
         <span style={styles.triggerStatus} aria-live="polite">
           <i style={{ ...styles.statusDot, background: safeColor(triggerColor, CHANNEL_COLORS[0]) }} />
-          Preview trigger
+          Captured edge marker
         </span>
+        <button type="button" style={styles.iconButton} onClick={() => {
+          const source = activeTraces.find((trace) => trace.id === effectiveTriggerChannel);
+          if (!source) return;
+          let points = Array.from({ length: Math.min(x.length, source.values.length) }, (_, i) => ({ x: Number(x[i]), y: Number(source.values[i]) }));
+          if (resolvedCouplings[source.id] === "AC") {
+            const mean = measureWaveform(points).mean ?? 0;
+            points = points.map((point) => ({ ...point, y: point.y - mean }));
+          }
+          const edge = crossings(points, effectiveTriggerLevel, triggerEdge)[0];
+          if (edge !== undefined) { setXCenter(edge); setXPerDivision(fullTransformedSpan / 40); }
+        }}>Find first edge</button>
       </div>}
+
+      <label style={{ ...styles.inlineLabel, padding: "8px 12px" }}>Horizontal position
+        <input aria-label="Waveform horizontal position" type="range" min="0" max="1000" value={Math.round((((xView.minimum + xView.maximum) / 2) - xBounds.transformedMin) / fullTransformedSpan * 1000)} onChange={(event) => setXCenter(xBounds.transformedMin + Number(event.currentTarget.value) / 1000 * fullTransformedSpan)} style={styles.range} />
+        <small>Shift-drag to pan · drag to move cursors</small>
+      </label>
 
       <div className="anacode-scope__viewport" ref={viewportRef} style={{ ...styles.viewport, height: boundedHeight }}>
         <canvas
@@ -552,16 +614,27 @@ export function BrowserOscilloscope({
         </div>
       </div>
 
+      <div style={styles.cursorPanel}>
+        <strong style={styles.cursorHeading}>Amplitude cursors</strong>
+        <label style={styles.cursorControl}>Y A<input aria-label="Amplitude cursor A" type="range" min="0" max="1000" value={Math.round(yCursorA * 1000)} onChange={(event) => setYCursorA(Number(event.currentTarget.value) / 1000)} style={styles.range} /><output style={styles.cursorOutput}>{formatQuantity(yBounds.minimum + yCursorA * (yBounds.maximum - yBounds.minimum), yUnit)}</output></label>
+        <label style={styles.cursorControl}>Y B<input aria-label="Amplitude cursor B" type="range" min="0" max="1000" value={Math.round(yCursorB * 1000)} onChange={(event) => setYCursorB(Number(event.currentTarget.value) / 1000)} style={styles.range} /><output style={styles.cursorOutput}>{formatQuantity(yBounds.minimum + yCursorB * (yBounds.maximum - yBounds.minimum), yUnit)}</output></label>
+        <output style={styles.deltaReadout}>Δ{yUnit}: {formatQuantity((yCursorB - yCursorA) * (yBounds.maximum - yBounds.minimum), yUnit)}</output>
+      </div>
+
       <div className="anacode-scope__measurements" style={styles.measurementWrap}>
         <table style={styles.table}>
           <caption style={styles.caption}>Measurements over the visible acquisition window</caption>
           <thead>
             <tr>
               <th scope="col" style={styles.tableHeading}>Channel</th>
-              <th scope="col" style={styles.tableHeading}>{domain === "time" ? "Vpp" : "Span"}</th>
+              <th scope="col" style={styles.tableHeading}>{domain === "time" ? "Peak–peak" : "Span"}</th>
               <th scope="col" style={styles.tableHeading}>RMS</th>
               <th scope="col" style={styles.tableHeading}>Mean</th>
-              <th scope="col" style={styles.tableHeading}>{domain === "time" ? "Frequency" : "Peak at"}</th>
+              <th scope="col" style={styles.tableHeading}>Min</th>
+              <th scope="col" style={styles.tableHeading}>Max</th>
+              <th scope="col" style={styles.tableHeading}>B − A</th>
+              {domain === "time" && <th scope="col" style={styles.tableHeading}>Duty @ midpoint</th>}
+              <th scope="col" style={styles.tableHeading}>{domain === "time" ? "Freq. estimate" : "Peak at"}</th>
             </tr>
           </thead>
           <tbody>
@@ -572,8 +645,12 @@ export function BrowserOscilloscope({
                   {trace.name} <small style={styles.couplingText}>{trace.coupling}</small>
                 </th>
                 <MeasurementCell value={trace.measurements.peakToPeak} unit={trace.unit} />
-                <MeasurementCell value={trace.measurements.rms} unit={trace.unit} />
-                <MeasurementCell value={trace.measurements.mean} unit={trace.unit} />
+                <MeasurementCell value={domain === "frequency" ? null : trace.measurements.rms} unit={trace.unit} />
+                <MeasurementCell value={domain === "frequency" ? null : trace.measurements.mean} unit={trace.unit} />
+                <MeasurementCell value={trace.measurements.minimum} unit={trace.unit} />
+                <MeasurementCell value={trace.measurements.maximum} unit={trace.unit} />
+                <MeasurementCell value={(() => { const a = interpolateWaveform(trace.points, cursorReadout.cursorA); const b = interpolateWaveform(trace.points, cursorReadout.cursorB); return a === null || b === null ? null : b - a; })()} unit={trace.unit} />
+                {domain === "time" && <MeasurementCell value={trace.measurements.dutyCycle} unit="%" />}
                 <MeasurementCell
                   value={domain === "time" ? trace.measurements.frequency : trace.measurements.peakAt}
                   unit={domain === "time" ? "Hz" : effectiveXUnit}
@@ -581,7 +658,7 @@ export function BrowserOscilloscope({
               </tr>
             ))}
             {preparedTraces.length === 0 && (
-              <tr><td colSpan={5} style={styles.emptyCell}>Enable a channel with finite samples to inspect measurements.</td></tr>
+              <tr><td colSpan={9} style={styles.emptyCell}>Enable a channel with finite samples to inspect measurements.</td></tr>
             )}
           </tbody>
         </table>
@@ -626,7 +703,7 @@ function prepareTraces({
   sampleLimit: number;
   domain: OscilloscopeDomain;
 }): PreparedTrace[] {
-  return traces.flatMap((trace, traceIndex) => {
+  return traces.flatMap((trace) => {
     if (!visibility[trace.id]) return [];
     const length = Math.min(x.length, trace.values.length);
     const stride = Math.max(1, Math.ceil(length / sampleLimit));
@@ -642,7 +719,7 @@ function prepareTraces({
       sum += sourceY;
     }
     const coupling = couplings[trace.id] ?? trace.initialCoupling ?? "DC";
-    const capturedMean = rawPoints.length > 0 ? sum / rawPoints.length : 0;
+    const capturedMean = (domain === "time" ? measureWaveform(rawPoints).mean : rawPoints.length > 0 ? sum / rawPoints.length : 0) ?? 0;
     const points = coupling === "AC"
       ? rawPoints.map((point) => ({ ...point, y: point.y - capturedMean }))
       : rawPoints;
@@ -651,7 +728,7 @@ function prepareTraces({
       id: trace.id,
       name: trace.name,
       unit: trace.unit ?? fallbackUnit,
-      color: safeColor(trace.color, CHANNEL_COLORS[traceIndex % CHANNEL_COLORS.length]),
+      color: safeColor(trace.color, probeColor(trace.id)),
       coupling,
       points,
       measurements,
@@ -660,7 +737,8 @@ function prepareTraces({
 }
 
 function measureTrace(points: readonly Point[], domain: OscilloscopeDomain): TraceMeasurements {
-  if (points.length === 0) return { minimum: null, maximum: null, peakToPeak: null, mean: null, rms: null, frequency: null, peakAt: null };
+  if (domain === "time") return { ...measureWaveform(points), peakAt: null };
+  if (points.length === 0) return { minimum: null, maximum: null, peakToPeak: null, mean: null, rms: null, frequency: null, peakAt: null, dutyCycle: null };
   let minimum = Number.POSITIVE_INFINITY;
   let maximum = Number.NEGATIVE_INFINITY;
   let peakAt = points[0]?.x ?? null;
@@ -682,38 +760,10 @@ function measureTrace(points: readonly Point[], domain: OscilloscopeDomain): Tra
     peakToPeak: maximum - minimum,
     mean,
     rms: Math.sqrt(sumSquares / points.length),
-    frequency: domain === "time" ? estimateFrequency(points, mean) : null,
+    frequency: null,
+    dutyCycle: null,
     peakAt,
   };
-}
-
-function estimateFrequency(points: readonly Point[], threshold: number): number | null {
-  if (points.length < 3) return null;
-  const risingCrossings: number[] = [];
-  const fallingCrossings: number[] = [];
-  for (let index = 1; index < points.length; index += 1) {
-    const previous = points[index - 1];
-    const current = points[index];
-    if (!previous || !current || current.x === previous.x) continue;
-    const denominator = current.y - previous.y;
-    if (denominator === 0) continue;
-    if (previous.y <= threshold && current.y > threshold) {
-      risingCrossings.push(previous.x + ((threshold - previous.y) / denominator) * (current.x - previous.x));
-    } else if (previous.y >= threshold && current.y < threshold) {
-      fallingCrossings.push(previous.x + ((threshold - previous.y) / denominator) * (current.x - previous.x));
-    }
-  }
-  const crossings = risingCrossings.length >= 2 ? risingCrossings : fallingCrossings;
-  if (crossings.length < 2) return null;
-  const periods: number[] = [];
-  for (let index = 1; index < crossings.length; index += 1) {
-    const period = Math.abs((crossings[index] ?? 0) - (crossings[index - 1] ?? 0));
-    if (Number.isFinite(period) && period > 0) periods.push(period);
-  }
-  if (periods.length === 0) return null;
-  periods.sort((a, b) => a - b);
-  const median = periods[Math.floor(periods.length / 2)];
-  return median && median > 0 ? 1 / median : null;
 }
 
 function findDomainBounds(x: ArrayLike<number>, scale: "linear" | "log", sampleLimit: number) {

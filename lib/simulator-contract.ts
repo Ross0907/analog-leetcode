@@ -3,11 +3,14 @@ export type Trace = {
   name: string;
   values: number[];
   unit: string;
-  quantity: "voltage" | "magnitude" | "phase";
+  quantity: "voltage" | "current" | "magnitude" | "phase";
+  node?: string;
+  color?: string;
+  initiallyVisible?: boolean;
 };
 
 export type SimulationPayload = {
-  engine: "ngspice-wasm";
+  engine: "ngspice-wasm" | "circuitjs1";
   analysis: "dc" | "ac" | "transient" | "dc-sweep";
   xLabel: string;
   xUnit: string;
@@ -15,7 +18,7 @@ export type SimulationPayload = {
   yUnit: string;
   x: number[];
   traces: Trace[];
-  operatingPoint: Array<{ name: string; value: number }>;
+  operatingPoint: Array<{ name: string; value: number; unit?: string }>;
   warnings: string[];
   runtimeMs: number;
 };

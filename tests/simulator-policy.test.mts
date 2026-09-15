@@ -62,8 +62,9 @@ test("periodic-source event bombs and oversized decks are rejected", () => {
 
 test("probe requests are deduplicated, bounded, and syntax checked", () => {
   assert.deepEqual(validateSimulatorProbes(["out", "OUT", "out"]), ["out"]);
-  assert.throws(() => validateSimulatorProbes(["a", "b", "c", "d", "e"]), /no more than 4/i);
+  assert.doesNotThrow(() => validateSimulatorProbes(Array.from({ length: 32 }, (_, i) => `n${i}`)));
+  assert.throws(() => validateSimulatorProbes(Array.from({ length: 33 }, (_, i) => `n${i}`)), /no more than 32/i);
   assert.throws(() => validateSimulatorProbes(["out); shell"]), /invalid/i);
   assert.throws(() => validateSimulatorProbes(["x".repeat(65)]), /invalid/i);
-  assert.throws(() => validateSimulatorProbes("out"), /no more than 4/i);
+  assert.throws(() => validateSimulatorProbes("out"), /no more than 32/i);
 });

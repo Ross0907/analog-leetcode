@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "dist/**",
     "out/**",
     "build/**",
+    ".tmp/**",
+    "public/circuitjs/**",
     "artifacts/**",
     "test-results/**",
     "playwright-report/**",

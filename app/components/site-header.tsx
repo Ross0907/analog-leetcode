@@ -2,8 +2,10 @@ import Link from "next/link";
 import { BookOpen, ChevronDown, FlaskConical, Gauge, Menu } from "lucide-react";
 import { BrandMark } from "./brand-mark";
 import { ThemeToggle } from "./theme-toggle";
+import { getUser } from "../auth";
 
-export function SiteHeader({ active }: { active?: "problems" | "learn" | "lab" }) {
+export async function SiteHeader({ active }: { active?: "problems" | "learn" | "lab" }) {
+  const user = await getUser();
   return (
     <header className="site-header">
       <div className="header-inner">
@@ -17,7 +19,7 @@ export function SiteHeader({ active }: { active?: "problems" | "learn" | "lab" }
         </nav>
         <div className="header-actions">
           <ThemeToggle />
-          <Link className="text-button desktop-only" href="/profile">Sign in</Link>
+          <Link className="text-button desktop-only" href={user ? "/profile" : "/login"}>{user ? "Your profile" : "Sign in"}</Link>
           <Link className="button button-small button-dark desktop-only" href="/problems/precision-voltage-divider">Start solving</Link>
           <details className="mobile-menu">
             <summary aria-label="Open navigation"><Menu size={20} /></summary>
@@ -25,7 +27,7 @@ export function SiteHeader({ active }: { active?: "problems" | "learn" | "lab" }
               <Link href="/problems"><Gauge size={17} /> Problems</Link>
               <Link href="/learn"><BookOpen size={17} /> Learn</Link>
               <Link href="/lab"><FlaskConical size={17} /> Circuit Lab</Link>
-              <Link href="/profile">Sign in <ChevronDown size={15} /></Link>
+              <Link href={user ? "/profile" : "/login"}>{user ? "Your profile" : "Sign in"} <ChevronDown size={15} /></Link>
             </nav>
           </details>
         </div>

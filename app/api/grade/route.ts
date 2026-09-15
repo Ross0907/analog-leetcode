@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { getChatGPTUser } from "../../chatgpt-auth";
+import { getUser } from "../../auth";
 import { submissions, userProblemProgress, users } from "../../../db/schema";
 import {
   adaptD1RateLimitDatabase,
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
   const result = gradeSolution(parsed.data);
   const runtimeMs = Math.max(0, Math.round(performance.now() - requestStarted));
-  const user = await getChatGPTUser();
+  const user = await getUser();
   let persisted = false;
 
   if (user) {

@@ -17,10 +17,10 @@ export default function LabPage() {
         <section className="lab-hero shell-wide">
           <div>
             <div className="eyebrow"><FlaskConical size={15} /> Free circuit sandbox</div>
-            <h1>Draw beautifully. Simulate honestly.</h1>
-            <p>Pick, place, and wire publication-style symbols, then inspect DC, AC, sweep, or transient behavior with the oscilloscope and response analyzer.</p>
+            <h1>Your circuit workbench.</h1>
+            <p>Build with CircuitJS components, probe any node, and compare waveforms. Use SPICE analysis for operating points, frequency response, and sweeps.</p>
           </div>
-          <div className="lab-trust"><span><ShieldCheck size={15} /> Isolated editor</span><span><Waves size={15} /> Bounded worker</span></div>
+          <div className="lab-trust"><span><ShieldCheck size={15} /> CircuitJS1</span><span><Waves size={15} /> ngspice</span></div>
         </section>
         <section className="shell-wide"><VisualCircuitLab /></section>
       </main>
