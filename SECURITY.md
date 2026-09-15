@@ -22,19 +22,23 @@ There is no deployed or stable public release line yet. During this pre-release 
 
 ## Security boundaries
 
-The assets in scope are grading integrity, challenge test data, service availability, authenticated identity headers, and D1 records containing email addresses, submissions, and progress.
+The assets in scope are grading integrity, challenge test data, service availability, Supabase sessions, and D1 records containing email addresses, submissions, and progress.
 
 The primary rule is that the browser is always untrusted:
 
 - Browser simulation is learning feedback, not proof of correctness.
 - Canvas state, submitted circuit documents, exported netlists, plotted waveforms, and client-extracted values can all be forged.
-- Identity comes from verified hosting headers, never a user ID in the request body.
+- Identity comes from server-verified Supabase `getUser()` results, never injected identity headers or a user ID in the request body. Sessions use HttpOnly cookies and PKCE; auth writes require a same-origin POST. See [authentication setup and lifecycle](docs/supabase.md).
 - The server strictly parses and compiles the submitted canonical `CircuitDocument`, verifies its component graph and fixed stimulus against code-owned rules, extracts only allowed values from the verified graph, and independently recomputes a grade.
 - D1 writes occur only for an authenticated identity and use a per-user idempotency key.
 
 The current server grader uses exact fixed-topology checks followed by versioned deterministic equations for three challenges. It does not execute native code or accept raw SPICE. “Hidden” currently means absent from the normal browser bundle; it should not be treated as a cryptographic secret, especially when source code is available.
 
 ## Implemented controls
+
+### Native editor distribution
+
+The pinned CircuitJS1 runtime is served from `/circuitjs/`, with source, build patch and license available alongside it. Its GWT loader requires inline/eval scripting; that permission is restricted to the native runtime path. Application and authentication HTML retain nonce-based scripting policy. Same-origin framing permits the native JavaScript measurement API. The iframe runs trusted vendored code and has no direct access to HttpOnly Supabase session cookies; imported files are still treated as untrusted input to the upstream parser. Byte limits, explicit parse checks, a pinned asset hash manifest and source review reduce this exposure. This is not an origin-isolated sandbox, and changes to native code require security review.
 
 ### Grading API
 
@@ -56,17 +60,17 @@ These checks reduce attack surface; the D1 bucket provides shared enforcement fo
 
 ### Browser simulator
 
-The numerical preview runs `eecircuit-engine@1.7.0` and its bundled ngspice WebAssembly build in a dedicated Web Worker. `@spice-ts/core@0.3.0` is used only for a bounded structural parse before the engine runs. The pure, independently tested policy in `lib/simulator-netlist-policy.ts` limits input to 12,000 bytes, 180 lines, 80 parsed components, 5,000 requested or returned analysis points, 2,000 periodic-source events, four requested voltage probes, and exactly one `.op`, `.ac`, `.tran`, or `.dc` analysis. It uses a small directive allowlist; file/library/control/execution directives, parameter sweeps, and subcircuits are rejected. The sole include exception is the exact bundled `modelcard.CMOS90` identifier.
+The numerical preview runs `eecircuit-engine@1.7.0` and its bundled ngspice WebAssembly build in a dedicated Web Worker. `@spice-ts/core@0.3.0` is used only for a bounded structural parse before the engine runs. The pure, independently tested policy in `lib/simulator-netlist-policy.ts` limits input to 12,000 bytes, 180 lines, 80 parsed components, 5,000 requested or returned analysis points, 2,000 periodic-source events, 32 voltage/current probes, and exactly one `.op`, `.ac`, `.tran`, or `.dc` analysis. It uses a small directive allowlist; file/library/control/execution directives, parameter sweeps, and subcircuits are rejected. The sole include exception is the exact bundled `modelcard.CMOS90` identifier.
 
 The lifecycle distinguishes slow engine startup from circuit execution. A typed ready/result protocol grants initialization up to 30 seconds; the four-second execution timer starts only after the ready version is validated and a request is posted. The page prewarms a worker, accepts one run per worker, disposes it after completion or cancellation, and prewarms a replacement. Initialization errors, message errors, timeouts, stale run IDs, and unmounts terminate the affected worker. These measures bound normal UI work but cannot make a compromised browser authoritative.
 
-The primary visual path generates its deck from a strict electrical document. The collapsed advanced panel also permits expert edits to that generated preview deck, so the worker must continue treating every received string as hostile. This containment protects responsiveness and the server boundary, not grading integrity or the visitor's browser. Worker code can be modified, and parser complexity, WebAssembly memory pressure, and simulator or browser-engine defects remain in scope. Raw preview decks and outputs must never be promoted into a trusted server execution path; the three supported submissions send the bounded canonical circuit document, which the server independently compiles, verifies, and grades.
+The SPICE workspace accepts expert edits to preview decks, so the worker treats every received string as hostile. This containment protects responsiveness and the server boundary, not grading integrity or the visitor's browser. Worker code can be modified, and parser complexity, WebAssembly memory pressure, and simulator or browser-engine defects remain in scope. Raw preview decks and outputs never enter a trusted server execution path; the three supported submissions send a bounded canonical circuit document, which the server independently compiles, verifies, and grades.
 
 ### Visual editor
 
-The native editor keeps drawing/presentation state separate from electrical truth. Imported editor projects are shape-checked and bounded to 120 symbols, 480 wires, and 240 junctions. Before simulation, supported symbols are converted to the strict, versioned Zod `CircuitDocument` schema in `lib/circuit-document.ts`; semantic validation checks pins, connectivity, grounds, analyses, finite values, and collection/sweep limits. `compileCircuitDocument` removes drawing geometry from the normalized `CircuitIR`, and `lib/circuit-spice.ts` alone generates device names, nodes, directives, and model selections.
+CircuitJS1 owns the primary editor's native component, wire, node and model semantics. Imports are limited to 2 MB and validated as native XML or legacy CircuitJS text before passing to the upstream parser. Captures permit 32 probes and a bounded sample count, and abort on editing, reset, cancellation or solver errors. Native simulation runs within the upstream browser runtime; the separate ngspice workspace uses a Worker.
 
-The visual adapter currently models R/C/L, independent voltage/current sources, ground, diodes, BJTs, MOSFETs, and ideal op-amps. Other available drawing symbols are refused at simulation time rather than guessed. Voltage-probe symbols are capped at four in the visual-to-worker path. MOS starters select the bundled `N90`/`P90` BSIM4 benchmark model card; it is not a real-process PDK or a signoff model. Generated decks and their results remain browser-preview data.
+Only the three supported grading topologies can be converted through the narrow native-to-`CircuitDocument` adapter. It reads actual serialized elements, source properties and native node IDs, then checks the existing strict schema. The server independently verifies connectivity and fixed stimuli. Unsupported native components and models fail conversion explicitly. The retained legacy document importer and its renderer are compatibility code, not the default editor. Native CircuitJS transistor models differ from the bundled ngspice BSIM4 benchmark models; neither is a real-process PDK or signoff model.
 
 ### Challenge authoring
 
@@ -78,13 +82,13 @@ The versioned `anacode.challenge-template` contract is declarative local tooling
 
 Drizzle parameterizes D1 operations. Foreign keys bind submissions/progress to the platform user ID, and `(user_id, idempotency_key)` is unique. The stored submission contains the canonical circuit document and the server verdict. For the same authenticated user, an identical retry with the same key replays that stored verdict without incrementing attempts; the same key attached to a different problem, version, or serialized document returns `409`.
 
-A new authenticated result uses one D1 transactional batch for the user upsert, submission insert, and progress upsert. Thus a failed batch cannot leave progress advanced without its matching submission. A unique-key race is resolved by re-reading and replaying only an identical stored request. A persistence failure after rate admission can still return an explicitly unpersisted practice result and logs only the error class name. If the shared limiter itself is unavailable on trusted edge traffic, the route fails closed with `503`. The application does not implement passwords or OAuth cookies; hosted sign-in and identity-header injection are owned by the Sites platform.
+A new authenticated result uses one D1 transactional batch for the user upsert, submission insert, and progress upsert. Thus a failed batch cannot leave progress advanced without its matching submission. A unique-key race is resolved by re-reading and replaying only an identical stored request. A persistence failure after rate admission can still return an explicitly unpersisted practice result and logs only the error class name. If the shared limiter itself is unavailable on trusted edge traffic, the route fails closed with `503`.
 
-A non-Sites reverse proxy must remove all inbound `oai-authenticated-user-*` headers before adding verified values. Never expose the local development server as though it had the production identity boundary.
+Supabase owns password verification and email delivery. The application uses the official SDK for server-verified identity, PKCE callback exchange, HttpOnly session cookies, refresh, sign-out and recovery. Redirect destinations are restricted to local paths. Signup and recovery use generic responses to limit account enumeration. No service-role key is needed or accepted. Live account and email verification requires a configured Supabase project; tests emulate upstream HTTP responses and exercise the actual SDK and routes.
 
 ### Response policy
 
-The Worker adds HSTS on HTTPS, `nosniff`, strict-origin referrer policy, frame denial, COOP, origin isolation, a restrictive permissions policy, and a CSP that denies objects and all framing. Every HTML response receives a fresh random nonce. Cloudflare `HTMLRewriter` applies it to every script and stylesheet element; a bounded full-body fallback keeps the same behavior testable in the Node build harness. `script-src` no longer contains `'unsafe-inline'`, and inline event handlers are denied with `script-src-attr 'none'`.
+Application responses receive HSTS on HTTPS, `nosniff`, strict-origin referrer policy (preserving stricter auth callback `no-referrer`), frame-ancestor denial, COOP, origin isolation and a restrictive permissions policy. Their CSP denies objects and permits only same-origin child frames for the vendored editor. Each application HTML response receives a fresh nonce on script and stylesheet elements through Cloudflare `HTMLRewriter`, with a bounded full-body fallback for the Node build harness. Application scripting excludes `'unsafe-inline'`; inline event handlers are denied. The separate native asset policy is described above.
 
 `style-src-attr 'unsafe-inline'` remains because the current React UI emits bounded code-owned style attributes; stylesheet elements require the nonce on non-local origins. The localhost-only development response permits inline stylesheet elements because Vite injects CSS-module updates dynamically and cannot attach the per-response nonce; production and preview hostnames do not receive that exception. `script-src` also permits `'wasm-unsafe-eval'` because the local ngspice preview requires WebAssembly compilation. Neither allowance grants network or grading authority to the worker, but both remain browser attack surfaces that must stay narrowly scoped and reviewed.
 
@@ -93,7 +97,7 @@ The Worker adds HSTS on HTTPS, `nosniff`, strict-origin referrer policy, frame d
 - **Simulator redistribution is a hosted-deployment stop-ship issue.** The installed `eecircuit-engine@1.7.0` wrapper is MIT-licensed, but the exact corresponding ngspice source/build revision and the complete provenance/license set for the WebAssembly and embedded model-card artifacts are not pinned in the npm distribution. Do not deploy the current bundle to an external hosted environment, whether public or access-controlled, or otherwise redistribute it until the criteria in [docs/simulator-provenance.md](docs/simulator-provenance.md) are satisfied or the artifact is replaced with one whose provenance and obligations are complete. No hosted deployment was created for this snapshot.
 - The current D1 fixed-window limiter is shared and fail-closed for trusted edge traffic, but there are no account-level daily quotas, platform WAF/bot rules, job queue, or circuit-breaker policy. The local-preview fallback remains per isolate by design.
 - No isolated native ngspice 47 grading service or independent simulator oracle yet; the three current judges are equation-based. The ngspice-WASM browser preview is not that service.
-- Six challenge briefs are practice-only and cannot produce an authoritative accepted result.
+- Twenty-one problems are practice-only and cannot produce an authoritative accepted result; fifteen of those offer locally checked worked numerical answers.
 - No formal penetration test, threat-model review by an independent party, SAST/DAST gate, SBOM/signing pipeline, or disaster-recovery exercise.
 - No published retention/deletion policy for stored email addresses and submissions.
 - No monitored vulnerability mailbox or incident-response SLA.
@@ -102,7 +106,7 @@ The Worker adds HSTS on HTTPS, `nosniff`, strict-origin referrer policy, frame d
 - Server-only test cases are not secret if an attacker can access deployed source or repository history.
 - Same-origin header checks are useful CSRF defense-in-depth but must be supplemented by the hosting platform's cookie and origin protections; non-browser clients can set headers.
 
-As of 2026-09-01, `npm audit --omit=dev` reports zero known production-package vulnerabilities. The full audit reports four moderate findings in a development-only `drizzle-kit` transitive chain (`@esbuild-kit/*` to an old `esbuild`). The offered automatic fix is a breaking downgrade to `drizzle-kit@0.18.1`, so it has not been forced. Do not expose development tooling or its server to untrusted networks; monitor for an upstream non-breaking fix. Audit results are time-sensitive and are not proof of safety.
+As of 2026-09-16, `npm audit --omit=dev` reports zero known production-package vulnerabilities. The full audit reports four high findings in the existing development-only Cloudflare/Miniflare chain through `sharp` and its image codec dependency (GHSA-rgj7-g3m4-5g8c). The pinned hosting toolchain remains unchanged in this feature update; upgrading it needs its own build/runtime verification. Do not expose development tooling to untrusted networks. Audit results are time-sensitive and are not proof of safety.
 
 ## Native ngspice 47 acceptance criteria
 

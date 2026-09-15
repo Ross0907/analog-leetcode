@@ -2,26 +2,37 @@
 
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- ARIA separators become interactive when they expose a value and keyboard controls. */
 
-import { Children, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Children, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 
 const STORAGE_KEY = "anacode-challenge-split";
 const MIN_PERCENT = 22;
 const MAX_PERCENT = 58;
 const DEFAULT_PERCENT = 32;
+type ProblemMode = "expanded" | "compact" | "collapsed";
+const subscribeHydration = () => () => {};
 
 export function ChallengeSplitWorkspace({ children }: { children: ReactNode }) {
+  const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
   const panes = Children.toArray(children);
   const [problemPercent, setProblemPercent] = useState(DEFAULT_PERCENT);
+  const [problemMode, setProblemMode] = useState<ProblemMode>("expanded");
   const containerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<number | null>(null);
   const latestPercentRef = useRef(DEFAULT_PERCENT);
 
   useEffect(() => {
-    const saved = Number(window.localStorage.getItem(STORAGE_KEY));
-    if (!Number.isFinite(saved) || saved < MIN_PERCENT || saved > MAX_PERCENT) return;
+    let saved = DEFAULT_PERCENT;
+    let mode: ProblemMode = "expanded";
+    try {
+      const width = Number(window.localStorage.getItem(STORAGE_KEY));
+      if (Number.isFinite(width) && width >= MIN_PERCENT && width <= MAX_PERCENT) saved = width;
+      const preference = window.localStorage.getItem(`${STORAGE_KEY}-mode`);
+      if (preference === "compact" || preference === "collapsed") mode = preference;
+    } catch { /* Private browser sessions can disable storage. */ }
     const timer = window.setTimeout(() => {
       latestPercentRef.current = saved;
       setProblemPercent(saved);
+      setProblemMode(mode);
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -37,18 +48,31 @@ export function ChallengeSplitWorkspace({ children }: { children: ReactNode }) {
   function finishResize(pointerId: number) {
     if (draggingRef.current !== pointerId) return;
     draggingRef.current = null;
-    window.localStorage.setItem(STORAGE_KEY, latestPercentRef.current.toFixed(2));
+    persist(STORAGE_KEY, latestPercentRef.current.toFixed(2));
   }
 
   return (
+    <>
+    <div className="problem-pane-controls" role="group" aria-label="Problem description size">
+      <span>Problem</span>
+      {(["expanded", "compact", "collapsed"] as const).map((mode) => (
+        <button key={mode} type="button" disabled={!hydrated} aria-pressed={problemMode === mode}
+          aria-controls="problem-description-pane" onClick={() => {
+            setProblemMode(mode);
+            persist(`${STORAGE_KEY}-mode`, mode);
+          }}>{mode === "expanded" ? "Expand description" : mode === "compact" ? "Compact description" : "Hide description"}</button>
+      ))}
+    </div>
     <div
       ref={containerRef}
       className="challenge-workspace"
+      data-problem-mode={problemMode}
       style={{ "--problem-pane-percent": `${problemPercent}%` } as CSSProperties}
     >
-      {panes[0]}
+      <div id="problem-description-pane" className="problem-pane-container" hidden={problemMode === "collapsed"}>{panes[0]}</div>
       <div
         className="challenge-splitter"
+        hidden={problemMode === "collapsed"}
         role="separator"
         tabIndex={0}
         aria-label="Resize problem and schematic panes"
@@ -59,7 +83,7 @@ export function ChallengeSplitWorkspace({ children }: { children: ReactNode }) {
         onDoubleClick={() => {
           setProblemPercent(DEFAULT_PERCENT);
           latestPercentRef.current = DEFAULT_PERCENT;
-          window.localStorage.setItem(STORAGE_KEY, String(DEFAULT_PERCENT));
+          persist(STORAGE_KEY, String(DEFAULT_PERCENT));
         }}
         onPointerDown={(event) => {
           draggingRef.current = event.pointerId;
@@ -79,14 +103,19 @@ export function ChallengeSplitWorkspace({ children }: { children: ReactNode }) {
             : clamp(problemPercent + (event.key === "ArrowLeft" ? -2 : 2), MIN_PERCENT, MAX_PERCENT);
           latestPercentRef.current = next;
           setProblemPercent(next);
-          window.localStorage.setItem(STORAGE_KEY, String(next));
+          persist(STORAGE_KEY, String(next));
         }}
       >
         <span aria-hidden="true" />
       </div>
       {panes[1]}
     </div>
+    </>
   );
+}
+
+function persist(key: string, value: string) {
+  try { window.localStorage.setItem(key, value); } catch { /* Resizing still works without storage. */ }
 }
 
 function clamp(value: number, minimum: number, maximum: number) {

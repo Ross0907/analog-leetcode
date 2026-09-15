@@ -7,6 +7,7 @@ import { BrandMark } from "../../components/brand-mark";
 import { ChallengeWorkbench } from "../../components/challenge-workbench";
 import { ChallengeSplitWorkspace } from "../../components/challenge-split-workspace";
 import { ThemeToggle } from "../../components/theme-toggle";
+import { PracticeAnswer } from "../../components/practice-answer";
 
 export function generateStaticParams() {
   return challenges.map((challenge) => ({ slug: challenge.slug }));
@@ -85,9 +86,10 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
               <div className="topic-row large">{challenge.topics.map((topic) => <em key={topic}>{topic}</em>)}</div>
             </div>
 
+            {challenge.solution && <PracticeAnswer slug={challenge.slug} solution={challenge.solution} />}
             <div className="judge-note">
               <LockKeyhole size={18} />
-              <div><strong>{challenge.judge ? "Automated checks available" : "Simulation practice available"}</strong><p>{challenge.judge ? "AnaCode submits the complete, size-bounded CircuitDocument. The server recompiles it, verifies exact connectivity and allowed values, and never trusts generated solver text or browser results." : "This advanced checker is still under benchmark validation; the complete browser instruments remain available for practice."}</p></div>
+              <div><strong>{challenge.judge ? "Automated checks available" : "Simulation practice available"}</strong><p>{challenge.judge ? "Submit your circuit to check its connections, component values, and design requirements. Sign in to save graded progress." : challenge.solution ? "Calculate your answer, compare it with the simulation, then check your calculation above." : "Explore the stated model with probes and compare your measurements against the design objective."}</p></div>
             </div>
           </div>
         </section>
