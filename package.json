@@ -24,7 +24,7 @@
     "@tisoap/react-flow-smart-edge": "5.0.0",
     "@xyflow/react": "12.11.6",
     "drizzle-orm": "0.45.2",
-    "eecircuit-engine": "1.7.0",
+    "eecircuit-engine": "1.8.0",
     "fft.js": "4.0.4",
     "lucide-react": "1.34.0",
     "react": "19.2.8",
