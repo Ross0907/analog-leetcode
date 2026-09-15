@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "wrapper": { "revision": "f4dab6458d3865a1db9766008480690d23410c3a", "url": "https://codeload.github.com/eelab-dev/EEcircuit-engine/zip/f4dab6458d3865a1db9766008480690d23410c3a", "sha256": "d7f6929395845d2d5872e9211c3c488e40d27bb01c7d180d602bd1ba23a7d076" },
+  "ngspice": { "revision": "724dc77b9153dc75eaec474b1f7a44f1fcf5f362", "url": "https://codeload.github.com/danchitnis/ngspice-sf-mirror/zip/724dc77b9153dc75eaec474b1f7a44f1fcf5f362", "sha256": "c8ac1253c5812902d93cea421dbc0774007d631fa8762e626e056ee0da4af711" },
+  "bsim": { "version": "4.8.1", "url": "https://www.bsim.berkeley.edu/BSIM4/BSIM4_4.8.1_20170215.tar.gz", "sha256": "1c76daa1edbcf9d929dc2a8c1c0597a42a6a4b2cb42e3a43c0c219b87846c607" },
+  "buildImage": "emscripten/emsdk:5.0.4@sha256:61aa4ca6e3dcdf0cfce9c3018767a0698bdc0f7ff72ca5982a0536c5caff93f7",
+  "modelSha256": "c959237c2f549bc46912743226a2489d397a6cd89602c9511c309dd9680d817a"
+}

@@ -60,11 +60,13 @@ These checks reduce attack surface; the D1 bucket provides shared enforcement fo
 
 ### Browser simulator
 
-The numerical preview runs `eecircuit-engine@1.7.0` and its bundled ngspice WebAssembly build in a dedicated Web Worker. `@spice-ts/core@0.3.0` is used only for a bounded structural parse before the engine runs. The pure, independently tested policy in `lib/simulator-netlist-policy.ts` limits input to 12,000 bytes, 180 lines, 80 parsed components, 5,000 requested or returned analysis points, 2,000 periodic-source events, 32 voltage/current probes, and exactly one `.op`, `.ac`, `.tran`, or `.dc` analysis. It uses a small directive allowlist; file/library/control/execution directives, parameter sweeps, and subcircuits are rejected. The sole include exception is the exact bundled `modelcard.CMOS90` identifier.
+The numerical preview runs the local source-built `eecircuit-engine@1.8.0+anacode.1` and its ngspice 45.2 WebAssembly build in a dedicated Web Worker. `@spice-ts/core@0.3.0` is used only for a bounded structural parse before the engine runs. The pure, independently tested policy in `lib/simulator-netlist-policy.ts` limits input to 12,000 bytes, 180 lines, 80 parsed components, 5,000 requested or returned analysis points, 2,000 periodic-source events, 32 voltage/current probes, and exactly one `.op`, `.ac`, `.tran`, or `.dc` analysis. It uses a small directive allowlist; file/library/control/execution directives, parameter sweeps, and subcircuits are rejected. The sole include exception is the exact bundled `modelcard.CMOS90` identifier.
 
 The lifecycle distinguishes slow engine startup from circuit execution. A typed ready/result protocol grants initialization up to 30 seconds; the four-second execution timer starts only after the ready version is validated and a request is posted. The page prewarms a worker, accepts one run per worker, disposes it after completion or cancellation, and prewarms a replacement. Initialization errors, message errors, timeouts, stale run IDs, and unmounts terminate the affected worker. These measures bound normal UI work but cannot make a compromised browser authoritative.
 
 The SPICE workspace accepts expert edits to preview decks, so the worker treats every received string as hostile. This containment protects responsiveness and the server boundary, not grading integrity or the visitor's browser. Worker code can be modified, and parser complexity, WebAssembly memory pressure, and simulator or browser-engine defects remain in scope. Raw preview decks and outputs never enter a trusted server execution path; the three supported submissions send a bounded canonical circuit document, which the server independently compiles, verifies, and grades.
+
+The source-built simulator's release verification completed on 2026-09-16. Pinned ngspice and wrapper source, documented modifications, build/relinking scripts, Berkeley model correspondence and complete component notices accompany the runtime. The clean installed-package audit, production build and full browser suite passed; all 13 source and notice files in the production output match the manifest hashes. The deploy-only `node scripts/audit-simulator-provenance.mjs --release` check verifies the completed record and artifacts. Every hosted release must retain `/simulator/` source and notice assets. See [the simulator provenance record](docs/simulator-provenance.md).
 
 ### Visual editor
 
@@ -94,7 +96,6 @@ Application responses receive HSTS on HTTPS, `nosniff`, strict-origin referrer p
 
 ## Known gaps and launch blockers
 
-- **Simulator redistribution is a hosted-deployment stop-ship issue.** The installed `eecircuit-engine@1.7.0` wrapper is MIT-licensed, but the exact corresponding ngspice source/build revision and the complete provenance/license set for the WebAssembly and embedded model-card artifacts are not pinned in the npm distribution. Do not deploy the current bundle to an external hosted environment, whether public or access-controlled, or otherwise redistribute it until the criteria in [docs/simulator-provenance.md](docs/simulator-provenance.md) are satisfied or the artifact is replaced with one whose provenance and obligations are complete. No hosted deployment was created for this snapshot.
 - The current D1 fixed-window limiter is shared and fail-closed for trusted edge traffic, but there are no account-level daily quotas, platform WAF/bot rules, job queue, or circuit-breaker policy. The local-preview fallback remains per isolate by design.
 - No isolated native ngspice 47 grading service or independent simulator oracle yet; the three current judges are equation-based. The ngspice-WASM browser preview is not that service.
 - Twenty-one problems are practice-only and cannot produce an authoritative accepted result; fifteen of those offer locally checked worked numerical answers.
@@ -106,7 +107,7 @@ Application responses receive HSTS on HTTPS, `nosniff`, strict-origin referrer p
 - Server-only test cases are not secret if an attacker can access deployed source or repository history.
 - Same-origin header checks are useful CSRF defense-in-depth but must be supplemented by the hosting platform's cookie and origin protections; non-browser clients can set headers.
 
-As of 2026-09-16, `npm audit --omit=dev` reports zero known production-package vulnerabilities. The full audit reports four high findings in the existing development-only Cloudflare/Miniflare chain through `sharp` and its image codec dependency (GHSA-rgj7-g3m4-5g8c). The pinned hosting toolchain remains unchanged in this feature update; upgrading it needs its own build/runtime verification. Do not expose development tooling to untrusted networks. Audit results are time-sensitive and are not proof of safety.
+As of 2026-09-16, a clean installation with npm 12.0.2 reports zero known vulnerabilities across production and development dependencies. The coordinated Cloudflare toolchain upgrade includes the patched `sharp@0.35.4` dependency and removes the previous four high findings (GHSA-rgj7-g3m4-5g8c). CI checks the complete dependency graph and fails on high or critical npm audit findings. Do not expose development tooling to untrusted networks. Audit results are time-sensitive and are not proof of safety.
 
 ## Native ngspice 47 acceptance criteria
 
@@ -123,7 +124,7 @@ The planned authoritative target is a separately pinned native ngspice 47 servic
 9. Differential-test representative cases against a second trusted simulator or analytical oracle and include malicious decks in regression testing.
 10. Review ngspice and model-library redistribution licenses before shipping binaries or models. The top-level MIT license in the installed `eecircuit-engine` package is not by itself a complete notice/provenance inventory for the ngspice WebAssembly and model-card artifacts embedded in its distribution bundle.
 
-The same provenance requirement already applies to the current browser-preview artifact. A native future service does not cure an incomplete public browser redistribution. See [docs/simulator-provenance.md](docs/simulator-provenance.md) for the evidence still required and the release decision record.
+The same provenance requirement applies to the current browser-preview artifact. Its pinned source build and corresponding-source distribution are documented in [docs/simulator-provenance.md](docs/simulator-provenance.md), together with the release verification record. Future native-service work must preserve its own component license and source obligations.
 
 ## Analog Canvas policy
 
@@ -140,7 +141,9 @@ npm ci
 npx tsc --noEmit
 npm run lint
 npm test
-npm audit --omit=dev
+npm ls --all
+npm audit --audit-level=high
+npm run test:e2e
 ```
 
 Also review dependency/lockfile diffs, generated migrations, CSP changes, authentication-boundary changes, grader-version changes, logs for accidental personal data, and the hosting/WAF configuration outside this repository. Use OWASP ASVS as a verification baseline; do not describe the deployment as ASVS-compliant without an actual assessment.

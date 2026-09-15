@@ -1,0 +1,452 @@
+{
+  "Device:R": [
+    {
+      "number": "1",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": 3.81,
+      "angle": 270.0,
+      "length": 1.27
+    },
+    {
+      "number": "2",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": -3.81,
+      "angle": 90.0,
+      "length": 1.27
+    }
+  ],
+  "Device:R_US": [
+    {
+      "number": "1",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": 3.81,
+      "angle": 270.0,
+      "length": 1.27
+    },
+    {
+      "number": "2",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": -3.81,
+      "angle": 90.0,
+      "length": 1.27
+    }
+  ],
+  "Device:C": [
+    {
+      "number": "1",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": 3.81,
+      "angle": 270.0,
+      "length": 2.794
+    },
+    {
+      "number": "2",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": -3.81,
+      "angle": 90.0,
+      "length": 2.794
+    }
+  ],
+  "Device:C_Polarized": [
+    {
+      "number": "1",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": 3.81,
+      "angle": 270.0,
+      "length": 2.794
+    },
+    {
+      "number": "2",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": -3.81,
+      "angle": 90.0,
+      "length": 2.794
+    }
+  ],
+  "Device:L": [
+    {
+      "number": "1",
+      "name": "1",
+      "sourceX": 0.0,
+      "sourceY": 3.81,
+      "angle": 270.0,
+      "length": 1.27
+    },
+    {
+      "number": "2",
+      "name": "2",
+      "sourceX": 0.0,
+      "sourceY": -3.81,
+      "angle": 90.0,
+      "length": 1.27
+    }
+  ],
+  "Device:D": [
+    {
+      "number": "1",
+      "name": "K",
+      "sourceX": -3.81,
+      "sourceY": 0.0,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "2",
+      "name": "A",
+      "sourceX": 3.81,
+      "sourceY": 0.0,
+      "angle": 180.0,
+      "length": 2.54
+    }
+  ],
+  "Device:D_Zener": [
+    {
+      "number": "1",
+      "name": "K",
+      "sourceX": -3.81,
+      "sourceY": 0.0,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "2",
+      "name": "A",
+      "sourceX": 3.81,
+      "sourceY": 0.0,
+      "angle": 180.0,
+      "length": 2.54
+    }
+  ],
+  "Device:LED": [
+    {
+      "number": "1",
+      "name": "K",
+      "sourceX": -3.81,
+      "sourceY": 0.0,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "2",
+      "name": "A",
+      "sourceX": 3.81,
+      "sourceY": 0.0,
+      "angle": 180.0,
+      "length": 2.54
+    }
+  ],
+  "Device:Battery": [
+    {
+      "number": "1",
+      "name": "+",
+      "sourceX": 0.0,
+      "sourceY": 5.08,
+      "angle": 270.0,
+      "length": 2.54
+    },
+    {
+      "number": "2",
+      "name": "-",
+      "sourceX": 0.0,
+      "sourceY": -5.08,
+      "angle": 90.0,
+      "length": 2.54
+    }
+  ],
+  "Device:Q_NPN": [
+    {
+      "number": "B",
+      "name": "B",
+      "sourceX": -5.08,
+      "sourceY": 0.0,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "C",
+      "name": "C",
+      "sourceX": 2.54,
+      "sourceY": 5.08,
+      "angle": 270.0,
+      "length": 2.54
+    },
+    {
+      "number": "E",
+      "name": "E",
+      "sourceX": 2.54,
+      "sourceY": -5.08,
+      "angle": 90.0,
+      "length": 2.54
+    }
+  ],
+  "Device:Q_PNP": [
+    {
+      "number": "B",
+      "name": "B",
+      "sourceX": -5.08,
+      "sourceY": 0.0,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "C",
+      "name": "C",
+      "sourceX": 2.54,
+      "sourceY": 5.08,
+      "angle": 270.0,
+      "length": 2.54
+    },
+    {
+      "number": "E",
+      "name": "E",
+      "sourceX": 2.54,
+      "sourceY": -5.08,
+      "angle": 90.0,
+      "length": 2.54
+    }
+  ],
+  "Device:Q_NMOS": [
+    {
+      "number": "G",
+      "name": "G",
+      "sourceX": -5.08,
+      "sourceY": 0.0,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "D",
+      "name": "D",
+      "sourceX": 2.54,
+      "sourceY": 5.08,
+      "angle": 270.0,
+      "length": 2.54
+    },
+    {
+      "number": "S",
+      "name": "S",
+      "sourceX": 2.54,
+      "sourceY": -5.08,
+      "angle": 90.0,
+      "length": 2.54
+    }
+  ],
+  "Device:Q_PMOS": [
+    {
+      "number": "G",
+      "name": "G",
+      "sourceX": -5.08,
+      "sourceY": 0.0,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "D",
+      "name": "D",
+      "sourceX": 2.54,
+      "sourceY": 5.08,
+      "angle": 270.0,
+      "length": 2.54
+    },
+    {
+      "number": "S",
+      "name": "S",
+      "sourceX": 2.54,
+      "sourceY": -5.08,
+      "angle": 90.0,
+      "length": 2.54
+    }
+  ],
+  "Simulation_SPICE:NMOS": [
+    {
+      "number": "2",
+      "name": "G",
+      "sourceX": -5.08,
+      "sourceY": 0.0,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "1",
+      "name": "D",
+      "sourceX": 2.54,
+      "sourceY": 5.08,
+      "angle": 270.0,
+      "length": 2.54
+    },
+    {
+      "number": "3",
+      "name": "S",
+      "sourceX": 2.54,
+      "sourceY": -5.08,
+      "angle": 90.0,
+      "length": 2.54
+    }
+  ],
+  "Simulation_SPICE:PMOS": [
+    {
+      "number": "2",
+      "name": "G",
+      "sourceX": -5.08,
+      "sourceY": 0.0,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "1",
+      "name": "D",
+      "sourceX": 2.54,
+      "sourceY": 5.08,
+      "angle": 270.0,
+      "length": 2.54
+    },
+    {
+      "number": "3",
+      "name": "S",
+      "sourceX": 2.54,
+      "sourceY": -5.08,
+      "angle": 90.0,
+      "length": 2.54
+    }
+  ],
+  "Simulation_SPICE:OPAMP": [
+    {
+      "number": "1",
+      "name": "+",
+      "sourceX": -7.62,
+      "sourceY": 2.54,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "2",
+      "name": "-",
+      "sourceX": -7.62,
+      "sourceY": -2.54,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "3",
+      "name": "V+",
+      "sourceX": -2.54,
+      "sourceY": 7.62,
+      "angle": 270.0,
+      "length": 3.81
+    },
+    {
+      "number": "4",
+      "name": "V-",
+      "sourceX": -2.54,
+      "sourceY": -7.62,
+      "angle": 90.0,
+      "length": 3.81
+    },
+    {
+      "number": "5",
+      "name": "~",
+      "sourceX": 7.62,
+      "sourceY": 0.0,
+      "angle": 180.0,
+      "length": 2.54
+    }
+  ],
+  "Simulation_SPICE:VDC": [
+    {
+      "number": "1",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": 5.08,
+      "angle": 270.0,
+      "length": 2.54
+    },
+    {
+      "number": "2",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": -5.08,
+      "angle": 90.0,
+      "length": 2.54
+    }
+  ],
+  "Simulation_SPICE:IDC": [
+    {
+      "number": "1",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": 5.08,
+      "angle": 270.0,
+      "length": 2.54
+    },
+    {
+      "number": "2",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": -5.08,
+      "angle": 90.0,
+      "length": 2.54
+    }
+  ],
+  "Amplifier_Operational:LM2904": [
+    {
+      "number": "3",
+      "name": "+",
+      "sourceX": -7.62,
+      "sourceY": 2.54,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "2",
+      "name": "-",
+      "sourceX": -7.62,
+      "sourceY": -2.54,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "1",
+      "name": "~",
+      "sourceX": 7.62,
+      "sourceY": 0.0,
+      "angle": 180.0,
+      "length": 2.54
+    }
+  ],
+  "power:GND": [
+    {
+      "number": "1",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": 0.0,
+      "angle": 270.0,
+      "length": 0.0
+    }
+  ],
+  "Switch:SW_SPST": [
+    {
+      "number": "1",
+      "name": "A",
+      "sourceX": -5.08,
+      "sourceY": 0.0,
+      "angle": 0.0,
+      "length": 2.54
+    },
+    {
+      "number": "2",
+      "name": "B",
+      "sourceX": 5.08,
+      "sourceY": 0.0,
+      "angle": 180.0,
+      "length": 2.54
+    }
+  ]
+}

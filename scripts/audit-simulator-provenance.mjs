@@ -26,11 +26,11 @@ function extractEmbeddedWasm(source, relativePath) {
 }
 
 assert.equal(manifest.schemaVersion, 1, "unsupported simulator artifact manifest");
-assert.equal(
-  manifest.releaseDecision,
-  "evidence-only-not-redistribution-clearance",
-  "artifact verification must not be presented as redistribution clearance",
-);
+assert.ok(["evidence-only-not-redistribution-clearance", "source-built-pending-release-verification", "source-built-with-corresponding-source"].includes(manifest.releaseDecision), "unknown simulator release decision");
+if (process.argv.includes("--release")) {
+  assert.equal(manifest.releaseDecision, "source-built-with-corresponding-source", "Simulator release blocked: corresponding source and final release checks are incomplete.");
+  assert.deepEqual(manifest.sourceTrace.pendingChecks, [], "Simulator release verification is incomplete.");
+}
 
 const lockfile = JSON.parse(await readFile(resolve(projectRoot, "package-lock.json"), "utf8"));
 const installedPackage = JSON.parse(
@@ -38,12 +38,24 @@ const installedPackage = JSON.parse(
 );
 const lockedPackage = lockfile.packages?.["node_modules/eecircuit-engine"];
 
-assert.equal(lockfile.packages?.[""]?.dependencies?.[manifest.package.name], manifest.package.version);
+assert.equal(lockfile.packages?.[""]?.dependencies?.[manifest.package.name], manifest.package.installSpecifier ?? manifest.package.version);
 assert.equal(installedPackage.name, manifest.package.name);
 assert.equal(installedPackage.version, manifest.package.version);
 assert.equal(installedPackage.repository?.url, manifest.package.repository);
-assert.equal(lockedPackage?.version, manifest.package.version);
-assert.equal(lockedPackage?.integrity, manifest.package.npmIntegrity);
+if (manifest.package.installSpecifier) {
+  assert.equal(manifest.package.installSpecifier, "file:vendor/eecircuit-engine");
+  assert.equal(lockedPackage?.link, true);
+  assert.equal(lockedPackage?.resolved, "vendor/eecircuit-engine");
+  assert.equal(lockfile.packages?.["vendor/eecircuit-engine"]?.version, manifest.package.version);
+  assert.equal(manifest.sourceTrace.confidence, "built-from-verified-immutable-source-inputs");
+  for (const sourceFile of ["ngspice-source.zip", "wrapper-source.zip", "bsim4-benchmark-source.tar.gz", "build-scripts.zip", "NGSPICE-COPYING.txt", "BSIM-USE.txt", "EECIRCUIT-LICENSE.txt", "EMSCRIPTEN-LICENSE.txt", "emscripten-system-licenses.tar.gz", "NOTICE.html"]) {
+    assert.ok(manifest.files[`public/simulator/${sourceFile}`], `Missing corresponding-source release material: ${sourceFile}`);
+  }
+} else {
+  assert.equal(lockedPackage?.version, manifest.package.version);
+  assert.equal(lockedPackage?.integrity, manifest.package.npmIntegrity);
+  assert.equal(manifest.releaseDecision, "evidence-only-not-redistribution-clearance");
+}
 
 for (const [relativePath, expected] of Object.entries(manifest.files)) {
   const bytes = await readFile(resolve(projectRoot, relativePath));
@@ -65,6 +77,18 @@ const initializationBanner = simulator.getInitInfo();
 assert.match(initializationBanner, new RegExp(manifest.embeddedWasm.runtimeBanner.version.replace("+", "\\+")));
 assert.match(initializationBanner, new RegExp(manifest.embeddedWasm.runtimeBanner.buildTimestamp));
 
+const simulatorFs = simulator.__getSpiceModuleForTests()?.FS;
+assert.ok(simulatorFs, "initialized simulator filesystem is unavailable for model verification");
+const modelFiles = simulatorFs.readdir("/")
+  .filter((name) => name.startsWith("modelcard.") || name.endsWith(".ngspice"))
+  .sort();
+assert.deepEqual(modelFiles, Object.keys(manifest.embeddedModelFiles).sort(), "embedded model inventory drifted");
+for (const [name, expected] of Object.entries(manifest.embeddedModelFiles)) {
+  const bytes = simulatorFs.readFile(`/${name}`);
+  assert.equal(bytes.byteLength, expected.bytes, `${name}: embedded model byte length drifted`);
+  assert.equal(sha256(bytes), expected.sha256, `${name}: embedded model SHA-256 drifted`);
+}
+
 simulator.setNetList("* AnaCode provenance probe\nV1 in 0 1\nR1 in 0 1k\n.op\n.end");
 const result = await simulator.runSim();
 assert.equal(result.numPoints, 1);
@@ -73,6 +97,8 @@ assert.match(result.header, new RegExp(manifest.embeddedWasm.runtimeBanner.build
 
 console.log(
   `Simulator artifact verified: ${manifest.package.name}@${manifest.package.version}, `
-  + `${manifest.embeddedWasm.runtimeBanner.version}, WASM ${manifest.embeddedWasm.sha256}.`,
+  + `${manifest.embeddedWasm.runtimeBanner.version}, WASM ${manifest.embeddedWasm.sha256}, ${modelFiles.length} model payloads.`,
 );
-console.log("This check detects artifact drift; it does not clear the documented redistribution stop-ship gate.");
+console.log(manifest.releaseDecision === "source-built-with-corresponding-source"
+  ? "Source-built simulator and corresponding-source release materials verified."
+  : "This check detects artifact drift; the final corresponding-source release gate remains open.");

@@ -38,6 +38,9 @@ yarn-error.log*
 node_modules/
 # build output
 dist/
+# This reviewed upstream runtime is an installed dependency, not local output.
+!vendor/eecircuit-engine/dist/
+!vendor/eecircuit-engine/dist/**
 out/
 build/
 .next/

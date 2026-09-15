@@ -41,7 +41,8 @@ Copy-Item -LiteralPath "$circuitBuild/source.zip" -Destination "$circuitOutput/u
 Copy-Item -LiteralPath 'scripts/patch-circuitjs-api.mjs','scripts/build-circuitjs.ps1' -Destination $circuitOutput
 $circuitHtml = Get-Content -LiteralPath "$circuitOutput/circuitjs.html" -Raw
 $circuitHtml = $circuitHtml.Replace('<link rel="manifest" href="/circuit/manifest.json">','').Replace('<title></title>','<title>CircuitJS1 · AnaCode schematic editor</title>')
+$circuitHtml = $circuitHtml.Replace('</head>', '<link rel="stylesheet" href="/kicad/editor-theme.css"><script type="module" src="/kicad/renderer.js"></script></head>')
 $circuitHtml = [regex]::Replace($circuitHtml, '(?s)<script>\s*if \(''serviceWorker'' in navigator\).*?</script>', '<!-- AnaCode: local application assets are versioned by the hosting build. -->')
-Set-Content -LiteralPath "$circuitOutput/circuitjs.html" -Value $circuitHtml -Encoding utf8
+Set-Content -LiteralPath "$circuitOutput/circuitjs.html" -Value $circuitHtml.TrimEnd() -Encoding utf8
 node scripts/audit-circuitjs.mjs --record
 if ($LASTEXITCODE -ne 0) { throw 'Artifact manifest failed.' }

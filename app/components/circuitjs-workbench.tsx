@@ -10,6 +10,8 @@ import { circuitJsGradingDocument } from '../../lib/circuitjs-grading';
 import { generateSpiceDeckFromCircuitDocument } from '../../lib/circuit-spice';
 import { ScopeResult } from './simulation-console';
 import styles from './circuitjs-workbench.module.css';
+import { KiCadSymbolPalette } from './kicad-symbol-palette';
+import { neutralCircuitJsPresentation } from '../../lib/circuitjs';
 
 type CircuitWindow = Window & { CircuitJS1?: CircuitJsApi };
 type SavedProbe = Pick<CircuitJsProbe, 'id' | 'name' | 'kind' | 'post' | 'color' | 'enabled'> & { elementIndex: number };
@@ -17,14 +19,14 @@ type SavedCircuit = { version: 1; circuit: string; probes: SavedProbe[]; duratio
 type Marker = { id: string; x: number; y: number; color: string; label: string };
 
 export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, storageKey = 'lab', modelNote, onPrepareGrading }: { initialCircuit?: string; storageKey?: string; modelNote?: string; onPrepareGrading?: (document: CircuitDocument, deck: string) => void }) {
-  const iframe = useRef<HTMLIFrameElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const apiRef = useRef<CircuitJsApi | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const probesRef = useRef<CircuitJsProbe[]>([]);
   const modeRef = useRef<'edit' | 'voltage' | 'current'>('edit');
-  const cancelCapture = useRef<((message?: string) => void) | null>(null);
-  const restoredProbes = useRef<SavedProbe[] | null>(null);
-  const mounted = useRef(true);
+  const cancelCaptureRef = useRef<((message?: string) => void) | null>(null);
+  const restoredProbesRef = useRef<SavedProbe[] | null>(null);
+  const mountedRef = useRef(true);
   const [ready, setReady] = useState(false);
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState('Loading the CircuitJS editor…');
@@ -45,7 +47,11 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
   const nodes = circuitJsNodeOptions(elements);
 
   function updateProbes(next: CircuitJsProbe[]) { probesRef.current = next; setProbes(next); }
-  function changeMode(next: typeof mode) { modeRef.current = next; setMode(next); }
+  function changeMode(next: typeof mode) {
+    apiRef.current?.addElement('Select');
+    modeRef.current = next;
+    setMode(next);
+  }
 
   function addProbe(element: CircuitJsElement, post: number, kind: 'voltage' | 'current', suggestedName?: string) {
     const current = probesRef.current;
@@ -59,14 +65,14 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
   }
 
   useEffect(() => {
-    mounted.current = true;
+    mountedRef.current = true;
     let initialized = false;
     let detach = () => {};
     const started = Date.now();
     const timer = setInterval(() => {
       let nativeWindow: CircuitWindow | null;
       let api: CircuitJsApi | undefined;
-      try { nativeWindow = iframe.current?.contentWindow as CircuitWindow | null; api = nativeWindow?.CircuitJS1; }
+      try { nativeWindow = iframeRef.current?.contentWindow as CircuitWindow | null; api = nativeWindow?.CircuitJS1; }
       catch { clearInterval(timer); setError('The editor was blocked by the browser’s embedding policy. Reload after correcting the same-origin frame policy.'); return; }
       if (!api) {
         if (Date.now() - started > 30_000) setError('The editor did not load. Reload the page and check that the local CircuitJS assets are available.');
@@ -79,24 +85,24 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
         try {
           const saved = JSON.parse(localStorage.getItem(`anacode:circuitjs:${storageKey}`) ?? 'null') as SavedCircuit | null;
           if (saved?.version === 1 && typeof saved.circuit === 'string') {
-            starter = validateCircuitJsText(saved.circuit); restoredProbes.current = Array.isArray(saved.probes) ? saved.probes.slice(0, MAX_CIRCUITJS_PROBES) : null;
+            starter = validateCircuitJsText(saved.circuit); restoredProbesRef.current = Array.isArray(saved.probes) ? saved.probes.slice(0, MAX_CIRCUITJS_PROBES) : null;
             if (typeof saved.duration === 'number' && saved.duration >= 1e-9 && saved.duration <= 10) setDuration(String(saved.duration));
             if (typeof saved.samples === 'number' && [128, 256, 512, 1024, 2048, 4096, 8192, 16384].includes(saved.samples)) setSamples(String(saved.samples));
           }
         } catch { /* Corrupt or unavailable local storage leaves the authored starter intact. */ }
         api.onanalyze = () => {
-          cancelCapture.current?.('Circuit changed during capture. Start another capture after finishing the edit.');
+          cancelCaptureRef.current?.('Circuit changed during capture. Start another capture after finishing the edit.');
           const nativeElements = api.getElements();
           setError(api.getStopMessage());
           setElements(nativeElements);
           const previous = probesRef.current.filter((probe) => nativeElements.includes(probe.element));
-          if (restoredProbes.current) {
-            const restored = restoredProbes.current.flatMap((probe) => {
+          if (restoredProbesRef.current) {
+            const restored = restoredProbesRef.current.flatMap((probe) => {
               const element = nativeElements[probe.elementIndex];
               if (!element || !['voltage', 'current'].includes(probe.kind) || !Number.isInteger(probe.post) || probe.post < 0 || probe.post >= element.getPostCount()) return [];
               return [{ ...probe, id: typeof probe.id === 'string' ? probe.id : crypto.randomUUID(), name: String(probe.name).slice(0, 80), color: /^#[a-f\d]{6}$/i.test(probe.color) ? probe.color : CIRCUITJS_PROBE_COLORS[0], element, enabled: probe.enabled !== false }];
             });
-            restoredProbes.current = null;
+            restoredProbesRef.current = null;
             probesRef.current = restored; setProbes(restored);
           } else if (previous.length) { probesRef.current = previous; setProbes(previous); }
           else {
@@ -105,7 +111,7 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
             probesRef.current = defaults; setProbes(defaults);
           }
         };
-        api.importCircuit(starter, false);
+        api.importCircuit(neutralCircuitJsPresentation(starter), false);
         api.setSimRunning(true);
         const nativeDocument = nativeWindow!.document;
         const click = (event: MouseEvent) => {
@@ -136,13 +142,43 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
           probesRef.current = next; setProbes(next); setError(null); setStatus(`${name} added.`);
         };
         const events = ['mousedown', 'mouseup', 'click'] as const;
+        // detach() below removes all three listeners from the effect's cleanup.
+        // eslint-disable-next-line @eslint-react/web-api-no-leaked-event-listener
         events.forEach((event) => nativeDocument.addEventListener(event, click, true));
-        detach = () => events.forEach((event) => nativeDocument.removeEventListener(event, click, true));
+        const wheel = (event: WheelEvent) => {
+          // Native iframe wheel events cannot scroll their parent document.
+          // Modified gestures call the native zoom command without browser zoom.
+          if ((event.target as Element | null)?.tagName !== 'CANVAS') return;
+          event.preventDefault(); event.stopImmediatePropagation();
+          if (event.ctrlKey || event.metaKey) {
+            if (event.deltaY) api.zoomCircuit(event.deltaY < 0 ? 1 : -1);
+            return;
+          }
+          const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+          const delta = event.deltaY * unit;
+          if (!delta) return;
+          for (let parent = iframeRef.current?.parentElement; parent; parent = parent.parentElement) {
+            if (!['auto', 'scroll'].includes(window.getComputedStyle(parent).overflowY)) continue;
+            const remaining = parent.scrollHeight - parent.clientHeight - parent.scrollTop;
+            if ((delta > 0 && remaining > 1) || (delta < 0 && parent.scrollTop > 0)) {
+              parent.scrollTop += delta;
+              return;
+            }
+          }
+          window.scrollBy({ top: delta, behavior: 'instant' });
+        };
+        // This listener is removed by detach() in the effect cleanup below.
+        // eslint-disable-next-line @eslint-react/web-api-no-leaked-event-listener
+        nativeDocument.addEventListener('wheel', wheel, { capture: true, passive: false });
+        detach = () => {
+          events.forEach((event) => nativeDocument.removeEventListener(event, click, true));
+          nativeDocument.removeEventListener('wheel', wheel, true);
+        };
         setReady(true); setStatus('Editor ready. Draw circuits, choose any node, and capture multiple probes.');
       }
       setRunning(api.isRunning());
       const stop = api.getStopMessage();
-      if (stop) { setError(stop); cancelCapture.current?.(stop); }
+      if (stop) { setError(stop); cancelCaptureRef.current?.(stop); }
       const readings: Record<string, number> = {};
       const overlay: Marker[] = [];
       const canvas = nativeWindow!.document.querySelector('canvas');
@@ -154,7 +190,7 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
       setValues(readings); setMarkers(overlay);
     }, 150);
     return () => {
-      mounted.current = false; clearInterval(timer); detach(); cancelCapture.current?.();
+      mountedRef.current = false; clearInterval(timer); detach(); cancelCaptureRef.current?.();
       if (apiRef.current) { apiRef.current.setSimRunning(false); apiRef.current.onanalyze = undefined; }
       apiRef.current = null;
     };
@@ -180,13 +216,13 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
     try {
       setError(null); setCapturing(true);
       const capture = captureCircuitJs(api, probesRef.current, Number(duration), Number(samples));
-      cancelCapture.current = capture.cancel;
+      cancelCaptureRef.current = capture.cancel;
       const result = await capture.result;
-      if (!mounted.current) return;
+      if (!mountedRef.current) return;
       setPayload(result); setTab('instruments'); setStatus(`Captured ${result.x.length.toLocaleString()} solver samples across ${result.traces.length} probes.`);
       instrumentRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    } catch (cause) { if (mounted.current) setError(cause instanceof Error ? cause.message : 'Capture failed.'); }
-    finally { cancelCapture.current = null; if (mounted.current) setCapturing(false); }
+    } catch (cause) { if (mountedRef.current) setError(cause instanceof Error ? cause.message : 'Capture failed.'); }
+    finally { cancelCaptureRef.current = null; if (mountedRef.current) setCapturing(false); }
   }
 
   return <section className={styles.workbench} aria-label="CircuitJS schematic and simulation workspace">
@@ -199,23 +235,32 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
       <button type="button" disabled={!ready || capturing} onClick={() => saveCircuit(false)}><Save size={15}/> Save</button>
       <button type="button" disabled={!ready || capturing} onClick={() => saveCircuit(true)}><Download size={15}/> Export</button>
       <button type="button" disabled={!ready || capturing} onClick={() => inputRef.current?.click()}><FolderOpen size={15}/> Open</button>
-      <button type="button" disabled={!ready || capturing} onClick={() => { updateProbes([]); setPayload(null); apiRef.current?.importCircuit(initialCircuit, false); apiRef.current?.setSimRunning(true); setStatus('Starter circuit restored.'); setError(null); }}><RotateCcw size={15}/> Restore starter</button>
+      <button type="button" disabled={!ready || capturing} onClick={() => { updateProbes([]); setPayload(null); apiRef.current?.importCircuit(neutralCircuitJsPresentation(initialCircuit), false); apiRef.current?.setSimRunning(true); setStatus('Starter circuit restored.'); setError(null); }}><RotateCcw size={15}/> Restore starter</button>
       {onPrepareGrading && <button type="button" disabled={!ready || capturing} onClick={() => { try { const document = circuitJsGradingDocument(apiRef.current!, storageKey); const generated = generateSpiceDeckFromCircuitDocument(document); onPrepareGrading(document, generated.deck); setError(null); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to prepare grading.'); } }}>Prepare SPICE &amp; grading</button>}
       <input ref={inputRef} type="file" accept=".txt,.circuitjs,.xml" hidden onChange={async (event) => {
         const file = event.target.files?.[0]; if (!file) return;
-        try { if (file.size > 2_000_000) throw new Error('Choose a circuit smaller than 2 MB.'); const text = validateCircuitJsText(await file.text()); updateProbes([]); setPayload(null); apiRef.current?.importCircuit(text, false); apiRef.current?.setSimRunning(true); setError(null); setStatus('Circuit imported.'); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Import failed.'); } event.target.value = '';
+        try { if (file.size > 2_000_000) throw new Error('Choose a circuit smaller than 2 MB.'); const text = neutralCircuitJsPresentation(validateCircuitJsText(await file.text())); updateProbes([]); setPayload(null); apiRef.current?.importCircuit(text, false); apiRef.current?.setSimRunning(true); setError(null); setStatus('Circuit imported.'); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Import failed.'); } event.target.value = '';
       }}/>
     </div>
     {modelNote && <p className={styles.note}>{modelNote}</p>}
     <div hidden={tab !== 'editor'}>
+      <KiCadSymbolPalette disabled={!ready || capturing} onAdd={(nativeType) => {
+        changeMode('edit');
+        apiRef.current?.addElement(nativeType);
+        iframeRef.current?.contentWindow?.focus();
+        setStatus('Click and drag in the schematic to place the component. Escape cancels placement.');
+      }}/>
       <div className={styles.tools}>
-        <button type="button" aria-pressed={mode === 'edit'} onClick={() => changeMode('edit')}><MousePointer2 size={15}/> Edit</button>
+        <button type="button" aria-pressed={mode === 'edit'} onClick={() => {
+          changeMode('edit');
+          setStatus('Edit mode. Select or drag components in the schematic.');
+        }}><MousePointer2 size={15}/> Edit</button>
         <button type="button" aria-pressed={mode === 'voltage'} onClick={() => changeMode('voltage')}><Radio size={15}/> Voltage probe</button>
         <button type="button" aria-pressed={mode === 'current'} onClick={() => changeMode('current')}><Radio size={15}/> Current probe</button>
-        <span>{mode === 'edit' ? 'Use Draw to add components; right-click to edit. W: wire · Ctrl+Z: undo · wheel: zoom.' : mode === 'voltage' ? 'Click a wire or terminal. Repeat to add multiple channels.' : 'Click a two-terminal component to measure its current.'}</span>
+        <span>{mode === 'edit' ? 'Use Draw to add components; right-click to edit. W: wire · Ctrl+Z: undo · scroll to move down · Ctrl/Cmd + scroll: zoom.' : mode === 'voltage' ? 'Click a wire or terminal. Repeat to add multiple channels.' : 'Click a two-terminal component to measure its current.'}</span>
       </div>
       <div className={styles.frameWrap}>
-        <iframe ref={iframe} className={styles.frame} title="CircuitJS schematic editor" src="/circuitjs/circuitjs.html?running=false&hideSidebar=true&hideInfoBox=true&usResistors=true&cct=%24%201%200.000001%2010%2050%205%2050%205e-11" allow="clipboard-read; clipboard-write"/>
+        <iframe ref={iframeRef} className={styles.frame} title="CircuitJS schematic editor" src="/circuitjs/circuitjs.html?running=false&hideSidebar=true&hideInfoBox=true&usResistors=true&cct=%24%204%200.000001%2010%2050%205%2050%205e-11" allow="clipboard-read; clipboard-write"/>
         <div className={styles.markers} aria-hidden="true">{markers.map((marker) => <span key={marker.id} className={styles.marker} style={{ left: marker.x, top: marker.y, color: marker.color, borderColor: marker.color }}>{marker.label}</span>)}</div>
       </div>
     </div>
@@ -224,7 +269,7 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
       <div className={styles.addRow}>
         <label>Node voltage <select aria-label="Node voltage probe" value={selectedNode} onChange={(event) => setSelectedNode(event.target.value)}><option value="">Choose any node…</option>{nodes.map((node) => <option key={node.id} value={node.id}>{node.name}</option>)}</select></label>
         <button type="button" disabled={!ready || selectedNode === '' || capturing} onClick={() => { const node = nodes.find((node) => node.id === Number(selectedNode)); if (node) addProbe(node.element, node.post, 'voltage', `V(${node.name.includes('·') ? `node ${node.id}` : node.name})`); }}>Add voltage</button>
-        <label>Branch current <select aria-label="Component current probe" value={selectedCurrent} onChange={(event) => setSelectedCurrent(event.target.value)}><option value="">Choose component…</option>{elements.map((element, index) => supportsCircuitJsCurrent(element) ? <option key={index} value={index}>{circuitJsElementName(element, index)}</option> : null)}</select></label>
+        <label>Branch current <select aria-label="Component current probe" value={selectedCurrent} onChange={(event) => setSelectedCurrent(event.target.value)}><option value="">Choose component…</option>{elements.map((element, index) => supportsCircuitJsCurrent(element) ? <option key={circuitJsElementName(element, index)} value={index}>{circuitJsElementName(element, index)}</option> : null)}</select></label>
         <button type="button" disabled={!ready || selectedCurrent === '' || capturing} onClick={() => { const element = elements[Number(selectedCurrent)]; if (element) addProbe(element, 0, 'current'); }}>Add current</button>
       </div>
       <div className={styles.probes}>{probes.map((probe, index) => <div className={styles.probe} key={probe.id} style={{ borderColor: `${probe.color}70` }}>
@@ -240,7 +285,7 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
       <label>Duration (seconds)<input aria-label="Capture duration in seconds" type="number" min="0.000000001" max="10" step="any" value={duration} onChange={(event) => setDuration(event.target.value)}/></label>
       <label>Target samples<select aria-label="Capture target samples" value={samples} onChange={(event) => setSamples(event.target.value)}>{[128, 256, 512, 1024, 2048, 4096, 8192, 16384].map((count) => <option key={count}>{count}</option>)}</select></label>
       <button className={styles.capture} type="button" disabled={!ready || capturing || !probes.some((probe) => probe.enabled)} onClick={capture}><Waves size={17}/>{capturing ? 'Capturing…' : 'Capture all probes'}</button>
-      {capturing && <button type="button" onClick={() => cancelCapture.current?.()}>Cancel</button>}
+      {capturing && <button type="button" onClick={() => cancelCaptureRef.current?.()}>Cancel</button>}
       <p>The capture starts from the current circuit state and pauses when finished. Adaptive solver steps are preserved.</p>
     </div>
     {error && <p className={styles.error} role="alert">{error}</p>}

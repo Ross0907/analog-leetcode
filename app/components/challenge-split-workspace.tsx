@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- ARIA separators become interactive when they expose a value and keyboard controls. */
+/* eslint-disable jsx-a11y-x/no-noninteractive-element-interactions, jsx-a11y-x/no-noninteractive-tabindex -- ARIA separators become interactive when they expose a value and keyboard controls. */
 
 import { Children, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 
@@ -13,6 +13,8 @@ const subscribeHydration = () => () => {};
 
 export function ChallengeSplitWorkspace({ children }: { children: ReactNode }) {
   const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
+  // The layout intentionally normalizes its fixed problem/workspace child slots.
+  // eslint-disable-next-line @eslint-react/no-children-to-array
   const panes = Children.toArray(children);
   const [problemPercent, setProblemPercent] = useState(DEFAULT_PERCENT);
   const [problemMode, setProblemMode] = useState<ProblemMode>("expanded");

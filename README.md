@@ -6,7 +6,7 @@ AnaCode is a browser circuit workbench and analog electronics practice library. 
 
 ## Circuit workbench
 
-The primary editor and live solver are **CircuitJS1**, built from pinned upstream source and served with the application. CircuitJS provides the components, symbols, wiring, electrical graph, undo, viewport and file format. AnaCode connects a probe panel and waveform viewer through its native JavaScript API.
+The primary editor and live solver are **CircuitJS1**, built from pinned upstream source and served with the application. CircuitJS provides the components, wiring, electrical graph, undo, viewport and file format. Supported component drawings and the quick palette use **official KiCad symbols**, exported with KiCad's own CLI and mapped to the existing native terminals. This is symbol presentation, not a replacement schematic backend or a KiCad project editor. AnaCode connects a probe panel and waveform viewer through the native JavaScript API.
 
 - Voltage probes on every electrical node, including ground and unlabeled junctions.
 - Current probes on supported two-terminal components; up to 32 simultaneous probes.
@@ -15,6 +15,8 @@ The primary editor and live solver are **CircuitJS1**, built from pinned upstrea
 - Oscilloscope scaling, horizontal zoom/pan, triggering, X/Y cursors and measurements.
 - FFT channel/window selection, linear/log frequency, linear/dB magnitude, DC removal, span and markers.
 - Distortion metrics only when sample quality and coherent capture support them.
+- Neutral schematic drawings by default, without voltage colouring or moving current dots.
+- Normal scrolling over the editor; Ctrl/Cmd + scroll zooms the circuit. Mobile pages keep descriptions and instruments reachable.
 
 The separate **ngspice WebAssembly** workspace provides operating point, DC sweep, AC magnitude/phase and transient analysis in a Web Worker. Probe expressions select any voltage node or current vector actually exported by ngspice.
 
@@ -30,7 +32,7 @@ Problem descriptions support expanded, compact and hidden modes. Search, difficu
 
 ## Development and checks
 
-Requires Node 24 and npm. CI uses npm 12.0.2.
+Requires Node 24.15.0 or newer in the Node 24 release line and npm 12.0.2. CI uses Node 24 and the pinned npm version. Node 22.22.2 or newer in the Node 22 release line and Node 26+ are also accepted by the package engine constraint.
 
 ```sh
 npm ci
@@ -42,6 +44,8 @@ Open [localhost:3000](http://localhost:3000). Configure login using [the Supabas
 ```sh
 npm run lint
 npm run typecheck
+npm ls --all
+npm audit --audit-level=high
 npm run test:unit
 npm test
 npx playwright install chromium
@@ -51,11 +55,11 @@ npm run build
 
 The test suite covers actual ngspice calculations, native CircuitJS imports/editing, probe acquisition, waveform analysis, grading, problem navigation and authentication. SDK tests emulate Supabase HTTP responses; validating real account creation and mail delivery requires a configured project and inbox.
 
-When testing an existing preview, set `ANACODE_E2E_EXTERNAL_SERVER=1` to prevent another server from starting. CI starts its own server.
+Browser tests start an isolated local server, initialize its own D1 database with the checked-in migrations, and generate a temporary test rate-limit key. They do not need production credentials. When testing an existing preview, set `ANACODE_E2E_EXTERNAL_SERVER=1` to prevent another server from starting; that preview must have its own local database and rate-limit configuration.
 
 ## Hosting
 
-The existing GitHub workflows remain in place: Cloudflare Workers serves the complete application; GitHub Pages publishes the static showcase. Vite emits `dist/server/wrangler.json` and client assets, including same-origin CircuitJS files.
+Cloudflare Workers serves the complete application; GitHub Pages publishes the static showcase. Vite emits `dist/server/wrangler.json` and client assets, including same-origin CircuitJS files. See [deployment setup and release checks](docs/deployment.md) for GitHub settings, Worker secrets, database initialization and rollback.
 
 D1 uses the `DB` binding. Supply `D1_DATABASE_ID` and `D1_DATABASE_NAME` at build time. Initialize a **new** database using the SQL migrations in `drizzle/`; existing databases retain their schema and data. Configure Worker secrets `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `RATE_LIMIT_HMAC_SECRET` (at least 32 bytes). Supabase redirect URLs and email setup are documented in [docs/supabase.md](docs/supabase.md).
 
@@ -65,6 +69,7 @@ Build output, caches, local credentials and test captures are excluded from sour
 
 - [Architecture and file formats](docs/architecture.md)
 - [CircuitJS integration and reproducible build](docs/circuitjs-integration.md)
+- [Official KiCad symbols, pins and provenance](docs/kicad-symbols.md)
 - [Waveform measurements and FFT](docs/waveform-instruments.md)
 - [Supabase authentication](docs/supabase.md)
 - [Challenge audit and authoring](docs/challenge-audit.md)

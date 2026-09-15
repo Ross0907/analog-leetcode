@@ -19,6 +19,10 @@ For production, set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as runtime sec
 
 Until valid configuration is present, the account page clearly says sign-in is unavailable and disables account form submission. Anonymous circuit practice remains usable. A successful build does not prove that a remote Supabase project or email provider is connected.
 
+## GitHub Actions deployment contract
+
+The production workflow requires the canonical Worker secret names `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `RATE_LIMIT_HMAC_SECRET`. Wrangler preserves existing dashboard secrets or accepts values supplied securely from same-named GitHub repository secrets during deployment. A Worker using only the legacy `SUPABASE_ANON_KEY` alias must copy that public anon value to `SUPABASE_PUBLISHABLE_KEY` to satisfy the production guard. See [deployment setup](deployment.md) for credentials, D1 initialization, separate GitHub environment visibility, and isolated browser-test setup.
+
 ## Email configuration
 
 1. Enable the **Email** provider and **Confirm email** in Supabase Authentication settings. Set the password minimum to at least 12 characters to match the application. Existing accounts can still sign in with their existing passwords.

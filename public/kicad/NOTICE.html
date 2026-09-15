@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>KiCad symbol credits · AnaCode</title>
+  <style>
+    :root{font:16px/1.65 system-ui,sans-serif;color:#e7e8ec;background:#15171c;color-scheme:dark}
+    *{box-sizing:border-box}
+    body{max-width:1060px;margin:0 auto;padding:40px 24px 64px}
+    a{color:#8ed5ff;text-underline-offset:3px}
+    a:focus-visible{outline:2px solid #f6be52;outline-offset:4px}
+    h1{font-size:clamp(28px,5vw,40px);line-height:1.2;letter-spacing:-.025em;margin:20px 0}
+    h2{font-size:23px;margin:36px 0 14px}
+    h3{font-size:16px;line-height:1.35;margin:14px 0 6px}
+    p{max-width:850px;margin:12px 0}
+    code{font:13px/1.5 ui-monospace,monospace;overflow-wrap:anywhere}
+    .back,.eyebrow{font-size:14px}
+    .eyebrow{color:#a8b0be;margin-top:30px;letter-spacing:.03em}
+    .summary{font-size:18px;color:#cbd2dc}
+    .note{padding:16px 20px;border:1px solid #4c4530;border-left:3px solid #edbd58;border-radius:8px;background:#24221c}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+    .symbol{border:1px solid #373d47;border-radius:10px;background:#1d2027;padding:16px;min-width:0}
+    .preview{height:110px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center}
+    .preview img{max-width:100%;object-fit:contain}
+    .identity{color:#b8c0cd;font-size:13px}
+    .links{font-size:13px;line-height:1.8}
+    ul{padding-left:22px}
+    footer{margin-top:38px;border-top:1px solid #373d47;padding-top:18px;color:#b8c0cd;font-size:14px}
+    @media(max-width:720px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:450px){body{padding:24px 16px 40px}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="/lab">← Back to the circuit lab</a>
+    <p class="eyebrow">OPEN-SOURCE ARTWORK · KICAD COMMUNITY</p>
+    <h1>KiCad symbols in AnaCode</h1>
+    <p class="summary">The 21 symbols below come from KiCad's official library. KiCad's own exporter produced the artwork used in the circuit editor.</p>
+  </header>
+  <main>
+    <section aria-labelledby="credits">
+      <h2 id="credits">Source and license</h2>
+      <p>Credit belongs to the <a href="https://gitlab.com/kicad/libraries/kicad-symbols">KiCad community and KiCad Libraries</a>. This collection uses library release <strong>9.0.9</strong>, revision <a href="https://gitlab.com/kicad/libraries/kicad-symbols/-/tree/ad36cd14bcd1b1cd0484f629ccdd3481366f74f3"><code>ad36cd14bcd1b1cd0484f629ccdd3481366f74f3</code></a>.</p>
+      <p>The artwork and redistributed library sources retain the <a href="LICENSE.md">Creative Commons CC-BY-SA 4.0 license with the KiCad library exception</a>. AnaCode's application license does not replace that license. The upstream license includes the original attribution and warranty terms.</p>
+      <p>The display exports hide reference/value fields and non-semantic pin labels, so the editor can show each circuit's actual labels. The op-amp's + and − markings are preserved. A temporary origin marker is removed after export, and export timestamps are normalized. All original symbol geometry is rendered by <strong>KiCad 9.0.9</strong>.</p>
+      <p class="note"><strong>Artwork is separate from the simulation model.</strong> The three-terminal op-amp uses the graphic from <code>Amplifier_Operational:LM2904</code>, unit 1. This does not claim that the simulated amplifier is an LM2904 device model. CircuitJS continues to calculate the circuit using its existing models. The five-terminal SPICE op-amp is a separate artwork asset.</p>
+    </section>
+    <section aria-labelledby="collection">
+      <h2 id="collection">The 21-symbol collection</h2>
+      <p>“Original export” includes KiCad's original display fields. “Library source” opens the unmodified official library containing that symbol.</p>
+      <div class="grid">
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--R.svg" alt="Resistor · IEC from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Resistor · IEC</h3>
+        <p class="identity"><code>Device:R</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--R.svg">Display SVG</a> · <a href="/kicad/stock/Device--R.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--R_US.svg" alt="Resistor · US from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Resistor · US</h3>
+        <p class="identity"><code>Device:R_US</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--R_US.svg">Display SVG</a> · <a href="/kicad/stock/Device--R_US.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--C.svg" alt="Capacitor from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Capacitor</h3>
+        <p class="identity"><code>Device:C</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--C.svg">Display SVG</a> · <a href="/kicad/stock/Device--C.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--C_Polarized.svg" alt="Polarized capacitor from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Polarized capacitor</h3>
+        <p class="identity"><code>Device:C_Polarized</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--C_Polarized.svg">Display SVG</a> · <a href="/kicad/stock/Device--C_Polarized.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--L.svg" alt="Inductor from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Inductor</h3>
+        <p class="identity"><code>Device:L</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--L.svg">Display SVG</a> · <a href="/kicad/stock/Device--L.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--D.svg" alt="Diode from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Diode</h3>
+        <p class="identity"><code>Device:D</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--D.svg">Display SVG</a> · <a href="/kicad/stock/Device--D.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--D_Zener.svg" alt="Zener diode from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Zener diode</h3>
+        <p class="identity"><code>Device:D_Zener</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--D_Zener.svg">Display SVG</a> · <a href="/kicad/stock/Device--D_Zener.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--LED.svg" alt="LED from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>LED</h3>
+        <p class="identity"><code>Device:LED</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--LED.svg">Display SVG</a> · <a href="/kicad/stock/Device--LED.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--Battery.svg" alt="Battery from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Battery</h3>
+        <p class="identity"><code>Device:Battery</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--Battery.svg">Display SVG</a> · <a href="/kicad/stock/Device--Battery.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--Q_NPN.svg" alt="NPN transistor from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>NPN transistor</h3>
+        <p class="identity"><code>Device:Q_NPN</code><br>Unit 1 · 3 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--Q_NPN.svg">Display SVG</a> · <a href="/kicad/stock/Device--Q_NPN.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--Q_PNP.svg" alt="PNP transistor from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>PNP transistor</h3>
+        <p class="identity"><code>Device:Q_PNP</code><br>Unit 1 · 3 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--Q_PNP.svg">Display SVG</a> · <a href="/kicad/stock/Device--Q_PNP.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--Q_NMOS.svg" alt="N-channel MOSFET from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>N-channel MOSFET</h3>
+        <p class="identity"><code>Device:Q_NMOS</code><br>Unit 1 · 3 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--Q_NMOS.svg">Display SVG</a> · <a href="/kicad/stock/Device--Q_NMOS.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Device--Q_PMOS.svg" alt="P-channel MOSFET from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>P-channel MOSFET</h3>
+        <p class="identity"><code>Device:Q_PMOS</code><br>Unit 1 · 3 terminals</p>
+        <p class="links"><a href="/kicad/svg/Device--Q_PMOS.svg">Display SVG</a> · <a href="/kicad/stock/Device--Q_PMOS.svg">Original export</a> · <a href="source/Device.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Simulation_SPICE--NMOS.svg" alt="SPICE NMOS symbol from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>SPICE NMOS symbol</h3>
+        <p class="identity"><code>Simulation_SPICE:NMOS</code><br>Unit 1 · 3 terminals</p>
+        <p class="links"><a href="/kicad/svg/Simulation_SPICE--NMOS.svg">Display SVG</a> · <a href="/kicad/stock/Simulation_SPICE--NMOS.svg">Original export</a> · <a href="source/Simulation_SPICE.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Simulation_SPICE--PMOS.svg" alt="SPICE PMOS symbol from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>SPICE PMOS symbol</h3>
+        <p class="identity"><code>Simulation_SPICE:PMOS</code><br>Unit 1 · 3 terminals</p>
+        <p class="links"><a href="/kicad/svg/Simulation_SPICE--PMOS.svg">Display SVG</a> · <a href="/kicad/stock/Simulation_SPICE--PMOS.svg">Original export</a> · <a href="source/Simulation_SPICE.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Simulation_SPICE--OPAMP.svg" alt="Five-terminal op-amp from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Five-terminal op-amp</h3>
+        <p class="identity"><code>Simulation_SPICE:OPAMP</code><br>Unit 1 · 5 terminals</p>
+        <p class="links"><a href="/kicad/svg/Simulation_SPICE--OPAMP.svg">Display SVG</a> · <a href="/kicad/stock/Simulation_SPICE--OPAMP.svg">Original export</a> · <a href="source/Simulation_SPICE.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Simulation_SPICE--VDC.svg" alt="DC voltage source from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>DC voltage source</h3>
+        <p class="identity"><code>Simulation_SPICE:VDC</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Simulation_SPICE--VDC.svg">Display SVG</a> · <a href="/kicad/stock/Simulation_SPICE--VDC.svg">Original export</a> · <a href="source/Simulation_SPICE.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Simulation_SPICE--IDC.svg" alt="DC current source from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>DC current source</h3>
+        <p class="identity"><code>Simulation_SPICE:IDC</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Simulation_SPICE--IDC.svg">Display SVG</a> · <a href="/kicad/stock/Simulation_SPICE--IDC.svg">Original export</a> · <a href="source/Simulation_SPICE.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Amplifier_Operational--LM2904.svg" alt="Op-amp graphic · unit 1 from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Op-amp graphic · unit 1</h3>
+        <p class="identity"><code>Amplifier_Operational:LM2904</code><br>Unit 1 · 3 terminals</p>
+        <p class="links"><a href="/kicad/svg/Amplifier_Operational--LM2904.svg">Display SVG</a> · <a href="/kicad/stock/Amplifier_Operational--LM2904.svg">Original export</a> · <a href="source/Amplifier_Operational.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/power--GND.svg" alt="Ground from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Ground</h3>
+        <p class="identity"><code>power:GND</code><br>Unit 1 · 1 terminal</p>
+        <p class="links"><a href="/kicad/svg/power--GND.svg">Display SVG</a> · <a href="/kicad/stock/power--GND.svg">Original export</a> · <a href="source/power.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/Switch--SW_SPST.svg" alt="SPST switch from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>SPST switch</h3>
+        <p class="identity"><code>Switch:SW_SPST</code><br>Unit 1 · 2 terminals</p>
+        <p class="links"><a href="/kicad/svg/Switch--SW_SPST.svg">Display SVG</a> · <a href="/kicad/stock/Switch--SW_SPST.svg">Original export</a> · <a href="source/Switch.kicad_sym">Library source</a></p>
+      </article>
+      </div>
+    </section>
+    <section aria-labelledby="rebuild">
+      <h2 id="rebuild">Export and verification</h2>
+      <p>The artwork was generated in the <a href="https://github.com/Ross0907/analog-leetcode/actions/runs/35021795924">successful official KiCad export run</a> from AnaCode revision <code>46b33182dd2b3e57d8cc449dfb57ac53fd1c0bad</code>. The workflow verifies the exact KiCad package and library inputs before exporting.</p>
+      <ul>
+        <li><a href="symbols.json">Artifact hashes, source revision, view boxes and pin coordinates</a></li>
+        <li><a href="source-pins.json">Original terminal names and positions</a></li>
+        <li><a href="https://github.com/Ross0907/analog-leetcode/blob/46b33182dd2b3e57d8cc449dfb57ac53fd1c0bad/scripts/build-kicad-symbols.py">Export script used for these assets</a></li>
+        <li><a href="https://github.com/Ross0907/analog-leetcode/blob/46b33182dd2b3e57d8cc449dfb57ac53fd1c0bad/scripts/kicad-export-requirements.txt">Pinned build-time dependency</a></li>
+        <li><a href="https://github.com/Ross0907/analog-leetcode/blob/46b33182dd2b3e57d8cc449dfb57ac53fd1c0bad/.github/workflows/build-kicad-symbols.yml">Reproducible hosted export workflow</a></li>
+        <li><a href="README.md">Source collection and coordinate notes</a></li>
+      </ul>
+    </section>
+  </main>
+  <footer><a href="/lab">Return to AnaCode</a> · <a href="/circuitjs/NOTICE.html">CircuitJS source and licenses</a> · <a href="/simulator/NOTICE.html">SPICE engine source and licenses</a></footer>
+</body>
+</html>

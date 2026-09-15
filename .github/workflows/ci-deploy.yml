@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy the validated main branch to the existing Cloudflare Worker"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,10 +25,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
           check-latest: true
@@ -39,51 +44,34 @@ jobs:
         run: npm ls --all
 
       - name: Security audit
-        run: npm audit --audit-level=high || true
+        run: npm audit --audit-level=high
 
       - name: Vinext compatibility
-        run: npx --no-install vinext check || true
+        run: npx --no-install vinext check
 
       - name: Lint
-        shell: bash
-        run: |
-          if node -e "process.exit(require('./package.json').scripts?.lint ? 0 : 1)"; then
-            npm run lint
-          fi
+        run: npm run lint
 
       - name: Typecheck
-        shell: bash
-        run: |
-          if node -e "process.exit(require('./package.json').scripts?.typecheck ? 0 : 1)"; then
-            npm run typecheck
-          elif node -e "process.exit(require('./package.json').scripts?.check ? 0 : 1)"; then
-            npm run check
-          fi
+        run: npm run typecheck
 
       - name: Tests
-        shell: bash
-        run: |
-          if node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)"; then
-            npm run test
-          fi
-
-      - name: Simulator provenance
-        if: ${{ hashFiles('scripts/audit-simulator-provenance.mjs') != '' }}
-        run: node scripts/audit-simulator-provenance.mjs
+        run: npm test
 
       - name: Playwright Chromium
-        if: ${{ hashFiles('tests/e2e/**') != '' }}
         run: npx --no-install playwright install --with-deps chromium
 
       - name: Browser E2E
-        if: ${{ hashFiles('tests/e2e/**') != '' }}
-        shell: bash
-        run: |
-          if node -e "process.exit(require('./package.json').scripts?.['test:e2e'] ? 0 : 1)"; then
-            npm run test:e2e
-          else
-            npx --no-install playwright test
-          fi
+        run: npm run test:e2e
+
+      - name: Browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: browser-test-failures
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Production build
         run: npm run build
@@ -92,7 +80,7 @@ jobs:
         run: test -f dist/server/wrangler.json
 
   deploy:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)) }}
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -105,10 +93,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
           check-latest: true
@@ -120,27 +108,36 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Check required deployment settings
+        run: node scripts/prepare-deployment.mjs --check-settings
+
       - name: Production build
         run: npm run build
 
       - name: Verify generated Worker config
         run: test -f dist/server/wrangler.json
 
-      - name: Check Cloudflare credentials
-        id: cf
-        shell: bash
-        run: |
-          if [[ -n "$CLOUDFLARE_API_TOKEN" && -n "$CLOUDFLARE_ACCOUNT_ID" && -n "$D1_DATABASE_ID" && -n "$D1_DATABASE_NAME" ]]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Cloudflare deployment skipped until Cloudflare credentials and D1 variables are configured."
-          fi
+      - name: Verify simulator redistribution release requirements
+        run: node scripts/audit-simulator-provenance.mjs --release
+
+      - name: Prepare verified deployment and optional runtime secrets
+        id: deployment
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          RATE_LIMIT_HMAC_SECRET: ${{ secrets.RATE_LIMIT_HMAC_SECRET }}
+        run: node scripts/prepare-deployment.mjs
 
       - name: Deploy generated Worker bundle
-        if: steps.cf.outputs.ready == 'true'
-        uses: cloudflare/wrangler-action@v4
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --config dist/server/wrangler.json
+          wranglerVersion: "4.132.0"
+          command: deploy --config dist/server/wrangler.json --secrets-file "${{ steps.deployment.outputs.secrets_file }}"
+
+      - name: Remove temporary deployment secret file
+        if: always()
+        env:
+          DEPLOYMENT_SECRETS_FILE: ${{ steps.deployment.outputs.secrets_file }}
+        run: node -e "if (process.env.DEPLOYMENT_SECRETS_FILE) require('node:fs').rmSync(process.env.DEPLOYMENT_SECRETS_FILE, { force:true });"

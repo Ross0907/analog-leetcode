@@ -1,0 +1,54 @@
+name: Build simulator from pinned source
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/build-simulator.yml
+      - scripts/*simulator*source.mjs
+      - scripts/build-ngspice-wasm.sh
+      - scripts/simulator-build-inputs.json
+
+permissions:
+  contents: read
+
+jobs:
+  source-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm install --global npm@12.0.2
+      - run: npm ci
+      - name: Download and verify corresponding sources
+        run: node scripts/prepare-simulator-source.mjs
+      - name: Compile ngspice with the pinned Emscripten image
+        run: |
+          image=$(node -p "require('./scripts/simulator-build-inputs.json').buildImage")
+          docker run --rm --platform linux/amd64 --user root --mount "type=bind,source=$PWD,target=/workspace" --workdir /workspace "$image" bash scripts/build-ngspice-wasm.sh
+      - name: Package simulator and corresponding source
+        run: node scripts/package-simulator-source.mjs
+      - name: Verify real numerical results from the rebuilt engine
+        run: node --import tsx --import ./.tmp/simulator-rebuild/register.mjs --test tests/circuit-pipeline.test.mts tests/practice-challenges.test.mts tests/simulator-results.test.mts
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: simulator-source-build
+          path: .tmp/simulator-release/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve build diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: simulator-build-diagnostics
+          path: |
+            .tmp/simulator-rebuild/native/release/config.log
+            .tmp/simulator-rebuild/emscripten-version.txt
+            .tmp/simulator-rebuild/build-packages.txt
+          if-no-files-found: ignore
+          retention-days: 14

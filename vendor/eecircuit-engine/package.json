@@ -1,0 +1,18 @@
+{
+  "name": "eecircuit-engine",
+  "version": "1.8.0+anacode.1",
+  "type": "module",
+  "description": "EEcircuit 1.8.0 with source-built ngspice and only the verified BSIM4 benchmark models",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eelab-dev/EEcircuit-engine"
+  },
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/eecircuit-engine.mjs"
+    }
+  },
+  "module": "./dist/eecircuit-engine.mjs"
+}

@@ -136,8 +136,8 @@ export function BrowserOscilloscope({
   const [removed, setRemoved] = useState<Set<string>>(() => new Set());
   const [names, setNames] = useState<Record<string, string>>({});
   const [viewportWidth, setViewportWidth] = useState(760);
-  const [xPerDivision, setXPerDivision] = useState<number | null>(toScaleState(initialXPerDivision));
-  const [yPerDivision, setYPerDivision] = useState<number | null>(toScaleState(initialYPerDivision));
+  const [xPerDivision, setXPerDivision] = useState<number | null>(() => toScaleState(initialXPerDivision));
+  const [yPerDivision, setYPerDivision] = useState<number | null>(() => toScaleState(initialYPerDivision));
   const [visibility, setVisibility] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(traces.map((trace) => [trace.id, trace.initiallyVisible !== false])),
   );
@@ -149,8 +149,8 @@ export function BrowserOscilloscope({
     Number.isFinite(initialTrigger?.level) ? Number(initialTrigger?.level) : null,
   );
   const [triggerEdge, setTriggerEdge] = useState<OscilloscopeTriggerEdge>(initialTrigger?.edge ?? "rising");
-  const [cursorA, setCursorA] = useState(clamp(initialCursors[0], 0, 1));
-  const [cursorB, setCursorB] = useState(clamp(initialCursors[1], 0, 1));
+  const [cursorA, setCursorA] = useState(() => clamp(initialCursors[0], 0, 1));
+  const [cursorB, setCursorB] = useState(() => clamp(initialCursors[1], 0, 1));
   const [yCursorA, setYCursorA] = useState(0.25);
   const [yCursorB, setYCursorB] = useState(0.75);
 
