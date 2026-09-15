@@ -4,6 +4,8 @@
   <img src="docs/anacode-hero.png" alt="AnaCode analog circuit design platform" width="100%">
 </p>
 
+**Live deployment:** [https://anacode.ross0907.workers.dev](https://anacode.ross0907.workers.dev)
+
 AnaCode is an analog-first circuit-design practice platform built around the idea that circuit problems are better learned by drawing, simulating, measuring, and verifying real schematics than by answering multiple-choice questions.
 
 The project combines a browser-based schematic editor, ngspice-backed simulation, oscilloscope-style instrumentation, structured circuit data, and server-side grading for selected fixed-topology challenges.
