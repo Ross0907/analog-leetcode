@@ -1,7 +1,7 @@
 # AnaCode
 
 <p align="center">
-  <img src="docs/anacode-hero.png" alt="AnaCode analog circuit design platform" width="100%">
+  <img src="docs/anacode-hero.png" alt="AnaCode analog circuit design platform" width="80%">
 </p>
 
 **Full application:** [https://anacode.ross0907.workers.dev](https://anacode.ross0907.workers.dev)  
