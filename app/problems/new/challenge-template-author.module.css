@@ -1,0 +1,651 @@
+.authoringShell {
+  margin-bottom: 58px;
+  overflow: hidden;
+  border: 1px solid #d5dce5;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 38px rgba(20, 31, 49, .08);
+}
+
+.authoringHeader {
+  min-height: 154px;
+  padding: 28px 30px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 30px;
+  border-bottom: 1px solid #29364a;
+  color: #e5ebf3;
+  background: radial-gradient(circle at 85% -50%, rgba(80, 130, 187, .34), transparent 43%), #111b2b;
+}
+
+.authoringHeader h2 {
+  margin: 12px 0 8px;
+  color: #fff;
+  font-size: clamp(25px, 3vw, 34px);
+  letter-spacing: -1.2px;
+}
+
+.authoringHeader p {
+  max-width: 670px;
+  margin: 0;
+  color: #aeb9c9;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.localBadge {
+  min-width: max-content;
+  min-height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #3b4b62;
+  border-radius: 999px;
+  color: #bac7d8;
+  background: rgba(10, 18, 30, .46);
+  font-size: 10px;
+  font-weight: 680;
+  letter-spacing: .25px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 350px;
+  align-items: start;
+  background: #f4f6f8;
+}
+
+.formColumn {
+  min-width: 0;
+  padding: 24px;
+  display: grid;
+  gap: 18px;
+  border-right: 1px solid #dce1e8;
+}
+
+.card {
+  min-width: 0;
+  margin: 0;
+  padding: 22px;
+  border: 1px solid #dce1e8;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .035);
+}
+
+.card legend {
+  padding: 0 7px;
+  color: #202b3e;
+  font-size: 15px;
+  font-weight: 730;
+  letter-spacing: -.2px;
+}
+
+.fieldsetHint {
+  margin: -1px 0 18px;
+  color: #7a8494;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.spanTwo {
+  grid-column: 1 / -1;
+}
+
+.stack {
+  display: grid;
+  gap: 15px;
+}
+
+.card label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  color: #505b6e;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .38px;
+  text-transform: uppercase;
+}
+
+.card input,
+.card select,
+.card textarea {
+  width: 100%;
+  border: 1px solid #ccd3dd;
+  border-radius: 7px;
+  outline: 0;
+  color: #202b3e;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: border-color .14s ease, box-shadow .14s ease;
+}
+
+.card input,
+.card select {
+  min-height: 39px;
+  padding: 0 10px;
+}
+
+.card textarea {
+  min-height: 70px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.card input:focus,
+.card select:focus,
+.card textarea:focus {
+  border-color: #b47a1d;
+  box-shadow: 0 0 0 3px rgba(209, 143, 36, .13);
+}
+
+.card label small {
+  justify-self: end;
+  color: #919aa8;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.specHeading {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.specHeading .fieldsetHint {
+  margin-bottom: 0;
+}
+
+.addButton {
+  min-width: max-content;
+  min-height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d3dae4;
+  border-radius: 7px;
+  color: #465266;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+.addButton:hover:not(:disabled) {
+  border-color: #d7b36d;
+  color: #875509;
+  background: #fff9ec;
+}
+
+.specList {
+  display: grid;
+  gap: 12px;
+}
+
+.specification {
+  overflow: hidden;
+  border: 1px solid #dce1e8;
+  border-radius: 9px;
+  background: #fbfcfd;
+}
+
+.specification header {
+  min-height: 39px;
+  padding: 0 10px 0 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e3e7ed;
+  color: #4d596d;
+  background: #f4f6f8;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .45px;
+}
+
+.specification header button {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: #8b96a6;
+  background: transparent;
+  cursor: pointer;
+}
+
+.specification header button:hover:not(:disabled) {
+  color: #a63c48;
+  background: #fcecef;
+}
+
+.specification > .fieldGrid {
+  padding: 14px;
+}
+
+.reviewColumn {
+  min-width: 0;
+  position: sticky;
+  top: 92px;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.validationCard,
+.lockedCard,
+.actionCard,
+.jsonPreview {
+  overflow: hidden;
+  border: 1px solid #d8dee7;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.validationCard {
+  padding: 15px;
+}
+
+.validationCard.valid {
+  border-color: #b9ddd4;
+  background: #f1faf7;
+}
+
+.validationCard.invalid {
+  border-color: #e5c8cc;
+  background: #fff7f8;
+}
+
+.validationTitle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.valid .validationTitle > svg {
+  color: #16876f;
+}
+
+.invalid .validationTitle > svg {
+  color: #bd3f4e;
+}
+
+.validationTitle div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.validationTitle strong {
+  color: #29354a;
+  font-size: 12px;
+}
+
+.validationTitle span {
+  color: #7a8494;
+  font: 9px var(--font-geist-mono);
+}
+
+.byteTrack {
+  height: 4px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgba(119, 132, 151, .18);
+}
+
+.byteTrack span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: #2b9a82;
+}
+
+.invalid .byteTrack span {
+  background: #c24a58;
+}
+
+.diagnostics {
+  max-height: 240px;
+  margin: 13px -2px 0;
+  padding: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  list-style: none;
+}
+
+.diagnostics li {
+  display: grid;
+  gap: 3px;
+  color: #7d3c45;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.diagnostics code {
+  overflow: hidden;
+  color: #9d4854;
+  font-size: 8px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.lockedCard {
+  padding: 15px;
+}
+
+.lockedCard > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #405069;
+  font-size: 11px;
+}
+
+.lockedCard > div:first-child svg {
+  color: #a56b0e;
+}
+
+.lockedCard dl {
+  margin: 13px 0 0;
+  display: grid;
+}
+
+.lockedCard dl div {
+  min-height: 31px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  border-top: 1px solid #edf0f3;
+  font-size: 9px;
+}
+
+.lockedCard dt {
+  color: #8a94a3;
+}
+
+.lockedCard dd {
+  margin: 0;
+  color: #465266;
+  font-weight: 650;
+  text-align: right;
+}
+
+.lockedCard p {
+  margin: 12px 0 0;
+  padding: 10px;
+  color: #776543;
+  border-radius: 7px;
+  background: #fff8e9;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.actionCard {
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.actionCard :global(.button) {
+  width: 100%;
+  min-height: 40px;
+  font-size: 11px;
+}
+
+.resetButton {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  color: #697487;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.resetButton:hover {
+  color: #354054;
+  background: #f4f6f8;
+}
+
+.liveNotice {
+  min-height: 30px;
+  margin: 2px 2px 0;
+  color: #7b8493;
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.jsonPreview summary {
+  min-height: 40px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  color: #556176;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+.jsonPreview pre {
+  max-height: 430px;
+  margin: 0;
+  padding: 13px;
+  overflow: auto;
+  color: #b8c8db;
+  border-top: 1px solid #29374a;
+  background: #0b1421;
+  font: 9px/1.65 var(--font-geist-mono);
+  tab-size: 2;
+}
+
+@media (max-width: 930px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .formColumn {
+    border-right: 0;
+  }
+
+  .reviewColumn {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid #dce1e8;
+  }
+
+  .jsonPreview {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .authoringHeader {
+    padding: 23px 20px;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .formColumn,
+  .reviewColumn {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 16px 13px;
+  }
+
+  .fieldGrid,
+  .reviewColumn {
+    grid-template-columns: 1fr;
+  }
+
+  .spanTwo,
+  .jsonPreview {
+    grid-column: auto;
+  }
+
+  .specHeading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .addButton {
+    justify-content: center;
+  }
+}
+
+:global(:root[data-theme="dark"]) .authoringShell {
+  border-color: #383838;
+  background: #1d1d1d;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .28);
+}
+
+:global(:root[data-theme="dark"]) .workspace {
+  background: #181818;
+}
+
+:global(:root[data-theme="dark"]) .formColumn,
+:global(:root[data-theme="dark"]) .reviewColumn {
+  border-color: #353535;
+}
+
+:global(:root[data-theme="dark"]) .card,
+:global(:root[data-theme="dark"]) .validationCard,
+:global(:root[data-theme="dark"]) .lockedCard,
+:global(:root[data-theme="dark"]) .actionCard,
+:global(:root[data-theme="dark"]) .jsonPreview {
+  border-color: #393939;
+  background: #222;
+  box-shadow: none;
+}
+
+:global(:root[data-theme="dark"]) .card legend,
+:global(:root[data-theme="dark"]) .validationTitle strong {
+  color: #ededed;
+}
+
+:global(:root[data-theme="dark"]) .fieldsetHint,
+:global(:root[data-theme="dark"]) .validationTitle span,
+:global(:root[data-theme="dark"]) .liveNotice {
+  color: #9b9b9b;
+}
+
+:global(:root[data-theme="dark"]) .card label {
+  color: #b9b9b9;
+}
+
+:global(:root[data-theme="dark"]) .card input,
+:global(:root[data-theme="dark"]) .card select,
+:global(:root[data-theme="dark"]) .card textarea {
+  border-color: #454545;
+  color: #e8e8e8;
+  background: #191919;
+}
+
+:global(:root[data-theme="dark"]) .card label small {
+  color: #929292;
+}
+
+:global(:root[data-theme="dark"]) .addButton {
+  border-color: #444;
+  color: #d2d2d2;
+  background: #262626;
+}
+
+:global(:root[data-theme="dark"]) .addButton:hover:not(:disabled) {
+  border-color: #8f682a;
+  color: #e0ae56;
+  background: #312719;
+}
+
+:global(:root[data-theme="dark"]) .specification {
+  border-color: #3b3b3b;
+  background: #1c1c1c;
+}
+
+:global(:root[data-theme="dark"]) .specification header {
+  border-color: #3c3c3c;
+  color: #bdbdbd;
+  background: #292929;
+}
+
+:global(:root[data-theme="dark"]) .specification header button {
+  color: #999;
+}
+
+:global(:root[data-theme="dark"]) .specification header button:hover:not(:disabled) {
+  color: #ef8a95;
+  background: #3b2428;
+}
+
+:global(:root[data-theme="dark"]) .validationCard.valid {
+  border-color: #315e52;
+  background: #192b26;
+}
+
+:global(:root[data-theme="dark"]) .validationCard.invalid {
+  border-color: #663b41;
+  background: #301d20;
+}
+
+:global(:root[data-theme="dark"]) .lockedCard > div:first-child,
+:global(:root[data-theme="dark"]) .lockedCard dd {
+  color: #d0d0d0;
+}
+
+:global(:root[data-theme="dark"]) .lockedCard dt {
+  color: #969696;
+}
+
+:global(:root[data-theme="dark"]) .lockedCard dl div {
+  border-color: #353535;
+}
+
+:global(:root[data-theme="dark"]) .lockedCard p {
+  color: #cfb373;
+  background: #312817;
+}
+
+:global(:root[data-theme="dark"]) .resetButton {
+  color: #aaa;
+}
+
+:global(:root[data-theme="dark"]) .resetButton:hover {
+  color: #eee;
+  background: #2b2b2b;
+}
+
+:global(:root[data-theme="dark"]) .jsonPreview summary {
+  color: #ccc;
+  background: #242424;
+}

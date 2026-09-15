@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-08-30",
+  "releaseDecision": "evidence-only-not-redistribution-clearance",
+  "package": {
+    "name": "eecircuit-engine",
+    "version": "1.7.0",
+    "npmIntegrity": "sha512-ZDpr/w/H81uCH3n2vjf0vohxOQqQ4NCsvaXkoYwcH+LCxIGKpBdvAIvGN5IdozW6AFJ8tojquKvDya3337yjSQ==",
+    "registryGitHead": "0ef17a488b2540efe5b48f7dd4c45b8ae6f1b910",
+    "repository": "https://github.com/eelab-dev/EEcircuit-engine"
+  },
+  "files": {
+    "node_modules/eecircuit-engine/dist/eecircuit-engine.mjs": {
+      "bytes": 20424332,
+      "sha256": "c7c31d324253891852b6746b51622dd963bce2e3c3dbda2ab0b230dabb73b809"
+    },
+    "node_modules/eecircuit-engine/dist/eecircuit-engine.umd.js": {
+      "bytes": 20263087,
+      "sha256": "4b98a43463580e1a71f11891eaee5ed330657afcfbd17ed99f10f7cafd12b47b"
+    },
+    "node_modules/eecircuit-engine/LICENSE": {
+      "bytes": 1066,
+      "sha256": "05b5629164ed0e846fd9f3ee34b64aced9d1ffef01e6fc30c39c8c68b9fea4ed"
+    },
+    "node_modules/eecircuit-engine/package.json": {
+      "bytes": 1292,
+      "sha256": "e052a98259eb877c7e808cdf9ec776df047a7b1e66d32e2da21b42c90e9dee20"
+    }
+  },
+  "embeddedWasm": {
+    "bytes": 6160938,
+    "sha256": "0cf0c69ff4428a5fbb4ada25b4fb35ec1e35c9d1bc00a2fa5e082ad18fa6a6fa",
+    "expectedIn": [
+      "node_modules/eecircuit-engine/dist/eecircuit-engine.mjs",
+      "node_modules/eecircuit-engine/dist/eecircuit-engine.umd.js"
+    ],
+    "runtimeBanner": {
+      "version": "ngspice-45.2+",
+      "buildTimestamp": "Tue Mar 24 02:02:56 UTC 2026"
+    }
+  },
+  "sourceTrace": {
+    "wrapperCommit": "0ef17a488b2540efe5b48f7dd4c45b8ae6f1b910",
+    "ngspiceCandidateCommit": "2d3e032a3f0ad0fde15bdec1836a8b9072c75df5",
+    "ngspiceCandidateDescription": "ngspice-45.2-149-g2d3e032a3",
+    "emsdkCandidateCommit": "56a2c6e3681497b04edfd0a7972e6d435b266114",
+    "emscriptenCandidateVersion": "5.0.4",
+    "confidence": "timestamp-correlated-not-cryptographically-bound",
+    "note": "The upstream build cloned mutable default branches and installed the mutable emsdk latest alias. These candidates narrow the investigation but do not prove corresponding source for the shipped bytes."
+  }
+}
