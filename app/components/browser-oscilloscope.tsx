@@ -3,6 +3,7 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -248,11 +249,15 @@ export function BrowserOscilloscope({
     [automaticYPerDivision],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     const updateSize = () => {
-      const nextWidth = Math.max(300, Math.floor(viewport.getBoundingClientRect().width));
+      const measuredWidth = viewport.getBoundingClientRect().width;
+      // A hidden tab has no measurable width. Keep its last valid acquisition
+      // size until ResizeObserver sees the visible viewport again.
+      if (measuredWidth <= 0) return;
+      const nextWidth = Math.max(1, Math.floor(measuredWidth));
       setViewportWidth((current) => current === nextWidth ? current : nextWidth);
     };
     updateSize();
@@ -269,15 +274,18 @@ export function BrowserOscilloscope({
     onCursorsChange?.(cursorReadout);
   }, [cursorReadout, onCursorsChange]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = clamp(window.devicePixelRatio || 1, 1, clamp(maxDevicePixelRatio, 1, 3));
-    const width = viewportWidth;
+    const measuredWidth = viewportRef.current?.getBoundingClientRect().width ?? 0;
+    const width = measuredWidth > 0 ? Math.max(1, Math.floor(measuredWidth)) : viewportWidth;
     const canvasHeight = boundedHeight;
     canvas.width = Math.max(1, Math.round(width * dpr));
     canvas.height = Math.max(1, Math.round(canvasHeight * dpr));
-    canvas.style.width = `${width}px`;
+    // The layout stays responsive independently of the backing bitmap. A
+    // deferred resize must never leave a narrow canvas in a full-width panel.
+    canvas.style.width = "100%";
     canvas.style.height = `${canvasHeight}px`;
     const context = canvas.getContext("2d");
     if (!context) return;
