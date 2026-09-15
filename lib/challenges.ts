@@ -1,3 +1,5 @@
+import { practiceChallenges, type PracticeSolution } from "./practice-challenges";
+
 export type Difficulty = "Foundation" | "Intermediate" | "Advanced" | "Expert";
 export type Domain = "DC" | "AC" | "Semiconductors" | "Op-amps" | "Digital";
 export type JudgeKind = "voltage-divider" | "rc-low-pass" | "inverting-amplifier" | null;
@@ -20,6 +22,8 @@ export type Challenge = {
   probe: string;
   judge: JudgeKind;
   available: boolean;
+  nativeCircuit?: string;
+  solution?: PracticeSolution;
 };
 
 export const challenges: Challenge[] = [
@@ -88,7 +92,7 @@ export const challenges: Challenge[] = [
     domain: "Semiconductors",
     summary: "Bias a common-emitter stage that stays in its intended region across transistor spread.",
     objective: "Keep VCE centered and collector current stable while β varies from 80 to 240.",
-    analysis: "DC sweep",
+    analysis: "Operating point",
     acceptance: null,
     attempts: 0,
     xp: 220,
@@ -121,17 +125,17 @@ export const challenges: Challenge[] = [
   {
     id: 6,
     slug: "mosfet-gate-drive",
-    title: "MOSFET gate-drive edge",
+    title: "Gate capacitance charging",
     difficulty: "Advanced",
     domain: "Semiconductors",
-    summary: "Control switching time and ringing with a realistic gate charge and driver impedance.",
-    objective: "Meet the rise-time window without exceeding peak driver current or gate overshoot.",
+    summary: "Relate gate-drive resistance and a lumped capacitance to a switching edge.",
+    objective: "For the supplied 0–10 V pulse, size RG for a 20–80 ns 10–90% charging time with no more than 1 A peak current. Compare the waveform with the first-order RC estimate.",
     analysis: "Transient",
     acceptance: null,
     attempts: 0,
     xp: 300,
-    topics: ["Gate charge", "Switching loss", "Damping"],
-    constraints: ["20 ns ≤ rise time ≤ 80 ns", "Peak gate current ≤ 1 A", "VGS overshoot ≤ 10%"],
+    topics: ["Gate capacitance", "Time constant", "Driver current"],
+    constraints: ["20 ns ≤ 10–90% rise time ≤ 80 ns", "Peak drive current ≤ 1 A", "CGS = 2 nF; this lumped RC model excludes Miller charge and parasitic inductance"],
     starterNetlist: `VG drv 0 PULSE(0 10 0 2n 2n 1u 2u)\nRG drv gate 10\nCGS gate 0 2n\n.tran 1n 300n\n.end`,
     probe: "gate",
     judge: null,
@@ -143,14 +147,14 @@ export const challenges: Challenge[] = [
     title: "Sallen–Key without surprise Q",
     difficulty: "Advanced",
     domain: "Op-amps",
-    summary: "Synthesize a second-order response and survive component tolerance corners.",
-    objective: "Meet a Butterworth response at 5 kHz across the supplied 1% R and 5% C corners.",
+    summary: "Measure the natural frequency and damping of a unity-gain active filter.",
+    objective: "Measure the nominal cutoff and Q of the supplied Sallen–Key filter. Target a Butterworth response near 5 kHz, then inspect the effect of changing each component within its tolerance.",
     analysis: "AC sweep",
     acceptance: null,
     attempts: 0,
     xp: 340,
     topics: ["Poles", "Quality factor", "Sensitivity"],
-    constraints: ["fc error ≤ 3%", "Passband peaking ≤ 0.2 dB", "All values from E24/E12 series"],
+    constraints: ["Nominal fc error ≤ 3%; nominal Q ≈ 0.707", "Nominal passband peaking ≤ 0.2 dB", "Explore ±1% resistors and ±5% capacitors; corner drift can exceed 3%"],
     starterNetlist: `V1 in 0 AC 1\nR1 in n1 2.2k\nR2 n1 n2 2.2k\nC1 n1 out 20n\nC2 n2 0 10n\nE1 out 0 n2 out 1meg\n.ac dec 40 100 100k\n.end`,
     probe: "out",
     judge: null,
@@ -162,14 +166,14 @@ export const challenges: Challenge[] = [
     title: "CMOS inverter trip point",
     difficulty: "Advanced",
     domain: "Digital",
-    summary: "Size complementary devices for a centered switching point under process variation.",
-    objective: "Center VM at half-supply while maintaining the required noise margins across corners.",
+    summary: "Size complementary devices and inspect the transfer curve of a 1.8 V inverter.",
+    objective: "Center the nominal switching point VM near 0.9 V and derive noise margins from the transfer-curve points whose slope is −1. Use the supplied CMOS90 model for the SPICE check.",
     analysis: "DC sweep",
     acceptance: null,
     attempts: 0,
     xp: 360,
     topics: ["CMOS", "Noise margin", "Device sizing"],
-    constraints: ["|VM − VDD/2| ≤ 100 mV", "NMH, NML ≥ 1.5 V", "Total W ≤ 50 µm"],
+    constraints: ["VDD = 1.8 V; |VM − VDD/2| ≤ 100 mV", "Nominal NMH, NML ≥ 0.5 V", "Total W ≤ 50 µm; educational model, no process corners supplied"],
     starterNetlist: `VDD vdd 0 DC 1.8\nVIN in 0 DC 0\nMP out in vdd vdd P90 W=2u L=90n\nMN out in 0 0 N90 W=1u L=90n\n.include modelcard.CMOS90\n.dc VIN 0 1.8 0.01\n.end`,
     probe: "out",
     judge: null,
@@ -178,23 +182,25 @@ export const challenges: Challenge[] = [
   {
     id: 9,
     slug: "transimpedance-stability",
-    title: "Stable photodiode TIA",
+    title: "Feedback capacitance in a TIA",
     difficulty: "Expert",
     domain: "Op-amps",
-    summary: "Compensate a transimpedance amplifier with sensor and input capacitance in the loop.",
-    objective: "Maximize bandwidth while retaining at least 55° phase margin and limited output noise.",
+    summary: "Measure how a parallel feedback capacitor limits transimpedance bandwidth.",
+    objective: "Use the 1 µA AC stimulus to measure transimpedance: divide output voltage by input current. Verify the 100 kΩ low-frequency gain and approximately 796 kHz feedback pole with CF = 2 pF.",
     analysis: "AC sweep",
     acceptance: null,
     attempts: 0,
     xp: 480,
-    topics: ["Loop gain", "Compensation", "Noise"],
-    constraints: ["Phase margin ≥ 55°", "Peaking ≤ 1 dB", "Transimpedance = 100 kΩ ± 1%"],
+    topics: ["Transimpedance", "Feedback pole", "Sensor capacitance"],
+    constraints: ["Low-frequency transimpedance = 100 kΩ ± 1%", "RF = 100 kΩ, CF = 2 pF, CD = 50 pF", "Constant-gain amplifier model; phase margin and noise require a different amplifier model"],
     starterNetlist: `IIN nsum 0 AC 1u\nRF out nsum 100k\nCF out nsum 2p\nCD nsum 0 50p\nEOP out 0 0 nsum 100000\n.ac dec 50 10 10meg\n.end`,
     probe: "out",
     judge: null,
     available: true,
   },
 ];
+
+challenges.push(...practiceChallenges);
 
 export function getChallenge(slug: string) {
   return challenges.find((challenge) => challenge.slug === slug);

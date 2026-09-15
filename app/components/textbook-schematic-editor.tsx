@@ -26,6 +26,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { parseEngineeringNumber } from "../../lib/engineering";
+import { validateSimulatorProbes, SIMULATOR_NETLIST_LIMITS } from "../../lib/simulator-netlist-policy";
 import { splitWireRoute } from "../../lib/schematic-wire-geometry";
 import { generateSpiceDeckFromCircuitDocument } from "../../lib/circuit-spice";
 import type {
@@ -869,7 +870,7 @@ function pin(partId: string, pinIndex: number): Endpoint {
 function compileCircuit(document: CircuitDocument, analysis: AnalysisSetup) {
   const electricalDocument = compileEditorCircuitDocument(document, analysis);
   const generated = generateSpiceDeckFromCircuitDocument(electricalDocument, { target: "browser-preview" });
-  const probes = generated.ir.probes.flatMap((probe) => probe.quantity === "voltage" ? [probe.node] : []).slice(0, 4);
+  const probes = validateSimulatorProbes(generated.ir.probes.flatMap((probe) => probe.quantity === "voltage" ? [probe.node] : []));
   return { netlist: generated.deck, probes, circuitDocument: electricalDocument };
 }
 
@@ -946,7 +947,9 @@ export function compileEditorCircuitDocument(document: CircuitDocument, analysis
     });
   }
 
-  const probes = document.parts.filter((part) => part.kind === "probe").slice(0, 4).map((part, index) => {
+  const probeParts = document.parts.filter((part) => part.kind === "probe");
+  if (probeParts.length > SIMULATOR_NETLIST_LIMITS.probes) throw new Error(`Select at most ${SIMULATOR_NETLIST_LIMITS.probes} probes.`);
+  const probes = probeParts.map((part, index) => {
     const target = probeTargets.get(part.id);
     if (!target) throw new Error(`${part.id} is not connected to a circuit node.`);
     return {

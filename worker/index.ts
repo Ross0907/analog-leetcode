@@ -29,6 +29,18 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    if (url.pathname.startsWith("/circuitjs/")) {
+      const response = await env.ASSETS.fetch(request);
+      const headers = new Headers(response.headers);
+      headers.set("X-Content-Type-Options", "nosniff");
+      headers.set("X-Frame-Options", "SAMEORIGIN");
+      headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+      // GWT's compiled loader creates inline scripts and uses eval. Keep those
+      // permissions on the vendored editor alone, outside application/auth pages.
+      headers.set("Content-Security-Policy", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; frame-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; form-action 'none'");
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+    }
+
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       const imageResponse = await handleImageOptimization(request, {
@@ -59,7 +71,7 @@ function addNonceToInlineElements(html: string, nonce: string) {
 async function secureResponse(response: Response, url: URL) {
   const headers = new Headers(response.headers);
   headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  if (!headers.has("Referrer-Policy")) headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("X-Frame-Options", "DENY");
   headers.set("Cross-Origin-Opener-Policy", "same-origin");
   headers.set("Origin-Agent-Cluster", "?1");
@@ -93,7 +105,7 @@ async function secureResponse(response: Response, url: URL) {
         "font-src 'self' data:",
         "connect-src 'self'",
         "worker-src 'self' blob:",
-        "frame-src 'none'",
+        "frame-src 'self'",
         "manifest-src 'self'",
       ].join("; "),
     );

@@ -26,5 +26,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "build", "dist", "artifacts", "test-results"]
+  "exclude": ["node_modules", "build", "dist", "artifacts", "test-results", ".tmp", "public/circuitjs"]
 }

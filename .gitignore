@@ -33,6 +33,7 @@ yarn-error.log*
 /.wrangler/
 /outputs/
 /work/
+/.tmp/
 /tsconfig.tsbuildinfo
 node_modules/
 # build output

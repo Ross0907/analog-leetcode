@@ -17,6 +17,7 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
 const localBindingConfig = {
   main: "./worker/index.ts",
+  assets: { binding: "ASSETS", run_worker_first: ["/circuitjs/*"] },
   // Pin runtime semantics so a platform default change cannot silently alter
   // a release. Review and advance this date deliberately.
   compatibility_date: "2026-08-29",
@@ -27,6 +28,7 @@ const localBindingConfig = {
           binding: d1,
           database_name: SITE_CREATOR_DATABASE_NAME,
           database_id: SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
+          migrations_dir: "./drizzle",
         },
       ]
     : [],
@@ -56,9 +58,12 @@ export default defineConfig(async () => {
     optimizeDeps: {
       exclude: ["lucide-react", "next/link", "next/navigation", "next/router"],
     },
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
+    server: {
+      watch: {
+        ignored: ["**/build/**", "**/.tmp/**", "**/artifacts/**"],
+        ...(isCodexSeatbeltSandbox ? { useFsEvents: false, usePolling: true } : {}),
+      },
+    },
     plugins: [
       vinext(),
       sites(),

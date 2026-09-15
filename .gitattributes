@@ -1,0 +1,4 @@
+# The CircuitJS inventory verifies exact distributed bytes on every platform.
+public/circuitjs/** -text -whitespace linguist-vendored
+scripts/build-circuitjs.ps1 -text
+scripts/patch-circuitjs-api.mjs -text

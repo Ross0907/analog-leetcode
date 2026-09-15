@@ -25,7 +25,8 @@ test("renders the finished AnaCode landing page with security headers", async ()
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   const csp = response.headers.get("content-security-policy") ?? "";
   assert.match(csp, /frame-ancestors 'none'/);
-  assert.match(csp, /frame-src 'none'/);
+  assert.match(csp, /frame-src 'self'/);
+  assert.doesNotMatch(csp, /script-src[^;]*'unsafe-eval'/);
   assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/);
   assert.match(csp, /script-src-attr 'none'/);
   assert.doesNotMatch(csp, /(?:^|;\s*)style-src\s[^;]*'unsafe-inline'/);
@@ -56,9 +57,30 @@ test("renders a real challenge workspace", async () => {
   const html = await response.text();
   assert.match(html, /Precision voltage divider/);
   assert.match(html, /Schematic/);
-  assert.match(html, /Instruments/);
+  assert.match(html, /SPICE/);
   assert.match(html, /Automated checks available/);
-  assert.match(html, /Components/);
+  assert.match(html, /CircuitJS circuit workspace/);
+  assert.match(html, /\/circuitjs\/circuitjs\.html/);
+});
+
+test("only the native editor runtime receives the GWT scripting policy", async () => {
+  const app = await worker();
+  const response = await app.fetch(new Request("https://anacode.example/circuitjs/circuitjs.html"), {
+    ASSETS: { fetch: async () => new Response("<!doctype html><title>Native editor</title>", { headers: { "content-type": "text/html" } }) },
+  }, context);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("x-frame-options"), "SAMEORIGIN");
+  const csp = response.headers.get("content-security-policy");
+  assert.match(csp, /frame-ancestors 'self'/);
+  assert.match(csp, /script-src 'self' 'unsafe-inline' 'unsafe-eval'/);
+  assert.match(await response.text(), /Native editor/);
+});
+
+test("auth callbacks preserve no-referrer through the Worker response wrapper", async () => {
+  const app = await worker();
+  const response = await app.fetch(new Request("https://anacode.example/auth/callback?error=access_denied"), env, context);
+  assert.equal(response.headers.get("referrer-policy"), "no-referrer");
+  assert.match(response.headers.get("cache-control"), /no-store/);
 });
 
 test("grades a constrained anonymous practice submission", async () => {
