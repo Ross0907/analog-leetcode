@@ -4,7 +4,10 @@
   <img src="docs/anacode-hero.png" alt="AnaCode analog circuit design platform" width="100%">
 </p>
 
-**Live deployment:** [https://anacode.ross0907.workers.dev](https://anacode.ross0907.workers.dev)
+**Full application:** [https://anacode.ross0907.workers.dev](https://anacode.ross0907.workers.dev)  
+**GitHub Pages:** [https://ross0907.github.io/analog-leetcode/](https://ross0907.github.io/analog-leetcode/)
+
+The Cloudflare Workers deployment is the complete interactive application, including dynamic routes, the grading API, secrets, and D1 persistence. The GitHub Pages deployment is a static project page/showcase that remains available at the normal `github.io` project URL.
 
 AnaCode is an analog-first circuit-design practice platform built around the idea that circuit problems are better learned by drawing, simulating, measuring, and verifying real schematics than by answering multiple-choice questions.
 
@@ -84,7 +87,7 @@ Authoring metadata cannot itself define executable grader logic. Grader implemen
 
 The current implementation is built with React 19, Vinext, Vite, TypeScript, Tailwind CSS, Cloudflare Workers, Cloudflare D1, Drizzle ORM, Zod, React Flow, spice-ts, and EEcircuit Engine/ngspice-WASM.
 
-Automated validation covers linting, TypeScript, unit and integration tests, simulator provenance checks, browser E2E tests, production builds, and generated Cloudflare Worker configuration.
+Automated validation covers linting, TypeScript, unit and integration tests, simulator provenance checks, browser E2E tests, production builds, generated Cloudflare Worker configuration, and a separate static GitHub Pages publication workflow.
 
 ## Repository map
 
@@ -95,6 +98,7 @@ app/workers/             browser simulation worker
 db/                      Drizzle D1 access and schema
 drizzle/                 SQL migrations
 lib/                     circuit model, challenge data and graders
+pages/                   static GitHub Pages project site
 scripts/                 integrity and provenance checks
 worker/                  Cloudflare Worker entry and response headers
 tests/                   unit, integration and browser tests
