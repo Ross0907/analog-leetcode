@@ -1,0 +1,144 @@
+name: CI and Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: analog-leetcode-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          check-latest: true
+          cache: npm
+
+      - name: Use project npm
+        run: npm install --global npm@12.0.2
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify dependency graph
+        run: npm ls --all
+
+      - name: Security audit
+        run: npm audit --audit-level=high || true
+
+      - name: Vinext compatibility
+        run: npx --no-install vinext check || true
+
+      - name: Lint
+        shell: bash
+        run: |
+          if node -e "process.exit(require('./package.json').scripts?.lint ? 0 : 1)"; then
+            npm run lint
+          fi
+
+      - name: Typecheck
+        shell: bash
+        run: |
+          if node -e "process.exit(require('./package.json').scripts?.typecheck ? 0 : 1)"; then
+            npm run typecheck
+          elif node -e "process.exit(require('./package.json').scripts?.check ? 0 : 1)"; then
+            npm run check
+          fi
+
+      - name: Tests
+        shell: bash
+        run: |
+          if node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)"; then
+            npm run test
+          fi
+
+      - name: Simulator provenance
+        if: ${{ hashFiles('scripts/audit-simulator-provenance.mjs') != '' }}
+        run: node scripts/audit-simulator-provenance.mjs
+
+      - name: Playwright Chromium
+        if: ${{ hashFiles('tests/e2e/**') != '' }}
+        run: npx --no-install playwright install --with-deps chromium
+
+      - name: Browser E2E
+        if: ${{ hashFiles('tests/e2e/**') != '' }}
+        shell: bash
+        run: |
+          if node -e "process.exit(require('./package.json').scripts?.['test:e2e'] ? 0 : 1)"; then
+            npm run test:e2e
+          else
+            npx --no-install playwright test
+          fi
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify Cloudflare bundle
+        run: test -f dist/server/wrangler.json
+
+  deploy:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          check-latest: true
+          cache: npm
+
+      - name: Use project npm
+        run: npm install --global npm@12.0.2
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify generated Worker config
+        run: test -f dist/server/wrangler.json
+
+      - name: Check Cloudflare credentials
+        id: cf
+        shell: bash
+        run: |
+          if [[ -n "$CLOUDFLARE_API_TOKEN" && -n "$CLOUDFLARE_ACCOUNT_ID" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Cloudflare deployment skipped until CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are configured."
+          fi
+
+      - name: Deploy generated Worker bundle
+        if: steps.cf.outputs.ready == 'true'
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config dist/server/wrangler.json
