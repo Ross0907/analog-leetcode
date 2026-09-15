@@ -2,3 +2,7 @@
 public/circuitjs/** -text -whitespace linguist-vendored
 scripts/build-circuitjs.ps1 -text
 scripts/patch-circuitjs-api.mjs -text
+public/kicad/** -text -whitespace linguist-vendored
+public/simulator/** -text -whitespace linguist-vendored
+vendor/eecircuit-engine/** -text -whitespace linguist-vendored
+scripts/build-ngspice-wasm.sh text eol=lf
