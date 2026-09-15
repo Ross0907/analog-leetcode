@@ -13,13 +13,14 @@ test("account forms, recovery navigation, and unconfigured state are accessible"
     await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeEnabled();
   }
   await page.getByRole("link", { name: "Create an account", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Create your account", exact: true })).toBeVisible();
+  // Cold development-server navigation can compile under the full CI build load.
+  await expect(page.getByRole("heading", { name: "Create your account", exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByLabel("Full name", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Confirm password", { exact: true })).toBeVisible();
   await expect(page.locator('input[name="return_to"]')).toHaveValue("/lab");
   await page.getByRole("link", { name: "Back to sign in", exact: true }).click();
   await page.getByRole("link", { name: "Forgot password?", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Reset your password", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reset your password", exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Send reset link", exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
