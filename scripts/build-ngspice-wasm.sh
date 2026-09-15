@@ -9,7 +9,7 @@ chmod +x autogen.sh
 ./autogen.sh
 mkdir -p release
 cd release
-emconfigure ../configure --disable-debug --disable-openmp --disable-xspice --disable-osdi --without-x --with-readline=no
+emconfigure ../configure --build="$(../config.guess)" --host=wasm32-unknown-emscripten --disable-debug --disable-openmp --disable-xspice --disable-osdi --without-x --with-readline=no
 python3 - <<'PY'
 from pathlib import Path
 p = Path('src/Makefile')
@@ -25,4 +25,11 @@ cp src/spice.wasm ../../wrapper/src/spice.wasm
 emcc --version > ../../emscripten-version.txt
 dpkg-query -W > ../../build-packages.txt
 cp config.log ../../ngspice-config.log
+emscripten_dir="$(dirname "$(readlink -f "$(command -v emcc)")")"
+cp "$emscripten_dir/LICENSE" ../../EMSCRIPTEN-LICENSE.txt
+license_archive="$(realpath ../..)/emscripten-system-licenses.tar.gz"
+(
+  cd "$emscripten_dir"
+  find system -type f \( -iname '*license*' -o -iname '*copying*' -o -name COPYRIGHT \) -print0 | tar --null -T - -czf "$license_archive"
+)
 printf '\nNative simulator build complete.\n'
