@@ -4,13 +4,18 @@ export const SIMULATOR_NETLIST_LIMITS = Object.freeze({
   bytes: 12_000,
   lines: 180,
   outputPoints: 5_000,
-  probes: 4,
+  probes: 32,
   transientEvents: 2_000,
 });
 
 const FORBIDDEN_DIRECTIVE = /^\s*\.(?:inc|lib|control|endc|shell|exec|csparam|func|global|hdl|verilog|load)\b/im;
 const ALLOWED_DIRECTIVES = new Set(["op", "ac", "tran", "dc", "model", "include", "end"]);
 const TRUSTED_BROWSER_MODELCARDS = new Set(["modelcard.cmos90"]);
+
+/** ngspice consumes its first line as a title, including when that line is a source. */
+export function prepareSimulatorDeck(netlist: string) {
+  return `* AnaCode browser preview\n${netlist}`;
+}
 
 /**
  * Validates the optional expert preview deck before it reaches ngspice-WASM.
@@ -50,14 +55,14 @@ export function validateSimulatorNetlist(netlist: string) {
 export function validateSimulatorProbes(value: unknown) {
   if (value === undefined) return [];
   if (!Array.isArray(value) || value.length > SIMULATOR_NETLIST_LIMITS.probes) {
-    throw new Error(`Select no more than ${SIMULATOR_NETLIST_LIMITS.probes} voltage probes.`);
+    throw new Error(`Select no more than ${SIMULATOR_NETLIST_LIMITS.probes} probes.`);
   }
-  if (!value.every((probe): probe is string => typeof probe === "string" && /^[a-z0-9_:+.-]{1,64}$/i.test(probe))) {
-    throw new Error("A requested voltage probe is invalid.");
+  if (!value.every((probe): probe is string => typeof probe === "string" && /^(?:[a-z0-9_:+.-]{1,64}|[vi]\([a-z0-9_:+.-]{1,64}\))$/i.test(probe))) {
+    throw new Error("A requested probe is invalid. Use a node name, V(node), or I(source).");
   }
   const unique = new Map<string, string>();
   for (const probe of value) {
-    const canonical = probe.toLowerCase();
+    const canonical = probe.toLowerCase().replace(/^v\(([^)]+)\)$/, "$1");
     if (!unique.has(canonical)) unique.set(canonical, probe);
   }
   return [...unique.values()];

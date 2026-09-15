@@ -14,6 +14,8 @@ import {
   type SimulatorWorkerRequest,
 } from "../../lib/simulator-contract";
 import { BrowserOscilloscope, type OscilloscopeDomain } from "./browser-oscilloscope";
+import { SpectrumAnalyzer } from "./spectrum-analyzer";
+import { validateSimulatorProbes } from "../../lib/simulator-netlist-policy";
 
 type GradeResponse = {
   passed: boolean;
@@ -50,6 +52,8 @@ export function SimulationConsole({
   autoRun?: boolean;
 }) {
   const [netlist, setNetlist] = useState(initialNetlist);
+  const initialProbeText = typeof probe === "string" ? probe : probe?.join(", ") ?? "";
+  const [probeText, setProbeText] = useState(initialProbeText);
   const [simulation, setSimulation] = useState<SimulationPayload | null>(null);
   const [simError, setSimError] = useState<string | null>(null);
   const [grade, setGrade] = useState<GradeResponse | null>(null);
@@ -196,7 +200,14 @@ export function SimulationConsole({
     setGrade(null);
     const id = crypto.randomUUID();
     activeRunRef.current = id;
-    const probes = (typeof probe === "string" ? [probe] : probe ? [...probe] : []).slice(0, 4);
+    let probes: string[];
+    try { probes = validateSimulatorProbes(probeText.split(/[\s,]+/).filter(Boolean)); }
+    catch (error) {
+      activeRunRef.current = null;
+      setRunning(false);
+      setSimError(error instanceof Error ? error.message : "Probe selection is invalid.");
+      return;
+    }
     const request = { type: "run", id, netlist, probes } satisfies SimulatorWorkerRequest;
     const session = prepareWorker();
     if (!session) {
@@ -211,7 +222,7 @@ export function SimulationConsole({
     } else if (session.phase === "ready") {
       dispatchRequest(session, request);
     }
-  }, [cancelSimulation, dispatchRequest, netlist, prepareWorker, probe]);
+  }, [cancelSimulation, dispatchRequest, netlist, prepareWorker, probeText]);
 
   useEffect(() => {
     prepareWorkerRef.current = prepareWorker;
@@ -283,12 +294,18 @@ export function SimulationConsole({
       <div className="sim-toolbar">
         <div className="sim-mode"><span className="ready-dot" /> Circuit engine <small>ngspice · isolated WebAssembly worker</small></div>
         <div className="sim-actions">
-          <button className="icon-button" type="button" onClick={() => { cancelSimulation(); setNetlist(initialNetlist); setSimulation(null); setGrade(null); setSimError(null); }} aria-label="Reset simulation"><RotateCcw size={16} /></button>
+          <button className="icon-button" type="button" onClick={() => { cancelSimulation(); setNetlist(initialNetlist); setProbeText(initialProbeText); setSimulation(null); setGrade(null); setSimError(null); }} aria-label="Reset simulation"><RotateCcw size={16} /></button>
           <button className="button button-small button-run" type="button" onClick={runSimulation} disabled={running}>
             {running ? <><span className="spinner" /> Running</> : <><Play size={15} fill="currentColor" /> Run simulation</>}
           </button>
         </div>
       </div>
+
+      <label style={{ display: "grid", gap: 6, padding: "12px 16px", fontSize: 12 }}>
+        Probe vectors
+        <input aria-label="Probe vectors" value={probeText} maxLength={2300} placeholder="vin, vout, I(V1)" onChange={(event) => { cancelSimulation(); setProbeText(event.currentTarget.value); }} style={{ width: "100%", padding: "9px 12px", color: "inherit", background: "transparent", border: "1px solid #59616d", borderRadius: 5 }} />
+        <small>Up to 32 node names, V(node), or supported source currents I(source), separated by commas. Leave blank to plot all available vectors.</small>
+      </label>
 
       <div className="sim-output">
         <div className="results-pane scope-results-pane">
@@ -299,7 +316,7 @@ export function SimulationConsole({
             <>
               {simulation.analysis === "dc" ? (
                 <div className="op-grid">
-                  {simulation.operatingPoint.map((point) => <div key={point.name}><span>{point.name}</span><strong>{formatEngineering(point.value, "V")}</strong></div>)}
+                  {simulation.operatingPoint.map((point) => <div key={point.name}><span>{point.name}</span><strong>{formatEngineering(point.value, point.unit ?? "V")}</strong></div>)}
                 </div>
               ) : <ScopeResult payload={simulation} />}
               {simulation.warnings.length > 0 && (
@@ -368,7 +385,7 @@ export function SimulationConsole({
   );
 }
 
-function ScopeResult({ payload }: { payload: SimulationPayload }) {
+export function ScopeResult({ payload }: { payload: SimulationPayload }) {
   if (payload.analysis === "ac") {
     const magnitude = payload.traces.filter((trace) => trace.quantity === "magnitude");
     const phase = payload.traces.filter((trace) => trace.quantity === "phase");
@@ -405,21 +422,23 @@ function ScopeResult({ payload }: { payload: SimulationPayload }) {
   }
   const domain: OscilloscopeDomain = payload.analysis === "dc-sweep" ? "sweep" : "time";
   const title = payload.analysis === "dc-sweep" ? "Curve tracer" : "Oscilloscope";
+  const groups = [...new Set(payload.traces.map((trace) => trace.unit))].map((unit) => ({ unit, traces: payload.traces.filter((trace) => trace.unit === unit) }));
   return (
     <div className="scope-host">
-      <BrowserOscilloscope
-        key={`${payload.analysis}:${payload.traces.map((trace) => trace.id).join("|")}`}
+      {groups.map((group) => <BrowserOscilloscope
+        key={`${payload.analysis}:${group.unit}:${group.traces.map((trace) => trace.id).join("|")}`}
         x={payload.x}
-        traces={payload.traces}
+        traces={group.traces}
         domain={domain}
         xScale="linear"
         xLabel={payload.xLabel}
         xUnit={payload.xUnit}
-        yLabel={payload.yLabel}
-        yUnit={payload.yUnit}
-        title={title}
+        yLabel={group.unit === "A" ? "Current" : payload.yLabel}
+        yUnit={group.unit}
+        title={`${title}${groups.length > 1 ? ` · ${group.unit === "A" ? "Current" : "Voltage"}` : ""}`}
         height={360}
-      />
+      />)}
+      {payload.analysis === "transient" && <SpectrumAnalyzer time={payload.x} traces={payload.traces} />}
     </div>
   );
 }
