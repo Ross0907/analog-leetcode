@@ -2,6 +2,7 @@ import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json" with { type: "json" };
 import { sites } from "./build/sites-vite-plugin.js";
+import { isAbsolute, relative, resolve } from "node:path";
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   process.env.D1_DATABASE_ID ??
@@ -42,7 +43,20 @@ const localBindingConfig = {
     : [],
 };
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ command, mode }) => {
+  const isE2E = mode === "e2e";
+  if (isE2E && command !== "serve") throw new Error("The isolated E2E configuration is only available to the local test server.");
+  const e2eConfig = process.env.ANACODE_E2E_CONFIG;
+  const e2eState = process.env.ANACODE_E2E_STATE;
+  if (isE2E) {
+    const testRoot = resolve(".wrangler/e2e");
+    for (const path of [e2eConfig, e2eState]) {
+      const within = path ? relative(testRoot, resolve(path)) : "..";
+      if (!within || within === ".." || within.startsWith(`..\\`) || within.startsWith("../") || isAbsolute(within)) {
+        throw new Error("Start E2E through scripts/start-e2e-server.mjs to provision an isolated local database.");
+      }
+    }
+  }
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -69,7 +83,14 @@ export default defineConfig(async () => {
       sites(),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
-        config: localBindingConfig,
+        ...(isE2E ? {
+          configPath: e2eConfig,
+          persistState: { path: e2eState! },
+          remoteBindings: false,
+        } : { config: {
+          ...localBindingConfig,
+          ...(command === "build" ? { secrets: { required: ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "RATE_LIMIT_HMAC_SECRET"] } } : {}),
+        } }),
       }),
     ],
   };

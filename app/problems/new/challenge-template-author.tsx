@@ -381,6 +381,8 @@ export function ChallengeTemplateAuthor() {
             </div>
             <div className={styles.specList}>
               {draft.statement.specifications.map((specification, index) => (
+                // User-editable IDs may temporarily be empty or duplicated.
+                // eslint-disable-next-line @eslint-react/no-array-index-key
                 <article className={styles.specification} key={`${index}-${specification.id}`}>
                   <header>
                     <strong>Requirement {index + 1}</strong>
@@ -454,6 +456,8 @@ export function ChallengeTemplateAuthor() {
             {!validation.ok && (
               <ul className={styles.diagnostics} aria-label="Validation findings">
                 {validation.diagnostics.slice(0, 8).map((diagnostic, index) => (
+                  // A validation snapshot can report several findings per path.
+                  // eslint-disable-next-line @eslint-react/no-array-index-key
                   <li key={`${diagnostic.path}-${index}`}><code>{diagnostic.path}</code><span>{diagnostic.message}</span></li>
                 ))}
               </ul>

@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- the drawing surface is a keyboard-operable application and a drag/drop target. */
+/* eslint-disable jsx-a11y-x/no-noninteractive-element-interactions, jsx-a11y-x/no-noninteractive-tabindex -- the drawing surface is a keyboard-operable application and a drag/drop target. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -635,6 +635,8 @@ function SchematicWireEdge(props: EdgeProps<SchematicFlowEdge>) {
         const length = Math.hypot(end.x - start.x, end.y - start.y);
         if (length < 12) return null;
         return (
+          // Segments are addressed by their stable position within this wire.
+          // eslint-disable-next-line @eslint-react/no-array-index-key
           <g key={`${id}:segment:${segmentIndex}`} className="schematic-wire-segment-control">
             <line
               className="schematic-wire-segment-indicator"
@@ -819,6 +821,8 @@ function SchematicPartNode({ data, selected }: NodeProps<PartFlowNode>) {
         const degree = connectedPins[index] ?? 0;
         return (
           <Handle
+            // A terminal's numbered position is its electrical identity.
+            // eslint-disable-next-line @eslint-react/no-array-index-key
             key={`${part.id}:pin:${index}`}
             id={`pin:${index}`}
             type="source"

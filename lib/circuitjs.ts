@@ -16,6 +16,7 @@ export interface CircuitJsElement {
 }
 
 export interface CircuitJsApi {
+  addElement(nativeType: string): void;
   getElements(): CircuitJsElement[];
   getHoveredElement(): CircuitJsElement | null;
   getTime(): number;
@@ -30,6 +31,8 @@ export interface CircuitJsApi {
   importCircuit(text: string, subcircuitsOnly: boolean): void;
   screenX(x: number): number;
   screenY(y: number): number;
+  /** Positive zooms in; negative zooms out through the upstream zoom command. */
+  zoomCircuit(direction: number): void;
   onanalyze?: (api: CircuitJsApi) => void;
   onupdate?: (api: CircuitJsApi) => void;
   ontimestep?: (api: CircuitJsApi) => void;
@@ -88,6 +91,20 @@ export function validateCircuitJsText(text: string) {
 
 export function readCircuitJsProbe(probe: CircuitJsProbe) {
   return probe.kind === 'current' ? probe.element.getCurrent() : probe.element.getVoltage(probe.post);
+}
+
+/** CircuitJS's own display flags: hide voltage/power coloring and current dots. */
+export function neutralCircuitJsPresentation(text: string) {
+  const displayFlags = (flags: number) => (flags | 4) & ~1 & ~8;
+  if (text.trimStart().startsWith('$ ')) {
+    return text.replace(/^(\s*\$\s+)(\d+)/, (_match, prefix: string, flags: string) => `${prefix}${displayFlags(Number(flags))}`);
+  }
+  const document = new DOMParser().parseFromString(text, 'application/xml');
+  if (document.getElementsByTagName('parsererror').length || document.documentElement.tagName !== 'cir') throw new Error('Choose a valid CircuitJS circuit.');
+  const flags = Number(document.documentElement.getAttribute('f') ?? 0);
+  if (!Number.isSafeInteger(flags) || flags < 0) throw new Error('The circuit has invalid display options.');
+  document.documentElement.setAttribute('f', String(displayFlags(flags)));
+  return new XMLSerializer().serializeToString(document);
 }
 
 /** Captures actual accepted solver timesteps through CircuitJS's documented timestep callback. */

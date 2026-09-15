@@ -321,6 +321,8 @@ export function SimulationConsole({
               ) : <ScopeResult payload={simulation} />}
               {simulation.warnings.length > 0 && (
                 <ul className="simulation-warnings" aria-label="Simulation warnings">
+                  {/* Warning rows belong to one immutable result and may repeat. */}
+                  {/* eslint-disable-next-line @eslint-react/no-array-index-key */}
                   {simulation.warnings.map((warning, index) => <li key={`${index}-${warning}`}><AlertTriangle size={13} />{warning}</li>)}
                 </ul>
               )}

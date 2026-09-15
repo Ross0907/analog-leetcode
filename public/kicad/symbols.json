@@ -1,0 +1,1119 @@
+{
+  "schemaVersion": 1,
+  "generator": "official kicad-cli sym export svg",
+  "kicadVersion": "9.0.9",
+  "libraryRevision": "ad36cd14bcd1b1cd0484f629ccdd3481366f74f3",
+  "libraryTag": "9.0.9",
+  "libraryUrl": "https://gitlab.com/kicad/libraries/kicad-symbols",
+  "license": "CC-BY-SA-4.0 with KiCad library exception",
+  "sourceHashes": {
+    "Device.kicad_sym": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae",
+    "Simulation_SPICE.kicad_sym": "f21604539f20681f3920211ed8ea45da423b9b18c1be85df45f27ac49618b9cb",
+    "power.kicad_sym": "541c49bdad55134b5f6379e80c6d18f165c1d9e98ca7df36ad6ec2a316a6d11b",
+    "Switch.kicad_sym": "a93607f7bb68bce50996f458d7be86e1e187ac661877548a5119f8b890748fef",
+    "Amplifier_Operational.kicad_sym": "79ce7f6aa1f484d848e7c2433cdf4c45c31337cf0be3b0a529ac247e7e06800d",
+    "LICENSE.md": "45d2bce75e5a4208f5afb01b8fb2c406e700371c4fe2b5f5cd5c443d46db4d8f"
+  },
+  "modifications": [
+    "Reference/value fields and non-semantic pin labels hidden in an export-only library copy",
+    "Temporary origin calibration circle removed after native SVG export",
+    "SVG title timestamps normalized"
+  ],
+  "symbols": {
+    "Device:R": {
+      "sourceId": "Device:R",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--R.svg",
+      "stockSvg": "/kicad/stock/Device--R.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        2.7432,
+        10.0584
+      ],
+      "origin": [
+        1.3716,
+        5.0292
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": 3.81,
+          "angle": 270.0,
+          "length": 1.27,
+          "x": 1.3716,
+          "y": 1.2192,
+          "bodyX": 1.3716,
+          "bodyY": 2.4892
+        },
+        {
+          "number": "2",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": -3.81,
+          "angle": 90.0,
+          "length": 1.27,
+          "x": 1.3716,
+          "y": 8.8392,
+          "bodyX": 1.3716,
+          "bodyY": 7.5692
+        }
+      ],
+      "sha256": "39acc583c147b572ad836e2c87d2947a17cb882394e7a52b5975a9d511f856d0",
+      "stockSha256": "1656928616ce2cd657b06e7e7d30a45f500d55b317a791e4f4f2e1ee305f3448",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:R_US": {
+      "sourceId": "Device:R_US",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--R_US.svg",
+      "stockSvg": "/kicad/stock/Device--R_US.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        2.4384,
+        10.0584
+      ],
+      "origin": [
+        1.2192,
+        5.0292
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": 3.81,
+          "angle": 270.0,
+          "length": 1.27,
+          "x": 1.2192,
+          "y": 1.2192,
+          "bodyX": 1.2192,
+          "bodyY": 2.4892
+        },
+        {
+          "number": "2",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": -3.81,
+          "angle": 90.0,
+          "length": 1.27,
+          "x": 1.2192,
+          "y": 8.8392,
+          "bodyX": 1.2192,
+          "bodyY": 7.5692
+        }
+      ],
+      "sha256": "a1bdb8fd7629f95d9719e96672e29f3656b1271e5381e2b1485dde13e086dbd3",
+      "stockSha256": "39cdd701bbcfd25f8555dfbe7b5301b693fef25d38b1c5d0a9ef7586a51107da",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:C": {
+      "sourceId": "Device:C",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--C.svg",
+      "stockSvg": "/kicad/stock/Device--C.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        5.4864,
+        10.0584
+      ],
+      "origin": [
+        2.7432,
+        5.0292
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": 3.81,
+          "angle": 270.0,
+          "length": 2.794,
+          "x": 2.7432,
+          "y": 1.2192,
+          "bodyX": 2.7432,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "2",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": -3.81,
+          "angle": 90.0,
+          "length": 2.794,
+          "x": 2.7432,
+          "y": 8.8392,
+          "bodyX": 2.7432,
+          "bodyY": 6.0452
+        }
+      ],
+      "sha256": "c2e0c63d33dbd6243f77fedec02a982a9188561ae82107370a66f5b46146ee90",
+      "stockSha256": "ede98a9e24e58010f195073cf095ef273bbeededa8237032e1de42f1be0897fe",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:C_Polarized": {
+      "sourceId": "Device:C_Polarized",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--C_Polarized.svg",
+      "stockSvg": "/kicad/stock/Device--C_Polarized.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        5.4864,
+        10.0584
+      ],
+      "origin": [
+        2.7432,
+        5.0292
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": 3.81,
+          "angle": 270.0,
+          "length": 2.794,
+          "x": 2.7432,
+          "y": 1.2192,
+          "bodyX": 2.7432,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "2",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": -3.81,
+          "angle": 90.0,
+          "length": 2.794,
+          "x": 2.7432,
+          "y": 8.8392,
+          "bodyX": 2.7432,
+          "bodyY": 6.0452
+        }
+      ],
+      "sha256": "973804f99876c54a6c11fcca9912d77826b6aa8620d274596403c7dafc513545",
+      "stockSha256": "2d91896f3627b16d8f32b1b9b1270216eaac561ea5c8379b77c95f4057f31076",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:L": {
+      "sourceId": "Device:L",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--L.svg",
+      "stockSvg": "/kicad/stock/Device--L.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        1.2192,
+        10.0584
+      ],
+      "origin": [
+        0.484,
+        5.0292
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "1",
+          "sourceX": 0.0,
+          "sourceY": 3.81,
+          "angle": 270.0,
+          "length": 1.27,
+          "x": 0.484,
+          "y": 1.2192,
+          "bodyX": 0.484,
+          "bodyY": 2.4892
+        },
+        {
+          "number": "2",
+          "name": "2",
+          "sourceX": 0.0,
+          "sourceY": -3.81,
+          "angle": 90.0,
+          "length": 1.27,
+          "x": 0.484,
+          "y": 8.8392,
+          "bodyX": 0.484,
+          "bodyY": 7.5692
+        }
+      ],
+      "sha256": "ba1b6d5c0caa16c1bef028df3df5ed03c9559cae4680d35e44c027f3f814f2e0",
+      "stockSha256": "b12f3179ba8127372ac8386e0ea793dd0875d242ba68767b1db83135c58b66a8",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:D": {
+      "sourceId": "Device:D",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--D.svg",
+      "stockSvg": "/kicad/stock/Device--D.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        10.0584,
+        3.3528
+      ],
+      "origin": [
+        5.0292,
+        1.6764
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "K",
+          "sourceX": -3.81,
+          "sourceY": 0.0,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.2192,
+          "y": 1.6764,
+          "bodyX": 3.7592,
+          "bodyY": 1.6764
+        },
+        {
+          "number": "2",
+          "name": "A",
+          "sourceX": 3.81,
+          "sourceY": 0.0,
+          "angle": 180.0,
+          "length": 2.54,
+          "x": 8.8392,
+          "y": 1.6764,
+          "bodyX": 6.2992,
+          "bodyY": 1.6764
+        }
+      ],
+      "sha256": "82b1d0d080d3509632575b03318b7796118638c8bc0bf0f28205024e0eb04437",
+      "stockSha256": "c048b52fbdb3a8aa6e44e8a4a150bb76b268c8b0af96327dc64ebe905c9380bb",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:D_Zener": {
+      "sourceId": "Device:D_Zener",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--D_Zener.svg",
+      "stockSvg": "/kicad/stock/Device--D_Zener.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        10.0584,
+        3.3528
+      ],
+      "origin": [
+        5.0292,
+        1.6764
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "K",
+          "sourceX": -3.81,
+          "sourceY": 0.0,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.2192,
+          "y": 1.6764,
+          "bodyX": 3.7592,
+          "bodyY": 1.6764
+        },
+        {
+          "number": "2",
+          "name": "A",
+          "sourceX": 3.81,
+          "sourceY": 0.0,
+          "angle": 180.0,
+          "length": 2.54,
+          "x": 8.8392,
+          "y": 1.6764,
+          "bodyX": 6.2992,
+          "bodyY": 1.6764
+        }
+      ],
+      "sha256": "cfe0e7cf9a98b3519c331947c8348125595aa357f2277b2e2bb5f4223fddbded",
+      "stockSha256": "b5f8f984d868d33f629cde774cd2e4a850182c2076e325c3bb6f3ba947d2df36",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:LED": {
+      "sourceId": "Device:LED",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--LED.svg",
+      "stockSvg": "/kicad/stock/Device--LED.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        10.5156,
+        4.4196
+      ],
+      "origin": [
+        5.4483,
+        1.7653
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "K",
+          "sourceX": -3.81,
+          "sourceY": 0.0,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.6383,
+          "y": 1.7653,
+          "bodyX": 4.1783,
+          "bodyY": 1.7653
+        },
+        {
+          "number": "2",
+          "name": "A",
+          "sourceX": 3.81,
+          "sourceY": 0.0,
+          "angle": 180.0,
+          "length": 2.54,
+          "x": 9.2583,
+          "y": 1.7653,
+          "bodyX": 6.7183,
+          "bodyY": 1.7653
+        }
+      ],
+      "sha256": "f8d2c5eb60d866f0a95b63f9250ba70e633cf39d1454856c040188c979eb648a",
+      "stockSha256": "1ac6482b260379220fb3d1c996b48fa2a52ec44f23c294790a810183d9abc4a5",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:Battery": {
+      "sourceId": "Device:Battery",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--Battery.svg",
+      "stockSvg": "/kicad/stock/Device--Battery.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        5.4864,
+        13.1064
+      ],
+      "origin": [
+        2.7432,
+        6.5532
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "+",
+          "sourceX": 0.0,
+          "sourceY": 5.08,
+          "angle": 270.0,
+          "length": 2.54,
+          "x": 2.7432,
+          "y": 1.4732,
+          "bodyX": 2.7432,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "2",
+          "name": "-",
+          "sourceX": 0.0,
+          "sourceY": -5.08,
+          "angle": 90.0,
+          "length": 2.54,
+          "x": 2.7432,
+          "y": 11.6332,
+          "bodyX": 2.7432,
+          "bodyY": 9.0932
+        }
+      ],
+      "sha256": "3b0e8f7f69632b31a1c72e5c9f7a0b8dc62b8bf8c9168b9d86e957790a45b6fd",
+      "stockSha256": "2f074e0b2d2e57e29a7aad3a0c36c7d32bf26b3ef2d4d5a016f58282d7c4251b",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:Q_NPN": {
+      "sourceId": "Device:Q_NPN",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--Q_NPN.svg",
+      "stockSvg": "/kicad/stock/Device--Q_NPN.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        11.6078,
+        13.1064
+      ],
+      "origin": [
+        6.4263,
+        6.5532
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "B",
+          "name": "B",
+          "sourceX": -5.08,
+          "sourceY": 0.0,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.3463,
+          "y": 6.5532,
+          "bodyX": 3.8863,
+          "bodyY": 6.5532
+        },
+        {
+          "number": "C",
+          "name": "C",
+          "sourceX": 2.54,
+          "sourceY": 5.08,
+          "angle": 270.0,
+          "length": 2.54,
+          "x": 8.9663,
+          "y": 1.4732,
+          "bodyX": 8.9663,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "E",
+          "name": "E",
+          "sourceX": 2.54,
+          "sourceY": -5.08,
+          "angle": 90.0,
+          "length": 2.54,
+          "x": 8.9663,
+          "y": 11.6332,
+          "bodyX": 8.9663,
+          "bodyY": 9.0932
+        }
+      ],
+      "sha256": "1d3fc1464b59d29fa3aeb4334c992b27e834a07f76426be32b1c0e43da1342aa",
+      "stockSha256": "50dfd4666231ab79c0051512b7cea054dbbd437b1fa3d663257eda167fa5d187",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:Q_PNP": {
+      "sourceId": "Device:Q_PNP",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--Q_PNP.svg",
+      "stockSvg": "/kicad/stock/Device--Q_PNP.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        11.6078,
+        13.1064
+      ],
+      "origin": [
+        6.4263,
+        6.5532
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "B",
+          "name": "B",
+          "sourceX": -5.08,
+          "sourceY": 0.0,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.3463,
+          "y": 6.5532,
+          "bodyX": 3.8863,
+          "bodyY": 6.5532
+        },
+        {
+          "number": "C",
+          "name": "C",
+          "sourceX": 2.54,
+          "sourceY": 5.08,
+          "angle": 270.0,
+          "length": 2.54,
+          "x": 8.9663,
+          "y": 1.4732,
+          "bodyX": 8.9663,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "E",
+          "name": "E",
+          "sourceX": 2.54,
+          "sourceY": -5.08,
+          "angle": 90.0,
+          "length": 2.54,
+          "x": 8.9663,
+          "y": 11.6332,
+          "bodyX": 8.9663,
+          "bodyY": 9.0932
+        }
+      ],
+      "sha256": "32d36b4d99dcaf6ad24e8c54a137e7053386f63ad8558e2731ff545bb35126af",
+      "stockSha256": "f9127bdd748dd8dec2bb560ea2517eb6ebc680cd37a8968a0101ebd51b0f37ab",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:Q_NMOS": {
+      "sourceId": "Device:Q_NMOS",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--Q_NMOS.svg",
+      "stockSvg": "/kicad/stock/Device--Q_NMOS.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        12.0396,
+        13.1064
+      ],
+      "origin": [
+        6.4644,
+        6.5532
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "G",
+          "name": "G",
+          "sourceX": -5.08,
+          "sourceY": 0.0,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.3844,
+          "y": 6.5532,
+          "bodyX": 3.9244,
+          "bodyY": 6.5532
+        },
+        {
+          "number": "D",
+          "name": "D",
+          "sourceX": 2.54,
+          "sourceY": 5.08,
+          "angle": 270.0,
+          "length": 2.54,
+          "x": 9.0044,
+          "y": 1.4732,
+          "bodyX": 9.0044,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "S",
+          "name": "S",
+          "sourceX": 2.54,
+          "sourceY": -5.08,
+          "angle": 90.0,
+          "length": 2.54,
+          "x": 9.0044,
+          "y": 11.6332,
+          "bodyX": 9.0044,
+          "bodyY": 9.0932
+        }
+      ],
+      "sha256": "19d92f05f07df74345306bc198649f8a0b8dd5532204d08276300b1e75b69dde",
+      "stockSha256": "645afcc6f9b39f01ff2003d87086ac269e0c2afe39641502b7b23b4a6c5678c3",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Device:Q_PMOS": {
+      "sourceId": "Device:Q_PMOS",
+      "unit": 1,
+      "svg": "/kicad/svg/Device--Q_PMOS.svg",
+      "stockSvg": "/kicad/stock/Device--Q_PMOS.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        12.0396,
+        13.1064
+      ],
+      "origin": [
+        6.4644,
+        6.5532
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "G",
+          "name": "G",
+          "sourceX": -5.08,
+          "sourceY": 0.0,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.3844,
+          "y": 6.5532,
+          "bodyX": 3.9244,
+          "bodyY": 6.5532
+        },
+        {
+          "number": "D",
+          "name": "D",
+          "sourceX": 2.54,
+          "sourceY": 5.08,
+          "angle": 270.0,
+          "length": 2.54,
+          "x": 9.0044,
+          "y": 1.4732,
+          "bodyX": 9.0044,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "S",
+          "name": "S",
+          "sourceX": 2.54,
+          "sourceY": -5.08,
+          "angle": 90.0,
+          "length": 2.54,
+          "x": 9.0044,
+          "y": 11.6332,
+          "bodyX": 9.0044,
+          "bodyY": 9.0932
+        }
+      ],
+      "sha256": "97d342ee52990339dca1d0a75042479bc5fd9df62bfb936ec513e51394de7381",
+      "stockSha256": "b989c40d007c5c9b211c3df6ca1fddce8b87882603b927e9d2d4e9a415290c0d",
+      "sourceFile": "source/Device.kicad_sym",
+      "sourceSha256": "bf466eecad72ed640dd9a279bce4741c1fcf3d0eecfb07e933c945f7a64744ae"
+    },
+    "Simulation_SPICE:NMOS": {
+      "sourceId": "Simulation_SPICE:NMOS",
+      "unit": 1,
+      "svg": "/kicad/svg/Simulation_SPICE--NMOS.svg",
+      "stockSvg": "/kicad/stock/Simulation_SPICE--NMOS.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        12.0396,
+        13.1064
+      ],
+      "origin": [
+        6.4644,
+        6.5532
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "2",
+          "name": "G",
+          "sourceX": -5.08,
+          "sourceY": 0.0,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.3844,
+          "y": 6.5532,
+          "bodyX": 3.9244,
+          "bodyY": 6.5532
+        },
+        {
+          "number": "1",
+          "name": "D",
+          "sourceX": 2.54,
+          "sourceY": 5.08,
+          "angle": 270.0,
+          "length": 2.54,
+          "x": 9.0044,
+          "y": 1.4732,
+          "bodyX": 9.0044,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "3",
+          "name": "S",
+          "sourceX": 2.54,
+          "sourceY": -5.08,
+          "angle": 90.0,
+          "length": 2.54,
+          "x": 9.0044,
+          "y": 11.6332,
+          "bodyX": 9.0044,
+          "bodyY": 9.0932
+        }
+      ],
+      "sha256": "643d5f047bb86c6c2366f3f5a18b0e8b45b3f7df08f0b2ec1dd419d3a78f4467",
+      "stockSha256": "cbbf41f8d3283a077572e11c3291fe542872cd0ab3e09eea31ad8582de867a09",
+      "sourceFile": "source/Simulation_SPICE.kicad_sym",
+      "sourceSha256": "f21604539f20681f3920211ed8ea45da423b9b18c1be85df45f27ac49618b9cb"
+    },
+    "Simulation_SPICE:PMOS": {
+      "sourceId": "Simulation_SPICE:PMOS",
+      "unit": 1,
+      "svg": "/kicad/svg/Simulation_SPICE--PMOS.svg",
+      "stockSvg": "/kicad/stock/Simulation_SPICE--PMOS.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        12.0396,
+        13.1064
+      ],
+      "origin": [
+        6.4644,
+        6.5532
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "2",
+          "name": "G",
+          "sourceX": -5.08,
+          "sourceY": 0.0,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.3844,
+          "y": 6.5532,
+          "bodyX": 3.9244,
+          "bodyY": 6.5532
+        },
+        {
+          "number": "1",
+          "name": "D",
+          "sourceX": 2.54,
+          "sourceY": 5.08,
+          "angle": 270.0,
+          "length": 2.54,
+          "x": 9.0044,
+          "y": 1.4732,
+          "bodyX": 9.0044,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "3",
+          "name": "S",
+          "sourceX": 2.54,
+          "sourceY": -5.08,
+          "angle": 90.0,
+          "length": 2.54,
+          "x": 9.0044,
+          "y": 11.6332,
+          "bodyX": 9.0044,
+          "bodyY": 9.0932
+        }
+      ],
+      "sha256": "af9e9132da67b091d73a8160dba09f596ae6b8cc7b418039cd49444c9aa561c3",
+      "stockSha256": "41dd95e79776536c2f7c72dcdbb492ea1cfbede5b8c3e72c3f2e6619e0393a79",
+      "sourceFile": "source/Simulation_SPICE.kicad_sym",
+      "sourceSha256": "f21604539f20681f3920211ed8ea45da423b9b18c1be85df45f27ac49618b9cb"
+    },
+    "Simulation_SPICE:OPAMP": {
+      "sourceId": "Simulation_SPICE:OPAMP",
+      "unit": 1,
+      "svg": "/kicad/svg/Simulation_SPICE--OPAMP.svg",
+      "stockSvg": "/kicad/stock/Simulation_SPICE--OPAMP.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        19.2024,
+        19.2024
+      ],
+      "origin": [
+        9.6012,
+        9.6012
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "+",
+          "sourceX": -7.62,
+          "sourceY": 2.54,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.9812,
+          "y": 7.0612,
+          "bodyX": 4.5212,
+          "bodyY": 7.0612
+        },
+        {
+          "number": "2",
+          "name": "-",
+          "sourceX": -7.62,
+          "sourceY": -2.54,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.9812,
+          "y": 12.1412,
+          "bodyX": 4.5212,
+          "bodyY": 12.1412
+        },
+        {
+          "number": "3",
+          "name": "V+",
+          "sourceX": -2.54,
+          "sourceY": 7.62,
+          "angle": 270.0,
+          "length": 3.81,
+          "x": 7.0612,
+          "y": 1.9812,
+          "bodyX": 7.0612,
+          "bodyY": 5.7912
+        },
+        {
+          "number": "4",
+          "name": "V-",
+          "sourceX": -2.54,
+          "sourceY": -7.62,
+          "angle": 90.0,
+          "length": 3.81,
+          "x": 7.0612,
+          "y": 17.2212,
+          "bodyX": 7.0612,
+          "bodyY": 13.4112
+        },
+        {
+          "number": "5",
+          "name": "~",
+          "sourceX": 7.62,
+          "sourceY": 0.0,
+          "angle": 180.0,
+          "length": 2.54,
+          "x": 17.2212,
+          "y": 9.6012,
+          "bodyX": 14.6812,
+          "bodyY": 9.6012
+        }
+      ],
+      "sha256": "1838f3d8ec0a8835f75b1db6618f485b55f43047ce866bfadd946150b921cc69",
+      "stockSha256": "7204311e376cafb4a06d0ab2f7ec51783cd2bfaf181bbd10337f496566fadaf5",
+      "sourceFile": "source/Simulation_SPICE.kicad_sym",
+      "sourceSha256": "f21604539f20681f3920211ed8ea45da423b9b18c1be85df45f27ac49618b9cb"
+    },
+    "Simulation_SPICE:VDC": {
+      "sourceId": "Simulation_SPICE:VDC",
+      "unit": 1,
+      "svg": "/kicad/svg/Simulation_SPICE--VDC.svg",
+      "stockSvg": "/kicad/stock/Simulation_SPICE--VDC.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        6.4008,
+        13.1064
+      ],
+      "origin": [
+        3.2004,
+        6.5532
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": 5.08,
+          "angle": 270.0,
+          "length": 2.54,
+          "x": 3.2004,
+          "y": 1.4732,
+          "bodyX": 3.2004,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "2",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": -5.08,
+          "angle": 90.0,
+          "length": 2.54,
+          "x": 3.2004,
+          "y": 11.6332,
+          "bodyX": 3.2004,
+          "bodyY": 9.0932
+        }
+      ],
+      "sha256": "bfe1de8f1710e52a3eebcb4144b39d7553f077bd062036528f704ef0520bdda9",
+      "stockSha256": "da9986bd8cc6b3ac33feef0798aa7d30e85c65a8d3e6f749c419d8729585d394",
+      "sourceFile": "source/Simulation_SPICE.kicad_sym",
+      "sourceSha256": "f21604539f20681f3920211ed8ea45da423b9b18c1be85df45f27ac49618b9cb"
+    },
+    "Simulation_SPICE:IDC": {
+      "sourceId": "Simulation_SPICE:IDC",
+      "unit": 1,
+      "svg": "/kicad/svg/Simulation_SPICE--IDC.svg",
+      "stockSvg": "/kicad/stock/Simulation_SPICE--IDC.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        6.4008,
+        13.1064
+      ],
+      "origin": [
+        3.2004,
+        6.5532
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": 5.08,
+          "angle": 270.0,
+          "length": 2.54,
+          "x": 3.2004,
+          "y": 1.4732,
+          "bodyX": 3.2004,
+          "bodyY": 4.0132
+        },
+        {
+          "number": "2",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": -5.08,
+          "angle": 90.0,
+          "length": 2.54,
+          "x": 3.2004,
+          "y": 11.6332,
+          "bodyX": 3.2004,
+          "bodyY": 9.0932
+        }
+      ],
+      "sha256": "41e42b54962e307d413c86f639c6ed1385ae1c021ab1c77c5b5c458cb88d161d",
+      "stockSha256": "795fbd73816befe50a2ce06f90f144ff9de6c8f3932b12cc831a1a026d125651",
+      "sourceFile": "source/Simulation_SPICE.kicad_sym",
+      "sourceSha256": "f21604539f20681f3920211ed8ea45da423b9b18c1be85df45f27ac49618b9cb"
+    },
+    "Amplifier_Operational:LM2904": {
+      "sourceId": "Amplifier_Operational:LM2904",
+      "unit": 1,
+      "svg": "/kicad/svg/Amplifier_Operational--LM2904.svg",
+      "stockSvg": "/kicad/stock/Amplifier_Operational--LM2904.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        19.2024,
+        12.4968
+      ],
+      "origin": [
+        9.6012,
+        6.2484
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "3",
+          "name": "+",
+          "sourceX": -7.62,
+          "sourceY": 2.54,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.9812,
+          "y": 3.7084,
+          "bodyX": 4.5212,
+          "bodyY": 3.7084
+        },
+        {
+          "number": "2",
+          "name": "-",
+          "sourceX": -7.62,
+          "sourceY": -2.54,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.9812,
+          "y": 8.7884,
+          "bodyX": 4.5212,
+          "bodyY": 8.7884
+        },
+        {
+          "number": "1",
+          "name": "~",
+          "sourceX": 7.62,
+          "sourceY": 0.0,
+          "angle": 180.0,
+          "length": 2.54,
+          "x": 17.2212,
+          "y": 6.2484,
+          "bodyX": 14.6812,
+          "bodyY": 6.2484
+        }
+      ],
+      "sha256": "f65048fdade6ab217286dd2bb6cdbae1eb74930b2a74b45b3678b36576ef805f",
+      "stockSha256": "d348746e2b61b097a2d6d108f72e88bf01bee96f59b5f9fd90da511c40af9876",
+      "sourceFile": "source/Amplifier_Operational.kicad_sym",
+      "sourceSha256": "79ce7f6aa1f484d848e7c2433cdf4c45c31337cf0be3b0a529ac247e7e06800d"
+    },
+    "power:GND": {
+      "sourceId": "power:GND",
+      "unit": 1,
+      "svg": "/kicad/svg/power--GND.svg",
+      "stockSvg": "/kicad/stock/power--GND.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        3.048,
+        3.5052
+      ],
+      "origin": [
+        1.524,
+        0.6732
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": 0.0,
+          "angle": 270.0,
+          "length": 0.0,
+          "x": 1.524,
+          "y": 0.6732,
+          "bodyX": 1.524,
+          "bodyY": 0.6732
+        }
+      ],
+      "sha256": "957783b21762890a36925789e3edc213767d5b0ef81279cc16e98a7b35204af5",
+      "stockSha256": "70fbdd7c701adb4a74ff9c3991b111d86756e21ef0038c436a69542cd1d28e70",
+      "sourceFile": "source/power.kicad_sym",
+      "sourceSha256": "541c49bdad55134b5f6379e80c6d18f165c1d9e98ca7df36ad6ec2a316a6d11b"
+    },
+    "Switch:SW_SPST": {
+      "sourceId": "Switch:SW_SPST",
+      "unit": 1,
+      "svg": "/kicad/svg/Switch--SW_SPST.svg",
+      "stockSvg": "/kicad/stock/Switch--SW_SPST.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        13.1064,
+        2.7432
+      ],
+      "origin": [
+        6.5532,
+        2.0066
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "A",
+          "sourceX": -5.08,
+          "sourceY": 0.0,
+          "angle": 0.0,
+          "length": 2.54,
+          "x": 1.4732,
+          "y": 2.0066,
+          "bodyX": 4.0132,
+          "bodyY": 2.0066
+        },
+        {
+          "number": "2",
+          "name": "B",
+          "sourceX": 5.08,
+          "sourceY": 0.0,
+          "angle": 180.0,
+          "length": 2.54,
+          "x": 11.6332,
+          "y": 2.0066,
+          "bodyX": 9.0932,
+          "bodyY": 2.0066
+        }
+      ],
+      "sha256": "97d90f891dd908664100c560c4626e7b79e61ec68e1da78e79baff7926ac39af",
+      "stockSha256": "d91828bc3c2852369ea212fa8c6edf3a8d5e7762989e1d7909126cac3160b7e9",
+      "sourceFile": "source/Switch.kicad_sym",
+      "sourceSha256": "a93607f7bb68bce50996f458d7be86e1e187ac661877548a5119f8b890748fef"
+    }
+  }
+}

@@ -13,7 +13,7 @@ The primary schematic editor and live solver are the self-hosted [CircuitJS1](ht
 | `@xyflow/react` | 12.11.6 | MIT | [xyflow/xyflow](https://github.com/xyflow/xyflow) |
 | `@tisoap/react-flow-smart-edge` | 5.0.0 | MIT | [Tisoap/react-flow-smart-edge](https://github.com/Tisoap/react-flow-smart-edge) |
 | `@spice-ts/core` | 0.3.0 | MIT | [mfiumara/spice-ts](https://github.com/mfiumara/spice-ts) |
-| `eecircuit-engine` | 1.7.0 | MIT package wrapper; embedded artifacts have separate provenance considerations | [eelab-dev/EEcircuit-engine](https://github.com/eelab-dev/EEcircuit-engine) |
+| `eecircuit-engine` | 1.8.0+anacode.1 | MIT wrapper; ngspice BSD/LGPL and Berkeley BSIM conditions apply to embedded components | [eelab-dev/EEcircuit-engine](https://github.com/eelab-dev/EEcircuit-engine) |
 | `react` / `react-dom` | 19.2.8 | MIT | [facebook/react](https://github.com/facebook/react) |
 | `drizzle-orm` | 0.45.2 | Apache-2.0 | [drizzle-team/drizzle-orm](https://github.com/drizzle-team/drizzle-orm) |
 | `lucide-react` | 1.34.0 | ISC | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) |
@@ -29,13 +29,13 @@ Build, test, lint, TypeScript, Vite, Wrangler, Cloudflare, Drizzle Kit, Tailwind
 
 ## EEcircuit Engine and ngspice
 
-AnaCode uses `eecircuit-engine@1.7.0` as the browser numerical simulator wrapper. Its installed npm distribution contains a top-level MIT license for the EEcircuit Engine package and also contains a compiled ngspice WebAssembly payload plus bundled model-card text.
+AnaCode installs `eecircuit-engine@1.8.0+anacode.1` from `vendor/eecircuit-engine`. This local package retains the upstream 1.8.0 API and builds ngspice 45.2 from pinned source with the upstream browser integration. The version's build metadata identifies this local build; it is not a separately published upstream release.
 
-AnaCode currently exposes only the package's `modelcard.CMOS90` include. Its `N90` and `P90` BSIM4 entries are generic benchmark models rather than a foundry PDK or silicon-signoff model.
+The sole bundled model library is `modelcard.CMOS90`. Its `N90` and `P90` entries correspond to the University of California BSIM4 4.8.1 benchmark cards, with the original wrapper's documented naming and formatting adaptations. They are generic benchmark models rather than a foundry PDK or silicon-signoff model. Unused model libraries from the registry package are omitted.
 
-The exact installed wrapper and WebAssembly hashes, npm integrity, runtime banner, and source-candidate investigation are recorded in [docs/simulator-artifact-manifest.json](docs/simulator-artifact-manifest.json). The corresponding release-provenance analysis is maintained in [docs/simulator-provenance.md](docs/simulator-provenance.md).
+Exact runtime, WebAssembly, model and corresponding-source hashes are recorded in [docs/simulator-artifact-manifest.json](docs/simulator-artifact-manifest.json). The source-build evidence and release checks are maintained in [docs/simulator-provenance.md](docs/simulator-provenance.md).
 
-The wrapper's MIT license does not by itself establish the license or exact-source correspondence of every embedded ngspice/model artifact. The current provenance record therefore remains separate from the root AnaCode MIT license.
+The wrapper's MIT license is separate from ngspice's BSD and LGPL components, including KLU and numparam, and the Berkeley BSIM conditions. Complete license texts, source archives, modifications, build/relinking instructions and compiler records are distributed in [public/simulator/NOTICE.html](public/simulator/NOTICE.html), served at `/simulator/NOTICE.html`. Keep those materials with every hosted runtime. The root AnaCode MIT license does not supersede their conditions or restrict modification and debugging of the LGPL components.
 
 Relevant upstream references include:
 
@@ -44,6 +44,14 @@ Relevant upstream references include:
 - [ngspice project](https://ngspice.sourceforge.io/)
 - [ngspice COPYING](https://github.com/ngspice/ngspice/blob/master/COPYING)
 - [ngspice developer licensing summary](https://ngspice.sourceforge.io/devel.html)
+
+## KiCad symbol artwork
+
+AnaCode includes 21 symbol graphics exported with the official KiCad 9.0.9 CLI from [KiCad Libraries](https://gitlab.com/kicad/libraries/kicad-symbols), release 9.0.9, commit `ad36cd14bcd1b1cd0484f629ccdd3481366f74f3`. Attribution belongs to the KiCad community. The redistributed source collection and derived SVGs retain **CC-BY-SA 4.0 with the KiCad library exception**; see [public/kicad/LICENSE.md](public/kicad/LICENSE.md). The root MIT license does not relicense these assets.
+
+The display variants hide reference/value fields and non-semantic pin labels; a temporary coordinate marker is removed after native export and SVG title timestamps are normalized. Original exports, unmodified library inputs, per-file hashes and pin coordinates accompany the collection. [KiCad credits](public/kicad/NOTICE.html), served at `/kicad/NOTICE.html`, links all 21 symbols and their sources. [docs/kicad-symbols.md](docs/kicad-symbols.md) records the reproducible export and verification evidence.
+
+These assets supply presentation only. The `Amplifier_Operational:LM2904` unit-1 graphic does not make the simulated amplifier an LM2904 model, and the symbol artwork does not replace CircuitJS's solver or component models.
 
 ## Analog Canvas reference
 

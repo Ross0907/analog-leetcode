@@ -3,7 +3,7 @@ name: Build simulator from pinned source
 on:
   workflow_dispatch:
   push:
-    branches: [fix/dependency-upgrades-ci]
+    branches: [main]
     paths:
       - .github/workflows/build-simulator.yml
       - scripts/*simulator*source.mjs

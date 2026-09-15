@@ -1,0 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Presentation only; native menu commands and keyboard behavior are unchanged. */
+.gwt-MenuBar-horizontal,.gwt-MenuBar-vertical,.gwt-MenuBar-horizontal>table{background:#191b20!important;border-color:#353840!important;color:#d7dbe2!important}
+.gwt-MenuBar .gwt-MenuItem{color:#d7dbe2!important;font-family:Arial,sans-serif;font-weight:400!important}
+.gwt-MenuBar .gwt-MenuItem-selected,.gwt-MenuBar-vertical .subMenuIcon-selected{background:#30353d!important;color:#fff!important}
+.gwt-MenuBar .gwt-MenuItem-disabled{color:#7a828d!important}
+.gwt-MenuBarPopup [class*="menuPopup"]{background-image:none!important;background-color:#191b20!important;border-color:#353840!important}
+.gwt-MenuBar-vertical .menuSeparatorInner{border-color:#373c45!important}
+.toptriggerlabel{color:#d7dbe2}

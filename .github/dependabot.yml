@@ -5,6 +5,37 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    groups:
+      # React, its server renderer, and the framework must be reviewed together.
+      # Include both dependency types: the server renderer and types are dev dependencies.
+      react-framework:
+        patterns:
+          - react
+          - react-dom
+          - react-server-dom-webpack
+          - "@types/react"
+          - "@types/react-dom"
+          - "@vitejs/plugin-react"
+          - "@vitejs/plugin-rsc"
+          - vinext
+          - vite
+      # The Vite plugin requires a matching Wrangler and Workers types release.
+      cloudflare:
+        patterns:
+          - "@cloudflare/*"
+          - wrangler
+          - miniflare
+          - workerd
+      lint:
+        patterns:
+          - eslint
+          - "@eslint/*"
+          - "@eslint-react/*"
+          - "eslint-plugin-*"
+          - "@next/eslint-plugin-next"
+          - typescript-eslint
+          - "@typescript-eslint/*"
+          - globals
 
   - package-ecosystem: github-actions
     directory: "/"

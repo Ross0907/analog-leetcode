@@ -1,72 +1,56 @@
-# Browser simulator provenance and release gate
+# Browser simulator provenance and release verification
 
-## Decision
+## Current build
 
-**Status: STOP-SHIP for any external hosted deployment—public or access-controlled—or other redistribution of the current browser bundle.**
+AnaCode now carries a source-built `eecircuit-engine@1.8.0+anacode.1` package under `vendor/eecircuit-engine`. It retains the upstream EEcircuit public API and ngspice 45.2 numerical engine. The build removes unused model libraries and retains the exact CMOS90 benchmark data already used by the application.
 
-AnaCode currently imports `eecircuit-engine@1.7.0`. The package's JavaScript wrapper carries an MIT license, but its compiled distribution also contains an ngspice WebAssembly artifact and embedded model-card text. AnaCode now records and automatically verifies the exact installed wrapper and WebAssembly hashes, npm integrity, runtime banner, and narrowed source candidates in [`simulator-artifact-manifest.json`](simulator-artifact-manifest.json). The remaining gap is an immutable upstream record that maps those bytes to the exact corresponding ngspice source revision, patch set, complete toolchain/container inputs, and complete model source/license inventory.
+**Status: source build, corresponding-source distribution and release checks verified on 2026-09-16.** The artifact manifest records `source-built-with-corresponding-source` with no pending checks. The deploy-only command `node scripts/audit-simulator-provenance.mjs --release` verifies this record and the exact installed runtime/source artifacts.
 
-Do not interpret this document as a finding that redistribution is impossible. It records that AnaCode does not yet have enough release-specific evidence to make a responsible hosted-deployment or redistribution decision. A private or access-controlled URL is not an exception because it still delivers the bundle to another browser. No hosted deployment was created for this snapshot. Local development does not satisfy or waive third-party obligations, and this document is not legal advice.
+The source-build workflow completed successfully at [run 35021236427](https://github.com/Ross0907/analog-leetcode/actions/runs/35021236427), using workflow commit `4486962ffd3ce1b0fbda5db9d04a58c95709d3f8`. Its 18 numerical/pipeline tests passed, and the downloaded artifact passed the same tests locally. All 19 runtime and source-material files were checked against their recorded hashes before adoption.
 
-## Current evidence
+During adoption, the local package version was changed from a prerelease suffix to build metadata, `1.8.0+anacode.1`, to preserve compatibility with the structural parser's `^1.7.0` optional peer range. The package metadata and corresponding packaging recipe hashes were refreshed; the compiled runtime, WebAssembly and model bytes are unchanged. This version identifies a local build of the existing upstream 1.8.0 API.
 
-| Item | What is known | What is missing |
-|---|---|---|
-| npm wrapper | `eecircuit-engine` is pinned to `1.7.0`; its installed top-level license identifies the wrapper as MIT. | A wrapper license does not establish the license or source provenance of every embedded binary/model artifact. |
-| Numerical engine | Both installed JavaScript distributions contain the same 6,160,938-byte WebAssembly payload with SHA-256 `0cf0c69ff4428a5fbb4ada25b4fb35ec1e35c9d1bc00a2fa5e082ad18fa6a6fa`. Its runtime banner reports `ngspice-45.2+`, built `Tue Mar 24 02:02:56 UTC 2026`. | A cryptographically bound exact ngspice commit, complete applied patch set, configuration, compiler/toolchain digests, and reproducible source-to-byte mapping. |
-| Upstream build process | npm records wrapper Git head `0ef17a488b2540efe5b48f7dd4c45b8ae6f1b910`. Timestamp correlation narrows the likely ngspice tree to `2d3e032a3f0ad0fde15bdec1836a8b9072c75df5` (`ngspice-45.2-149-g2d3e032a3`) and emsdk to `56a2c6e3681497b04edfd0a7972e6d435b266114` / Emscripten `5.0.4`. | The upstream recipe cloned mutable default branches, used `emsdk install latest`, and started from `ubuntu:latest`; timestamp correlation is not proof that those candidates produced the shipped bytes, and the container/apt inputs are not pinned. |
-| ngspice licensing | The official ngspice `COPYING` file documents multiple code origins and license families within the distribution. | A component-by-component inventory for the exact configuration embedded here, plus confirmation of the notices, source availability, and any relinking or other obligations that apply to this release. |
-| CMOS model | AnaCode allowlists only `modelcard.CMOS90`, whose `N90`/`P90` entries are described as generic BSIM4 test models rather than a real process design kit. | Immutable source, authorship/provenance, modification history, and the applicable redistribution terms for the exact embedded text. |
-| Other embedded models | The package bundle contains model-card strings beyond the single name AnaCode allows at runtime. | A complete inventory and terms for all bytes shipped to the browser; runtime allowlisting does not remove unused material from the distributed bundle. |
+The installed-package audit passed after adoption: the lockfile selects the local package, all 19 runtime/source hashes match, the embedded WASM is valid and reports the expected banner, the complete mounted model inventory contains only CMOS90, and the engine runs the operating-point audit fixture. The complete npm dependency tree is valid with this build metadata version.
 
-Primary upstream references:
+Final verification used a clean npm installation and passed the production build, 81 unit tests, 7 rendered tests and all 3 asset audits. The complete managed-browser suite passed 24 tests with a fresh local D1 database, including native and ngspice captures with more than four probes, actual AC/DC analysis, arbitrary node probes and all 24 native starter circuits. All 13 simulator source and notice files are present in `dist/client/simulator/` and match their manifest hashes. The dependency audit reported zero findings at this check.
 
-- [EEcircuit engine repository](https://github.com/eelab-dev/EEcircuit-engine)
-- [EEcircuit browser-engine build recipe](https://github.com/eelab-dev/EEcircuit-engine/blob/main/Docker/run.sh)
-- [Official ngspice `COPYING`](https://github.com/ngspice/ngspice/blob/master/COPYING)
-- [ngspice developer licensing summary](https://ngspice.sourceforge.io/devel.html)
+## Exact inputs and output
 
-These links are discovery evidence only. Mutable pages must not replace archived source, hashes, and license texts for the exact release artifact.
+| Item | Evidence |
+|---|---|
+| EEcircuit wrapper | Official upstream commit `f4dab6458d3865a1db9766008480690d23410c3a`; original source archive SHA-256 `d7f6929395845d2d5872e9211c3c488e40d27bb01c7d180d602bd1ba23a7d076`. |
+| ngspice | Release 45.2 at source commit `724dc77b9153dc75eaec474b1f7a44f1fcf5f362`; exact source archive SHA-256 `c8ac1253c5812902d93cea421dbc0774007d631fa8762e626e056ee0da4af711`. |
+| Compiler | Emscripten 5.0.4, official Linux/amd64 image digest `sha256:61aa4ca6e3dcdf0cfce9c3018767a0698bdc0f7ff72ca5982a0536c5caff93f7`; actual compiler, installed build-package inventory and configuration log accompany the release. |
+| Compiled WASM | 6,132,643 bytes; SHA-256 `f4e0476e15eac8f03cbfd0a3278f71824720eb5b352f869a6d96959117c8dcf6`; banner `ngspice-45.2`, built `Tue Sep 15 20:43:49 UTC 2026`. |
+| CMOS90 | 13,040 bytes; SHA-256 `c959237c2f549bc46912743226a2489d397a6cd89602c9511c309dd9680d817a`; only mounted model payload. |
 
-`npm run audit:simulator` verifies the local package version/integrity, installed file sizes and hashes, identical embedded WebAssembly hashes, module validity, and the live version/build banner. It deliberately prints that this is drift detection rather than redistribution clearance.
+The build uses the upstream HICUM2 removal and asynchronous command-loop integration, represented by checked-in patch/build scripts. It does not replace ngspice equations or device algorithms. Archive hashes are checked before extraction, and the final embedded WASM is compared with the compiled output. Current exact files and hashes are in [simulator-artifact-manifest.json](simulator-artifact-manifest.json); build instructions are in [simulator-source-build.md](simulator-source-build.md).
 
-## Acceptable ways to clear the gate
+## Model correspondence
 
-Choose one of these paths and retain the completed evidence with the release:
+The official [BSIM4 4.8.1 benchmark archive](https://www.bsim.berkeley.edu/BSIM4/BSIM4_4.8.1_20170215.tar.gz), SHA-256 `1c76daa1edbcf9d929dc2a8c1c0597a42a6a4b2cb42e3a43c0c219b87846c607`, contains the original NMOS and PMOS benchmark cards. Preparation compares every normalized line with the application's model after applying only the original EEcircuit adaptations: N1/P1 renamed to N90/P90, whitespace normalization, and omission of the PMOS VERSION line. Those adaptations are documented in the corresponding wrapper source. The model parameters are unchanged from the previously tested package.
 
-### 1. Establish provenance for the existing artifact
+The [University of California BSIM use agreement](https://www.bsim.berkeley.edu/agreement-for-bsim-use/) permits modification and redistribution subject to its attribution, notice and charging conditions. The release preserves the source's copyright, author credits, conditions and disclaimer, and credits the University of California in its user-accessible notice. These are benchmark models, not a foundry PDK.
 
-Obtain and independently verify an upstream release record that identifies the exact ngspice source commit, every patch, build configuration, toolchain/container digest, and every embedded model source used for `eecircuit-engine@1.7.0`. Rebuild where practical and compare deterministic artifact hashes, or document and explain every reproducibility difference. Complete a release-specific license inventory and satisfy all required notices, source-access, offer, relinking, attribution, and model terms after qualified review.
+Unused PTM, FreePDK, SkyWater and GF180 imports, model mounts and model data are omitted from both the runtime and its corresponding wrapper source. In particular, the earlier unresolved redistribution evidence for the unused ASU PTM data no longer applies to the bytes in this source-built bundle.
 
-### 2. Replace or rebuild the browser engine
+## Source and notices delivered with the runtime
 
-Build from an explicitly selected immutable ngspice source commit with a repository-owned patch set and pinned toolchain, or adopt another simulator distribution that already provides complete verifiable provenance. Include only audited models with explicit terms. Record source and output hashes, preserve all applicable notices, provide corresponding source or other materials where required, generate an SBOM, and rerun functional, numerical, performance, and security tests before changing the stop-ship decision.
+`public/simulator/NOTICE.html` accompanies the runtime and links to:
 
-Merely copying a generic ngspice license file, pointing to a mutable upstream branch, reporting a runtime version string, or adding a source URL without proving correspondence to the shipped bytes does not clear the gate.
+- The exact ngspice source archive, corresponding modified wrapper/model source and original BSIM benchmark archive.
+- The checked-in preparation, patch, build and relinking scripts with locked npm inputs.
+- Ngspice's complete license inventory and license texts, the EEcircuit MIT license, the BSIM conditions, and Emscripten/system-library notices.
+- The actual compiler version, build-package inventory and ngspice configuration log.
 
-## Release evidence checklist
+Ngspice includes BSD code and LGPL components, including KLU and numparam. The source and scripts are supplied alongside the binary so recipients can modify and rebuild/relink the simulator. The root AnaCode MIT license does not supersede these component licenses. The release does not impose an additional restriction on modification for personal use or reverse engineering to debug such modifications.
 
-All boxes must be supported by reviewable artifacts for the exact production build:
+These materials address the source and notice omissions in the earlier registry-only artifact. Bit-identical rebuilds and immutable compiler-image references are engineering assurances; they are not independent obligations imposed by BSD/MIT licenses. License conditions still apply to their respective components.
 
-- [ ] Hash and archive the exact npm tarball or replacement simulator input.
-- [ ] Hash the emitted WebAssembly, JavaScript glue, worker bundle, and every embedded model payload.
-- [ ] Record the exact simulator source commit and archive its complete corresponding source tree.
-- [ ] Record every local/upstream patch and the order in which it was applied.
-- [ ] Pin the build image, Emscripten/compiler, linker, flags, configuration, and dependency versions by digest.
-- [ ] Inventory every compiled-in subsystem and determine its applicable license from the exact source tree.
-- [ ] Inventory every distributed model card, including material that AnaCode does not expose through its runtime allowlist.
-- [ ] Preserve required copyright notices and license texts in both the release artifact and a durable source location.
-- [ ] Provide source, build scripts, object/relinking material, or an offer where the reviewed obligations require them.
-- [ ] Generate and retain an SBOM tying the dependency, simulator, and model hashes to the AnaCode release.
-- [ ] Complete qualified license/compliance review and record the approver, date, scope, and decision.
-- [ ] Rerun AnaCode's circuit fixtures, numerical comparisons, malicious-input tests, worker timeout tests, production build, and browser QA against the final artifact.
-- [ ] Add a user-accessible third-party notice/source location and verify it is present in the deployed output.
-- [ ] Change this document's status only in a reviewed release commit that references the evidence above.
+## Release checks
 
-No generic notice or source offer is currently placed under `public/licenses/`: without the exact corresponding source and complete model inventory, such a file could falsely imply compliance. `THIRD_PARTY_NOTICES.md` and this gate must ship with any internal release review materials until the gate is resolved.
+Ordinary artifact verification accepts a source-built candidate and checks the exact local-package installation, all runtime/source file hashes, embedded WASM validity and banner, and the complete model inventory. The deploy-only `--release` check additionally requires `source-built-with-corresponding-source` and an empty `sourceTrace.pendingChecks` array.
 
-## Separate concerns
+Each new runtime candidate must pass the installed artifact audit, production build, complete unit checks, and actual browser-worker/multi-probe tests before its verified state is recorded. Keep the source/notice assets with every hosted release. A successful numeric comparison alone is insufficient to complete this verification. The current record verifies this simulator distribution; it does not establish that a hosted environment has been configured or deployed.
 
-- The future authoritative native ngspice service needs its own source, binary, model, sandbox, and license record. It does not automatically resolve the browser artifact.
-- Security isolation and license compliance are independent. A sandboxed artifact can still have incomplete provenance; a properly licensed artifact can still be unsafe to run on hostile input.
-- Analog Canvas is an aesthetic and interaction reference only. AnaCode does not bundle, frame, or execute its code or assets, so it is not part of this simulator provenance decision.
+The previous registry artifacts and their timestamp-derived source candidates are retained only as historical investigation in [simulator-registry-history.md](simulator-registry-history.md); they are not used to establish correspondence for the new source build.

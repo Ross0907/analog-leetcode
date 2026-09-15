@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = Number(process.env.ANACODE_E2E_PORT ?? "3000");
+if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("ANACODE_E2E_PORT must be a valid local port.");
+const baseURL = `http://localhost:${port}`;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   snapshotPathTemplate: "{testDir}/visual-baselines/{arg}{ext}",
@@ -9,15 +13,15 @@ export default defineConfig({
   workers: 1,
   reporter: "line",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
   webServer: process.env.ANACODE_E2E_EXTERNAL_SERVER === "1" ? undefined : {
-    command: "npm run dev",
-    url: "http://localhost:3000/circuitjs/circuitjs.html",
-    reuseExistingServer: true,
+    command: "node scripts/start-e2e-server.mjs",
+    url: `${baseURL}/circuitjs/circuitjs.html`,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
   projects: [

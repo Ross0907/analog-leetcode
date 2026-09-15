@@ -75,7 +75,12 @@ test('grading is prepared from native electrical values and connectivity', async
   await page.getByRole('button', { name: 'Prepare SPICE & grading', exact: true }).click();
   await expect(page.getByRole('tab', { name: 'SPICE & grading' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('Prepared from the current CircuitJS electrical graph and component values.', { exact: false })).toBeVisible();
+  const gradeResponse = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/grade' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Check fixed topology' }).click();
+  const response = await gradeResponse;
+  const result = await response.json();
+  expect(response.status(), `Grading API returned ${response.status()}: ${JSON.stringify(result)}`).toBe(200);
+  expect(result.passed).toBe(true);
   await expect(page.getByText('Fixed-topology check passed', { exact: true })).toBeVisible({ timeout: 20_000 });
 });
 

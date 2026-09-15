@@ -668,6 +668,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .challenge-modebar { height: 46px; min-height: 46px; padding-inline: 10px; background: var(--surface-soft); }
 .challenge-workbench-panel { min-height: 0; flex: 1; overflow: hidden; }
 .challenge-workbench-panel[hidden] { display: none; }
+.challenge-schematic-panel { overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .challenge-instruments-panel { position: relative; overflow: auto; overscroll-behavior: contain; contain: layout paint; background: #0d0e10; }
 .challenge-schematic-panel > .textbook-editor { height: 100%; }
 
@@ -852,10 +853,17 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 @media (max-width: 840px) {
   html:has(.challenge-page), body:has(.challenge-page) { overflow: auto; overscroll-behavior: auto; }
   .challenge-page { height: auto; min-height: 100dvh; overflow: visible; }
-  .challenge-workspace { min-height: 980px; flex: none; grid-template-columns: 1fr; grid-template-rows: minmax(330px, 42dvh) minmax(650px, 1fr); overflow: visible; }
+  .challenge-workspace { min-height: 980px; flex: none; grid-template-columns: 1fr; grid-template-rows: auto auto; overflow: visible; }
+  .challenge-workspace[data-problem-mode="compact"] { grid-template-rows: auto auto; }
+  .challenge-workspace[data-problem-mode="collapsed"] { grid-template-rows: auto; }
+  .problem-pane-container, .brief-pane { overflow: visible; }
+  .problem-pane-container > .brief-pane { height: auto; }
+  .brief-scroll { flex: none; overflow: visible; }
   .challenge-splitter { display: none; }
   .brief-pane { border-bottom: 1px solid var(--line); }
   .simulator-pane { overflow: visible; }
+  .challenge-circuit-workbench { height: auto; overflow: visible; }
+  .challenge-workbench-panel { flex: none; overflow: visible; }
   .professional-schematic .editor-body { grid-template-columns: 165px minmax(520px, 1fr); overflow-x: auto; }
 }
 

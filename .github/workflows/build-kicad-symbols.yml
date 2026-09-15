@@ -2,7 +2,7 @@ name: Export official KiCad symbols
 
 on:
   push:
-    branches: [fix/dependency-upgrades-ci]
+    branches: [main]
     paths:
       - .github/workflows/build-kicad-symbols.yml
       - scripts/build-kicad-symbols.py
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install pinned official KiCad exporter
         shell: bash
         run: |
@@ -37,7 +37,7 @@ jobs:
           KICAD_CONFIG_HOME: ${{ runner.temp }}/kicad-config
           PYTHONPATH: ${{ runner.temp }}/kicad-python
         run: xvfb-run --auto-servernum python3 scripts/build-kicad-symbols.py
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: official-kicad-symbols
           path: public/kicad

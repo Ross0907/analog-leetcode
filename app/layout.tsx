@@ -54,6 +54,8 @@ export default function RootLayout({
       >
         <script
           suppressHydrationWarning
+          // This is a fixed local bootstrap script with no interpolated content.
+          // eslint-disable-next-line @eslint-react/dom-no-dangerously-set-innerhtml
           dangerouslySetInnerHTML={{
             __html: `(function(){window.addEventListener("error",function(e){if(e.message==="ResizeObserver loop completed with undelivered notifications."||e.message==="ResizeObserver loop limit exceeded"){e.preventDefault();e.stopImmediatePropagation()}});try{var s=localStorage.getItem("anacode-theme");var t=s==="light"||s==="dark"?s:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="light"}})();`,
           }}

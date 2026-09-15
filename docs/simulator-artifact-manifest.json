@@ -1,51 +1,126 @@
 {
   "schemaVersion": 1,
-  "auditedAt": "2026-08-30",
-  "releaseDecision": "evidence-only-not-redistribution-clearance",
+  "auditedAt": "2026-09-16",
+  "releaseDecision": "source-built-with-corresponding-source",
   "package": {
     "name": "eecircuit-engine",
-    "version": "1.7.0",
-    "npmIntegrity": "sha512-ZDpr/w/H81uCH3n2vjf0vohxOQqQ4NCsvaXkoYwcH+LCxIGKpBdvAIvGN5IdozW6AFJ8tojquKvDya3337yjSQ==",
-    "registryGitHead": "0ef17a488b2540efe5b48f7dd4c45b8ae6f1b910",
-    "repository": "https://github.com/eelab-dev/EEcircuit-engine"
+    "version": "1.8.0+anacode.1",
+    "installSpecifier": "file:vendor/eecircuit-engine",
+    "repository": "https://github.com/eelab-dev/EEcircuit-engine",
+    "upstreamVersion": "1.8.0",
+    "registryGitHead": "f4dab6458d3865a1db9766008480690d23410c3a"
   },
   "files": {
-    "node_modules/eecircuit-engine/dist/eecircuit-engine.mjs": {
-      "bytes": 20424332,
-      "sha256": "c7c31d324253891852b6746b51622dd963bce2e3c3dbda2ab0b230dabb73b809"
-    },
-    "node_modules/eecircuit-engine/dist/eecircuit-engine.umd.js": {
-      "bytes": 20263087,
-      "sha256": "4b98a43463580e1a71f11891eaee5ed330657afcfbd17ed99f10f7cafd12b47b"
-    },
     "node_modules/eecircuit-engine/LICENSE": {
       "bytes": 1066,
       "sha256": "05b5629164ed0e846fd9f3ee34b64aced9d1ffef01e6fc30c39c8c68b9fea4ed"
     },
+    "node_modules/eecircuit-engine/dist/eecircuit-engine.mjs": {
+      "bytes": 16442029,
+      "sha256": "75b27f002c24f3f6d0618eb33e58337b9b9de4feafa3bc93df3ff64371607131"
+    },
+    "node_modules/eecircuit-engine/dist/main.d.ts": {
+      "bytes": 248,
+      "sha256": "a8d53a53745eab0163f2403863e677e6c59cf53ff38fca551dffdddec3f91bcb"
+    },
+    "node_modules/eecircuit-engine/dist/readOutput.d.ts": {
+      "bytes": 1205,
+      "sha256": "2e2c29a2daee5df4e1834efd633212fb145d74ee1334e4a2e62007501dc55908"
+    },
+    "node_modules/eecircuit-engine/dist/simulationLink.d.ts": {
+      "bytes": 1452,
+      "sha256": "66ca120fb3c56b6415765ee1a2c2213894df74376881eff4116f9f35b28d310f"
+    },
     "node_modules/eecircuit-engine/package.json": {
-      "bytes": 1292,
-      "sha256": "e052a98259eb877c7e808cdf9ec776df047a7b1e66d32e2da21b42c90e9dee20"
+      "bytes": 474,
+      "sha256": "ead8d0e12213096fc6f047fa4d473362fafefdfce140702f7511a6ae35c74d8f"
+    },
+    "public/simulator/BSIM-USE.txt": {
+      "bytes": 4680,
+      "sha256": "6e041590fe1c9906341abd90619777bcfeef5b9958e157968af0ea1bae6d2822"
+    },
+    "public/simulator/EECIRCUIT-LICENSE.txt": {
+      "bytes": 1066,
+      "sha256": "05b5629164ed0e846fd9f3ee34b64aced9d1ffef01e6fc30c39c8c68b9fea4ed"
+    },
+    "public/simulator/EMSCRIPTEN-LICENSE.txt": {
+      "bytes": 5093,
+      "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86"
+    },
+    "public/simulator/NGSPICE-COPYING.txt": {
+      "bytes": 45714,
+      "sha256": "53e838832e7c00598bb86602a99f9644ba2060e19be209b52e60adb2c8eb6f77"
+    },
+    "public/simulator/NOTICE.html": {
+      "bytes": 2364,
+      "sha256": "2489700efd64deebf3f09272e106a83d3ef165f0f31c71cb0eede0e25ceea3d5"
+    },
+    "public/simulator/bsim4-benchmark-source.tar.gz": {
+      "bytes": 4283308,
+      "sha256": "1c76daa1edbcf9d929dc2a8c1c0597a42a6a4b2cb42e3a43c0c219b87846c607"
+    },
+    "public/simulator/build-packages.txt": {
+      "bytes": 7298,
+      "sha256": "d05c53c2af6e3312cff3d72b16b574321f7cbf38f7c34f11b59c9253eaa3a809"
+    },
+    "public/simulator/build-scripts.zip": {
+      "bytes": 79951,
+      "sha256": "35c023518d1a73e2cf4b4d9129f0188752918fe5b83dd0594c052828b639d9aa"
+    },
+    "public/simulator/emscripten-system-licenses.tar.gz": {
+      "bytes": 9785,
+      "sha256": "a597bb9098770950718711a8c5ced445fd8169ea0e70734f3bcfa0d8b7c49d83"
+    },
+    "public/simulator/emscripten-version.txt": {
+      "bytes": 330,
+      "sha256": "7ab6d5e58a386e143e994545042cece661efbf3b038088cf3bb8c6410f984cb2"
+    },
+    "public/simulator/ngspice-config.log": {
+      "bytes": 185631,
+      "sha256": "c17c7c792739b5ab87120d1280439be64c8026d55512432ddc319ff139ed2046"
+    },
+    "public/simulator/ngspice-source.zip": {
+      "bytes": 12920854,
+      "sha256": "c8ac1253c5812902d93cea421dbc0774007d631fa8762e626e056ee0da4af711"
+    },
+    "public/simulator/wrapper-source.zip": {
+      "bytes": 9461,
+      "sha256": "c87a5002411a941c0e34d56b4d05b2748caf9612eb18d74f273ccbe787122e9f"
     }
   },
   "embeddedWasm": {
-    "bytes": 6160938,
-    "sha256": "0cf0c69ff4428a5fbb4ada25b4fb35ec1e35c9d1bc00a2fa5e082ad18fa6a6fa",
+    "bytes": 6132643,
+    "sha256": "f4e0476e15eac8f03cbfd0a3278f71824720eb5b352f869a6d96959117c8dcf6",
     "expectedIn": [
-      "node_modules/eecircuit-engine/dist/eecircuit-engine.mjs",
-      "node_modules/eecircuit-engine/dist/eecircuit-engine.umd.js"
+      "node_modules/eecircuit-engine/dist/eecircuit-engine.mjs"
     ],
     "runtimeBanner": {
-      "version": "ngspice-45.2+",
-      "buildTimestamp": "Tue Mar 24 02:02:56 UTC 2026"
+      "version": "ngspice-45.2",
+      "buildTimestamp": "Tue Sep 15 20:43:49 UTC 2026"
+    }
+  },
+  "embeddedModelFiles": {
+    "modelcard.CMOS90": {
+      "bytes": 13040,
+      "sha256": "c959237c2f549bc46912743226a2489d397a6cd89602c9511c309dd9680d817a"
     }
   },
   "sourceTrace": {
-    "wrapperCommit": "0ef17a488b2540efe5b48f7dd4c45b8ae6f1b910",
-    "ngspiceCandidateCommit": "2d3e032a3f0ad0fde15bdec1836a8b9072c75df5",
-    "ngspiceCandidateDescription": "ngspice-45.2-149-g2d3e032a3",
-    "emsdkCandidateCommit": "56a2c6e3681497b04edfd0a7972e6d435b266114",
-    "emscriptenCandidateVersion": "5.0.4",
-    "confidence": "timestamp-correlated-not-cryptographically-bound",
-    "note": "The upstream build cloned mutable default branches and installed the mutable emsdk latest alias. These candidates narrow the investigation but do not prove corresponding source for the shipped bytes."
+    "wrapperCommit": "f4dab6458d3865a1db9766008480690d23410c3a",
+    "ngspiceCommit": "724dc77b9153dc75eaec474b1f7a44f1fcf5f362",
+    "compilerImage": "emscripten/emsdk:5.0.4@sha256:61aa4ca6e3dcdf0cfce9c3018767a0698bdc0f7ff72ca5982a0536c5caff93f7",
+    "bsimArchiveSha256": "1c76daa1edbcf9d929dc2a8c1c0597a42a6a4b2cb42e3a43c0c219b87846c607",
+    "workflowCommit": "4486962ffd3ce1b0fbda5db9d04a58c95709d3f8",
+    "confidence": "built-from-verified-immutable-source-inputs",
+    "pendingChecks": [],
+    "releaseVerification": {
+      "verifiedAt": "2026-09-16",
+      "cleanInstall": "npm ci passed; npm ls --all valid; npm audit reported zero findings",
+      "productionBuild": "Passed with all 13 simulator source and notice files present in dist/client and matching manifest hashes",
+      "unitTests": "81 passed",
+      "renderedTests": "7 passed",
+      "assetAudits": "All 3 passed",
+      "browserTests": "24 passed against managed preview with fresh local D1, including native and ngspice multi-probe instruments, AC/DC analysis, arbitrary node probes and all 24 native starter circuits"
+    }
   }
 }

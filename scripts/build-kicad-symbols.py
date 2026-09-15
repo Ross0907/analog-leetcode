@@ -140,6 +140,25 @@ def normalize_svg(path, source_id, calibration=False):
     return viewbox, units_per_mm, origin
 
 
+def verify_pin_endpoints(svg, pins, units):
+    """Confirm metadata anchors occur on native exported geometry, not guessed bounds."""
+    root = ET.fromstring(svg.read_bytes())
+    points = []
+    number = r"[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?"
+    for node in root.iter():
+        kind = node.tag.split("}")[-1]
+        if kind == "path":
+            points.extend((float(x), float(y)) for x, y in re.findall(rf"[ML]\s*({number})[\s,]+({number})", node.attrib.get("d", "")))
+        elif kind in ["polyline", "polygon"]:
+            coordinates = [float(value) for value in re.findall(number, node.attrib.get("points", ""))]
+            points.extend(zip(coordinates[::2], coordinates[1::2]))
+        elif kind == "line":
+            points.extend([(float(node.attrib["x1"]), float(node.attrib["y1"])), (float(node.attrib["x2"]), float(node.attrib["y2"]))])
+    for pin in pins:
+        if not any(math.hypot(x - pin["x"], y - pin["y"]) <= 0.002 * units for x, y in points):
+            raise RuntimeError(f"Pin {pin['number']} does not meet native exported artwork in {svg.name}")
+
+
 def build(cli, prepare_only=False):
     libraries = {}
     for library in SYMBOLS:
@@ -168,8 +187,12 @@ def build(cli, prepare_only=False):
     (OUTPUT / "svg").mkdir(parents=True, exist_ok=True)
     (OUTPUT / "stock").mkdir(parents=True, exist_ok=True)
     result = {}
-    with tempfile.TemporaryDirectory(prefix="anacode-kicad-") as temporary:
+    cache = ROOT / ".tmp" / "kicad-export"
+    cache.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="export-", dir=cache) as temporary:
         work = Path(temporary)
+        if work.resolve().parent != cache.resolve():
+            raise RuntimeError("Temporary export directory escaped the project build cache")
         for library, name, symbol, pins in selected:
             source_id = f"{library}:{name}"
             filename = f"{library}--{name}.svg"
@@ -197,6 +220,7 @@ def build(cli, prepare_only=False):
                 pin["bodyY"] = round(pin["y"] - pin["length"] * math.sin(math.radians(pin["angle"])) * units, 6)
                 if not (-0.01 <= pin["x"] <= viewbox[2] + 0.01 and -0.01 <= pin["y"] <= viewbox[3] + 0.01):
                     raise RuntimeError(f"Pin outside exported viewBox: {source_id} {pin}")
+            verify_pin_endpoints(body, pins, units)
             result[source_id] = {"sourceId": source_id, "unit": 1, "svg": f"/kicad/svg/{filename}", "stockSvg": f"/kicad/stock/{filename}",
                                  "viewBox": viewbox, "origin": origin, "unitsPerMm": units, "pins": pins,
                                  "sha256": digest(body.read_bytes()), "stockSha256": digest(stock.read_bytes()),
