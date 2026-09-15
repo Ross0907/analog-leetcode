@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AnaCode — analog circuit design practice with schematic editing, browser simulation, instrumentation, and server-side grading.">
+  <meta name="color-scheme" content="dark light">
+  <title>AnaCode — Analog Circuit Design Practice</title>
+  <style>
+    :root { color-scheme: dark; --bg:#080b10; --panel:#10151d; --line:#252d39; --text:#f5f7fa; --muted:#a9b2c0; --accent:#7dd3fc; --accent2:#a7f3d0; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.65 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:inherit; }
+    .wrap { width:min(1120px,calc(100% - 36px)); margin:auto; }
+    header { padding:72px 0 34px; text-align:center; }
+    .eyebrow { color:var(--accent); font-size:.82rem; letter-spacing:.16em; text-transform:uppercase; font-weight:700; }
+    h1 { font-size:clamp(3rem,8vw,6.4rem); line-height:.93; margin:.18em 0 .26em; letter-spacing:-.055em; }
+    .lead { max-width:760px; margin:0 auto; color:var(--muted); font-size:clamp(1.05rem,2vw,1.28rem); }
+    .buttons { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:28px 0 8px; }
+    .btn { text-decoration:none; border:1px solid var(--line); border-radius:10px; padding:11px 17px; font-weight:650; background:var(--panel); }
+    .btn.primary { background:var(--text); color:#080b10; border-color:var(--text); }
+    .hero { margin:32px auto 64px; border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#fff; box-shadow:0 24px 70px rgba(0,0,0,.34); }
+    .hero img { width:100%; display:block; }
+    section { padding:30px 0 42px; }
+    h2 { margin:0 0 16px; font-size:1.7rem; letter-spacing:-.025em; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .card { padding:20px; border:1px solid var(--line); border-radius:14px; background:var(--panel); }
+    .card h3 { margin:0 0 8px; font-size:1rem; }
+    .card p { margin:0; color:var(--muted); }
+    .architecture { white-space:pre-wrap; overflow:auto; border:1px solid var(--line); border-radius:14px; background:#05070a; padding:18px; color:#d7dee8; font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    .note { border-left:3px solid var(--accent2); padding:12px 16px; background:var(--panel); color:var(--muted); }
+    footer { border-top:1px solid var(--line); margin-top:30px; padding:28px 0 46px; color:var(--muted); font-size:.92rem; }
+    @media (max-width:780px) { .grid { grid-template-columns:1fr; } header { padding-top:52px; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="eyebrow">Analog circuit design practice</div>
+      <h1>AnaCode</h1>
+      <p class="lead">A schematic-first learning platform for building, simulating, measuring, and verifying analog circuits.</p>
+      <div class="buttons">
+        <a class="btn primary" href="https://anacode.ross0907.workers.dev">Open full application</a>
+        <a class="btn" href="https://github.com/Ross0907/analog-leetcode">Source on GitHub</a>
+      </div>
+    </header>
+
+    <div class="hero"><img src="anacode-hero.png" alt="AnaCode analog circuit design interface"></div>
+
+    <section>
+      <h2>What it does</h2>
+      <div class="grid">
+        <article class="card"><h3>Schematic editor</h3><p>Orthogonal wiring, automatic junctions, component placement, labels, probes, undo/redo, project import/export, and circuit-aware interaction.</p></article>
+        <article class="card"><h3>Browser simulation</h3><p>ngspice-WASM simulation through a Web Worker with operating-point, AC, transient, and DC-sweep workflows.</p></article>
+        <article class="card"><h3>Instrumentation</h3><p>Oscilloscope, curve-tracer, and Bode magnitude/phase views with multiple channels, cursors, triggering, and measurements.</p></article>
+        <article class="card"><h3>Structured circuit model</h3><p>Versioned validated circuit documents are normalized into an electrical IR before SPICE generation or grading.</p></article>
+        <article class="card"><h3>Server-side grading</h3><p>Selected challenges revalidate topology and stimulus on the server instead of trusting browser-generated answers.</p></article>
+        <article class="card"><h3>Cloudflare runtime</h3><p>The complete application runs on Cloudflare Workers with D1 persistence and a rate-limited grading API.</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Architecture</h2>
+      <div class="architecture">visual schematic → validated CircuitDocument → CircuitIR → generated SPICE deck → browser ngspice-WASM → instruments
+
+validated CircuitDocument → grading API → topology/stimulus verification → engineering checks → D1 persistence</div>
+    </section>
+
+    <section>
+      <h2>Deployments</h2>
+      <p class="note"><strong>This GitHub Pages site is the static project page.</strong> The complete interactive application, dynamic routes, grading API, secrets, and D1 database run at <a href="https://anacode.ross0907.workers.dev">anacode.ross0907.workers.dev</a>. GitHub Pages intentionally remains a static mirror/showcase.</p>
+    </section>
+
+    <section>
+      <h2>Credits</h2>
+      <p>Built with React, Vinext, Vite, Cloudflare Workers and D1, Drizzle ORM, Zod, React Flow, spice-ts, EEcircuit Engine and ngspice-WASM. Analog Canvas is credited as a visual and interaction reference; its code is not bundled in AnaCode.</p>
+    </section>
+  </main>
+
+  <footer><div class="wrap">AnaCode · MIT-licensed project code · Third-party components retain their respective licenses and notices.</div></footer>
+</body>
+</html>
