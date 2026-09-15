@@ -1,5 +1,8 @@
 # AnaCode
 
+<p align="center">
+  <img src="docs/anacode-hero.png" alt="AnaCode analog circuit design platform" width="100%">
+</p>
 AnaCode is an analog-first circuit-design practice platform. A learner receives an engineering specification, builds a schematic, inspects simulated behavior, and submits a constrained design for server-side verification. The product direction is deliberately closer to a circuit-design workbench than a multiple-choice quiz.
 
 This repository is an early, working vertical slice—not a claim of production certification or market exclusivity. Related circuit-learning products exist, and no software can honestly be described as “unexploitable.” The current implementation establishes the practice loop and its trust boundaries; the authoritative native-SPICE judge described in the roadmap still has to be built and independently reviewed.
