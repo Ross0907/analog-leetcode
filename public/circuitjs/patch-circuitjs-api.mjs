@@ -13,6 +13,13 @@ function replace(file, before, after) {
   if (!source.includes(before)) throw new Error(`Upstream API changed: ${file}`);
   writeFileSync(path, source.replace(before, after));
 }
+function replaceEvery(file, before, after, expected) {
+  const path = join(client, file);
+  const source = readFileSync(path, 'utf8');
+  const parts = source.split(before);
+  if (parts.length - 1 !== expected) throw new Error(`Upstream presentation changed: ${file}`);
+  writeFileSync(path, parts.join(after));
+}
 replace('CircuitElm.java', '    native void addJSMethods() /*-{', `    // AnaCode integration: expose native terminal positions and solved node identity.
     int getPostXJS(int n) { return getPost(n).x; }
     int getPostYJS(int n) { return getPost(n).y; }
@@ -58,25 +65,31 @@ replace('MouseManager.java', '    \tif (circuitChanged) {\n    \t    sim.needAna
 
 // The native draw still computes its original hit boxes and value labels. Only
 // supported symbol geometry is replaced, using SVGs exported by KiCad itself.
-// Unsupported elements, voltage/power display and missing assets use native draw.
+// Unsupported elements, printing, voltage/power display and missing assets use native draw.
 replace('CircuitElm.java', '    native void addJSMethods() /*-{', `    boolean anacodeSymbolApiReady;
     void drawWithKiCad(Graphics g) {
-        if (!anacodeSymbolApiReady) { addJSMethods(); anacodeSymbolApiReady = true; }
-        if (app.menus.voltsCheckItem.getState() || app.menus.powerCheckItem.getState() || !hasKiCadSymbol()) {
-            draw(g);
-            return;
+        boolean previousDrawing = g.anacodeSchematicDrawing;
+        g.anacodeSchematicDrawing = true;
+        try {
+            if (!anacodeSymbolApiReady) { addJSMethods(); anacodeSymbolApiReady = true; }
+            if (app.menus.printableCheckItem.getState() || app.menus.voltsCheckItem.getState() || app.menus.powerCheckItem.getState() || !hasKiCadSymbol()) {
+                draw(g);
+                return;
+            }
+            double opacity = g.context.getGlobalAlpha();
+            g.anacodeSymbolOpacity = opacity;
+            g.anacodeSymbolText = !(this instanceof OpAmpElm);
+            g.context.setGlobalAlpha(0);
+            try { draw(g); }
+            finally {
+                g.context.setGlobalAlpha(opacity);
+                g.anacodeSymbolText = false;
+            }
+            if (!paintKiCadSymbol(g.context, needsHighlight() || isCreating())) draw(g);
+            drawPosts(g);
+        } finally {
+            g.anacodeSchematicDrawing = previousDrawing;
         }
-        double opacity = g.context.getGlobalAlpha();
-        g.anacodeSymbolOpacity = opacity;
-        g.anacodeSymbolText = !(this instanceof OpAmpElm);
-        g.context.setGlobalAlpha(0);
-        try { draw(g); }
-        finally {
-            g.context.setGlobalAlpha(opacity);
-            g.anacodeSymbolText = false;
-        }
-        if (!paintKiCadSymbol(g.context, needsHighlight() || isCreating())) draw(g);
-        drawPosts(g);
     }
     native boolean hasKiCadSymbol() /*-{
         var renderer = $wnd.AnaCodeKiCad;
@@ -93,6 +106,7 @@ replace('CircuitElm.java', '        this.getPostX = $entry(', `        this.getF
         this.getEndpointY = $entry(function(n) { return n ? that.@com.lushprojects.circuitjs1.client.CircuitElm::y2 : that.@com.lushprojects.circuitjs1.client.CircuitElm::y; });
         this.getPostX = $entry(`);
 replace('Graphics.java', '\tContext2d context;', `\tContext2d context;
+        boolean anacodeSchematicDrawing;
         boolean anacodeSymbolText;
         double anacodeSymbolOpacity;`);
 replace('Graphics.java', '\t\t  context.fillText(s, x, y);', `                  double opacity = context.getGlobalAlpha();
@@ -103,6 +117,71 @@ replace('Graphics.java', '\t\t  context.fillText(s, x, y);', `                  
 for (const element of ['ce', 'stopHighlightElm', 'mouse.dragElm']) {
   replace('UIManager.java', element + '.draw(g);', element + '.drawWithKiCad(g);');
 }
+
+// Match the native wires and fallback symbols to the official artwork without
+// changing terminal positions, hit tolerances, bus widths or scope plots.
+replace('Graphics.java', '\t\t  context.setLineWidth(width);', `                  context.setLineWidth(anacodeSchematicDrawing && width == 3.0 ? 1.5 : width);`);
+for (const file of ['CircuitElm.java', 'ResistorElm.java', 'VoltageElm.java', 'SweepElm.java', 'FuseElm.java', 'LDRElm.java', 'ThermistorNTCElm.java']) {
+  replace(file, 'g.context.setLineWidth(3.0);', 'g.setLineWidth(3.0);');
+}
+replace('CircuitElm.java', '    static int valueFontSize = 12;', '    static int valueFontSize = 13;');
+replaceEvery('CircuitElm.java', 'valueFont = new Font("SansSerif", 0, valueFontSize);', 'valueFont = new Font("Georgia, serif", 0, valueFontSize);', 2);
+replace('CircuitElm.java', '    void drawValues(Graphics g, String s, double hs) {', `    void drawValues(Graphics g, String s, double hs) {
+        // Leave room around enlarged artwork while retaining native values,
+        // orientation and the user's value-font-size preference.
+        hs += 4;`);
+replace('UIManager.java', 'CircuitElm.selectColor = Color.cyan;', 'CircuitElm.selectColor = new Color("#e4b568");');
+replace('EditOptions.java', 'setColor("selectColor", ei, Color.cyan)', 'setColor("selectColor", ei, new Color("#e4b568"))');
+replace('UIManager.java', `            CircuitElm.whiteColor = Color.white;
+            CircuitElm.lightGrayColor = Color.lightGray;
+            g.setColor(Color.black);
+            cv.getElement().getStyle().setBackgroundColor("#000");`, `            CircuitElm.whiteColor = new Color("#d2d8df");
+            CircuitElm.lightGrayColor = new Color("#aab2bf");
+            g.setColor("#17191d");
+            cv.getElement().getStyle().setBackgroundColor("#17191d");`);
+replace('UIManager.java', '        g.fillRect(0, 0, canvasWidth, canvasHeight);', `        g.fillRect(0, 0, canvasWidth, canvasHeight);
+        drawAnaCodeGrid(g);`);
+replace('UIManager.java', '    void setGrid() {', `    // Draw only a presentation grid. Every dot is a native snap point, and
+    // coarsening selects a power-of-two subset of those same world coordinates.
+    void drawAnaCodeGrid(Graphics g) {
+        if (menus.printableCheckItem.getState()) return;
+        double scaleX = Math.abs(app.transform[0]);
+        double scaleY = Math.abs(app.transform[3]);
+        double pixelRatio = devicePixelRatio();
+        if (!(scaleX > 0) || !(scaleY > 0) || Double.isInfinite(scaleX) || Double.isInfinite(scaleY)) return;
+        double spacing = Math.max(1, app.gridSize);
+        double minimumScale = Math.min(scaleX, scaleY);
+        for (int level = 0; spacing * minimumScale < 12 && level < 32; level++) spacing *= 2;
+        double stepX = spacing * scaleX, stepY = spacing * scaleY;
+        if (!(stepX >= 12) || !(stepY >= 12)) return;
+        double offsetX = app.transform[4], offsetY = app.transform[5];
+        if (Double.isNaN(offsetX) || Double.isNaN(offsetY) || Double.isInfinite(offsetX) || Double.isInfinite(offsetY)) return;
+        double width = Math.min(canvasWidth, app.circuitArea.width);
+        double height = Math.min(canvasHeight, app.circuitArea.height);
+        if (!(width > 0) || !(height > 0)) return;
+        double startX = ((offsetX % stepX) + stepX) % stepX;
+        double startY = ((offsetY % stepY) + stepY) % stepY;
+        g.context.save();
+        try {
+            g.context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+            g.context.beginPath();
+            g.context.rect(0, 0, width, height);
+            g.context.clip();
+            g.context.setFillStyle("#323740");
+            g.context.beginPath();
+            for (double x = startX; x < width; x += stepX) {
+                for (double y = startY; y < height; y += stepY) {
+                    g.context.moveTo(x + .65, y);
+                    g.context.arc(x, y, .65, 0, 2 * Math.PI);
+                }
+            }
+            g.context.fill();
+        } finally {
+            g.context.restore();
+        }
+    }
+
+    void setGrid() {`);
 // The component palette delegates directly to the same upstream Draw command.
 replace('JSInterface.java', '    String getStopMessage() { return app.stopMessage; }', `    String getStopMessage() { return app.stopMessage; }
     void addElement(String type) { app.commands.menuPerformed("main", type); }

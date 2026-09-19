@@ -1068,6 +1068,41 @@
       "sourceFile": "source/power.kicad_sym",
       "sourceSha256": "541c49bdad55134b5f6379e80c6d18f165c1d9e98ca7df36ad6ec2a316a6d11b"
     },
+    "power:GNDREF": {
+      "sourceId": "power:GNDREF",
+      "unit": 1,
+      "svg": "/kicad/svg/power--GNDREF.svg",
+      "stockSvg": "/kicad/stock/power--GNDREF.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        3.048,
+        3.5052
+      ],
+      "origin": [
+        1.524,
+        0.6732
+      ],
+      "unitsPerMm": 1.0,
+      "pins": [
+        {
+          "number": "1",
+          "name": "~",
+          "sourceX": 0.0,
+          "sourceY": 0.0,
+          "angle": 270.0,
+          "length": 0.0,
+          "x": 1.524,
+          "y": 0.6732,
+          "bodyX": 1.524,
+          "bodyY": 0.6732
+        }
+      ],
+      "sha256": "db36b4f4843908099e325de9284a2f60b0f73bb9c96bcc0d4b10d2bc3a34ad3e",
+      "stockSha256": "fa2f27f6da475e3e5b858cfec8991ca52717d0bc8997a008b2073a639a932c14",
+      "sourceFile": "source/power.kicad_sym",
+      "sourceSha256": "541c49bdad55134b5f6379e80c6d18f165c1d9e98ca7df36ad6ec2a316a6d11b"
+    },
     "Switch:SW_SPST": {
       "sourceId": "Switch:SW_SPST",
       "unit": 1,

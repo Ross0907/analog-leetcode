@@ -431,6 +431,16 @@
       "length": 0.0
     }
   ],
+  "power:GNDREF": [
+    {
+      "number": "1",
+      "name": "~",
+      "sourceX": 0.0,
+      "sourceY": 0.0,
+      "angle": 270.0,
+      "length": 0.0
+    }
+  ],
   "Switch:SW_SPST": [
     {
       "number": "1",

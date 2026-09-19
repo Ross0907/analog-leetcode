@@ -65,6 +65,14 @@ for (const [id, names] of Object.entries({
 })) {
   assert.deepEqual(manifest.symbols[id].pins.map((pin) => pin.name), names, `${id} terminal contract changed`);
 }
+const referenceGround = manifest.symbols["power:GNDREF"];
+assert(referenceGround, "Missing official three-bar reference-ground artwork");
+assert.equal(referenceGround.pins.length, 1);
+assert.deepEqual(
+  [referenceGround.pins[0].number, referenceGround.pins[0].sourceX, referenceGround.pins[0].sourceY, referenceGround.pins[0].angle, referenceGround.pins[0].length],
+  ["1", 0, 0, 270, 0],
+  "Reference-ground electrical endpoint changed",
+);
 for (const [directory, key] of [["svg", "svg"], ["stock", "stockSvg"]]) {
   assert.deepEqual(readdirSync(join(root, directory)).sort(), Object.values(manifest.symbols).map((symbol) => basename(symbol[key])).sort());
 }
