@@ -39,7 +39,7 @@ SYMBOLS = {
     "Device": ["R", "R_US", "C", "C_Polarized", "L", "D", "D_Zener", "LED", "Battery", "Q_NPN", "Q_PNP", "Q_NMOS", "Q_PMOS"],
     "Simulation_SPICE": ["NMOS", "PMOS", "OPAMP", "VDC", "IDC"],
     "Amplifier_Operational": ["LM2904"],
-    "power": ["GND"],
+    "power": ["GND", "GNDREF"],
     "Switch": ["SW_SPST"],
 }
 SVG_NS = "http://www.w3.org/2000/svg"
