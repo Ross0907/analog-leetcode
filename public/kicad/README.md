@@ -41,5 +41,27 @@ LM2904 device model. The five-terminal `Simulation_SPICE:OPAMP` is retained as a
 separate asset with all five pin identities and must not be mapped as a
 three-terminal device.
 
+`power:GNDREF` provides the editor's three-bar reference-ground graphic. KiCad
+describes this symbol as reference supply ground; the similarly drawn `Earth`
+symbol is not substituted. `power:GND` remains the triangular alternative. Both
+official exports retain their single original electrical endpoint.
+
 `renderer.js` is application integration code maintained separately from these
 generated assets. It is excluded from the generated SVG/source hash inventory.
+It derives display copies for the editor, including an open transistor style
+that omits the optional enclosure and MOS external pin leads before aligning
+the body to native terminal anchors. Gate/channel/arrow artwork remains KiCad's;
+the original exported files and their hashes are retained. These display
+adaptations do not alter CircuitJS's connectivity or device models and retain
+the KiCad asset attribution and license.
+The enclosure omission applies to NPN, PNP and MOS artwork. Native electrical
+terminals stay unchanged while the MOS display leads use their body endpoints.
+The presentation copy also adjusts colors and the minimum stroke weight for
+readability while preserving heavier upstream strokes.
+
+After each native export, run `node scripts/build-kicad-presentation.mjs` to
+refresh the 22 palette previews in `presentation/` using that same display
+function. These are adapted previews, not unmodified official exports. Their
+MOS view boxes crop unused margins; live circuit placement retains the original
+coordinate system. Finish with `node scripts/audit-kicad-symbols.mjs` to verify
+the original exports and source/pin inventory.

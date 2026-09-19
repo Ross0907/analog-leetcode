@@ -67,10 +67,18 @@ export default defineConfig(async ({ command, mode }) => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
-    // Keep client boundaries visible to the RSC transform in every environment.
     // next/* resolves to Vinext shims, so excluding only "vinext" misses them.
     optimizeDeps: {
-      exclude: ["lucide-react", "next/link", "next/navigation", "next/router"],
+      exclude: ["next/link", "next/navigation", "next/router"],
+    },
+    environments: {
+      // Preserve Lucide's client boundaries for server rendering. Vinext's
+      // barrel optimizer handles RSC/SSR but intentionally skips the browser.
+      rsc: { optimizeDeps: { exclude: ["lucide-react"] } },
+      ssr: { optimizeDeps: { exclude: ["lucide-react"] } },
+      // Prebundle the browser barrel instead of requesting every icon module
+      // before any page can hydrate. Production still uses tree shaking.
+      client: { optimizeDeps: { include: ["lucide-react"] } },
     },
     server: {
       watch: {

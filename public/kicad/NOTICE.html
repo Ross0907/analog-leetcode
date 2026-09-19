@@ -37,7 +37,7 @@
     <a class="back" href="/lab">← Back to the circuit lab</a>
     <p class="eyebrow">OPEN-SOURCE ARTWORK · KICAD COMMUNITY</p>
     <h1>KiCad symbols in AnaCode</h1>
-    <p class="summary">The 21 symbols below come from KiCad's official library. KiCad's own exporter produced the artwork used in the circuit editor.</p>
+    <p class="summary">The 22 symbols below come from KiCad's official library. KiCad's own exporter produced the artwork used in the circuit editor.</p>
   </header>
   <main>
     <section aria-labelledby="credits">
@@ -45,10 +45,11 @@
       <p>Credit belongs to the <a href="https://gitlab.com/kicad/libraries/kicad-symbols">KiCad community and KiCad Libraries</a>. This collection uses library release <strong>9.0.9</strong>, revision <a href="https://gitlab.com/kicad/libraries/kicad-symbols/-/tree/ad36cd14bcd1b1cd0484f629ccdd3481366f74f3"><code>ad36cd14bcd1b1cd0484f629ccdd3481366f74f3</code></a>.</p>
       <p>The artwork and redistributed library sources retain the <a href="LICENSE.md">Creative Commons CC-BY-SA 4.0 license with the KiCad library exception</a>. AnaCode's application license does not replace that license. The upstream license includes the original attribution and warranty terms.</p>
       <p>The display exports hide reference/value fields and non-semantic pin labels, so the editor can show each circuit's actual labels. The op-amp's + and − markings are preserved. A temporary origin marker is removed after export, and export timestamps are normalized. All original symbol geometry is rendered by <strong>KiCad 9.0.9</strong>.</p>
+      <p>The editor derives presentation copies of these verified exports. Its open NPN, PNP and MOS style omits the optional enclosure and shortens external MOS display leads to their body endpoints; native electrical terminals stay unchanged. KiCad's gate, channel and arrow artwork is retained. Colors and minimum stroke weight are adjusted for readability. The palette previews use this same adapted artwork and crop unused MOS margins. These display adaptations preserve the KiCad attribution and license. The downloadable original and display exports below retain their recorded hashes. The three-bar ground uses the official <code>power:GNDREF</code> reference-ground symbol.</p>
       <p class="note"><strong>Artwork is separate from the simulation model.</strong> The three-terminal op-amp uses the graphic from <code>Amplifier_Operational:LM2904</code>, unit 1. This does not claim that the simulated amplifier is an LM2904 device model. CircuitJS continues to calculate the circuit using its existing models. The five-terminal SPICE op-amp is a separate artwork asset.</p>
     </section>
     <section aria-labelledby="collection">
-      <h2 id="collection">The 21-symbol collection</h2>
+      <h2 id="collection">The 22-symbol collection</h2>
       <p>“Original export” includes KiCad's original display fields. “Library source” opens the unmodified official library containing that symbol.</p>
       <div class="grid">
       <article class="symbol">
@@ -172,6 +173,12 @@
         <p class="links"><a href="/kicad/svg/power--GND.svg">Display SVG</a> · <a href="/kicad/stock/power--GND.svg">Original export</a> · <a href="source/power.kicad_sym">Library source</a></p>
       </article>
       <article class="symbol">
+        <div class="preview"><img src="/kicad/svg/power--GNDREF.svg" alt="Three-bar reference ground from the official KiCad library" width="110" height="88" loading="lazy"></div>
+        <h3>Reference ground · three bars</h3>
+        <p class="identity"><code>power:GNDREF</code><br>Unit 1 · 1 terminal</p>
+        <p class="links"><a href="/kicad/svg/power--GNDREF.svg">Display SVG</a> · <a href="/kicad/stock/power--GNDREF.svg">Original export</a> · <a href="source/power.kicad_sym">Library source</a></p>
+      </article>
+      <article class="symbol">
         <div class="preview"><img src="/kicad/svg/Switch--SW_SPST.svg" alt="SPST switch from the official KiCad library" width="110" height="88" loading="lazy"></div>
         <h3>SPST switch</h3>
         <p class="identity"><code>Switch:SW_SPST</code><br>Unit 1 · 2 terminals</p>
@@ -181,13 +188,13 @@
     </section>
     <section aria-labelledby="rebuild">
       <h2 id="rebuild">Export and verification</h2>
-      <p>The artwork was generated in the <a href="https://github.com/Ross0907/analog-leetcode/actions/runs/35021795924">successful official KiCad export run</a> from AnaCode revision <code>46b33182dd2b3e57d8cc449dfb57ac53fd1c0bad</code>. The workflow verifies the exact KiCad package and library inputs before exporting.</p>
+      <p>The artwork was generated in the <a href="https://github.com/Ross0907/analog-leetcode/actions/runs/35435433747">successful official KiCad export run</a> from AnaCode revision <code>a09c2d3cf2f80f760d2c98aa385c73472eaa9842</code>. This export adds the three-bar reference ground; the previous 21 symbols retain identical hashes and terminal coordinates. The workflow verifies the exact KiCad package and library inputs before exporting.</p>
       <ul>
         <li><a href="symbols.json">Artifact hashes, source revision, view boxes and pin coordinates</a></li>
         <li><a href="source-pins.json">Original terminal names and positions</a></li>
-        <li><a href="https://github.com/Ross0907/analog-leetcode/blob/46b33182dd2b3e57d8cc449dfb57ac53fd1c0bad/scripts/build-kicad-symbols.py">Export script used for these assets</a></li>
-        <li><a href="https://github.com/Ross0907/analog-leetcode/blob/46b33182dd2b3e57d8cc449dfb57ac53fd1c0bad/scripts/kicad-export-requirements.txt">Pinned build-time dependency</a></li>
-        <li><a href="https://github.com/Ross0907/analog-leetcode/blob/46b33182dd2b3e57d8cc449dfb57ac53fd1c0bad/.github/workflows/build-kicad-symbols.yml">Reproducible hosted export workflow</a></li>
+        <li><a href="https://github.com/Ross0907/analog-leetcode/blob/a09c2d3cf2f80f760d2c98aa385c73472eaa9842/scripts/build-kicad-symbols.py">Export script used for these assets</a></li>
+        <li><a href="https://github.com/Ross0907/analog-leetcode/blob/a09c2d3cf2f80f760d2c98aa385c73472eaa9842/scripts/kicad-export-requirements.txt">Pinned build-time dependency</a></li>
+        <li><a href="https://github.com/Ross0907/analog-leetcode/blob/a09c2d3cf2f80f760d2c98aa385c73472eaa9842/.github/workflows/build-kicad-symbols.yml">Reproducible hosted export workflow</a></li>
         <li><a href="README.md">Source collection and coordinate notes</a></li>
       </ul>
     </section>

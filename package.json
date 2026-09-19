@@ -13,7 +13,7 @@
     "test": "npm run build && npm run audit:simulator && npm run test:unit && node --import tsx --test tests/rendered-html.test.mjs",
     "test:unit": "node --import tsx --test tests/*.test.mts",
     "test:e2e": "playwright test",
-    "audit:simulator": "node scripts/audit-simulator-provenance.mjs && node scripts/audit-circuitjs.mjs && node scripts/audit-kicad-symbols.mjs",
+    "audit:simulator": "node scripts/audit-simulator-provenance.mjs && node scripts/audit-circuitjs.mjs && node scripts/audit-kicad-symbols.mjs && node scripts/build-kicad-presentation.mjs --check",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

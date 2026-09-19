@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { symbolDefinition, symbolPlacement } from "../public/kicad/renderer.js";
+import { symbolDefinition, symbolPlacement, presentationSvg } from "../public/kicad/renderer.js";
 
 type Point = { x: number; y: number };
 type Pin = Point & { number: string; name: string; bodyX: number; bodyY: number };
-type SymbolAsset = { pins: Pin[]; unitsPerMm: number };
+type SymbolAsset = { sourceId: string; svg: string; pins: Pin[]; unitsPerMm: number };
 const manifest = JSON.parse(readFileSync(new URL("../public/kicad/symbols.json", import.meta.url), "utf8")) as {
   libraryRevision: string;
   symbols: Record<string, SymbolAsset>;
@@ -178,4 +178,62 @@ test("unsupported and four-terminal devices retain complete native rendering", (
   assert.equal(symbolDefinition(element("MosfetElm", [[0, 0], [64, 16], [64, -16], [80, 0]])), undefined);
   assert.equal(symbolDefinition(element("MosfetElm", [[0, 0], [64, 16], [64, -16], [80, 0]], { flags: 1 })), undefined);
   assert.equal(symbolDefinition(element("TransistorElm", [[0, 0], [64, 16], [64, -16]], { description: "unknown transistor variant" })), undefined);
+});
+
+test("open transistor presentation preserves all polarity artwork and junction dots", () => {
+  for (const id of ['Device:Q_NMOS', 'Device:Q_PMOS', 'Device:Q_NPN', 'Device:Q_PNP']) {
+    const symbol = manifest.symbols[id];
+    const original = readFileSync(new URL(`../public${symbol.svg}`, import.meta.url), 'utf8');
+    const snapshot = JSON.stringify(symbol);
+    const preview = presentationSvg(original, symbol);
+    const circles = (svg: string) => [...svg.matchAll(/<circle\b[^>]*\br="([^"]+)"/g)].map((match) => Number(match[1]));
+    assert.deepEqual(circles(preview), circles(original).filter((radius) => radius / symbol.unitsPerMm < 2));
+    const paths = (svg: string) => [...svg.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map((match) => match[1]);
+    const before = paths(original), after = paths(preview);
+    assert.equal(before.length - after.length, id.endsWith('MOS') ? 3 : 0, 'only MOS external leads may be shortened');
+    assert(after.every((path) => before.includes(path)), 'no replacement glyph geometry may be invented');
+    assert.deepEqual(after.filter((path) => /Z/i.test(path)), before.filter((path) => /Z/i.test(path)), 'polarity arrows must remain unchanged');
+    assert.equal(JSON.stringify(symbol), snapshot, 'display styling must not mutate electrical pin metadata');
+  }
+});
+
+test("MOS presentation enlarges the channel safely within the native terminals", () => {
+  for (const type of ['NMosfetElm', 'PMosfetElm']) {
+    const native = element(type, [[0, 0], [64, 16], [64, -16]]);
+    const { symbol, definition, result } = placement(native);
+    for (const index of [1, 2]) {
+      const pin = symbol.pins.find((pin) => pin.number === definition.pins[index])!;
+      const body = transform(result.matrix, { x: pin.bodyX, y: pin.bodyY });
+      close(body.x, native.getPostX(index), 'channel body x');
+      close(body.y, native.getPostY(index), 'channel body y');
+    }
+    assert(Math.abs(result.matrix[0]) > 5, 'channel details must be readable at native scale');
+  }
+});
+
+test("palette and circuit select KiCad zigzag resistor and reference-ground geometry", () => {
+  assert.equal(symbolDefinition(element('ResistorElm', [[0, 0], [96, 0]]))?.source, 'Device:R_US');
+  const native = { ...element('GroundElm', [[0, 0]]), getEndpointX: () => 0, getEndpointY: () => 32 };
+  const { result, definition } = placement(native);
+  assert.equal(definition.source, 'power:GNDREF');
+  close(result.posts[0].x, 0, 'ground native x');
+  close(result.posts[0].y, 0, 'ground native y');
+  close(result.pins[0].y, 32, 'ground icon begins at native stem tip');
+});
+
+test("compact MOS artwork keeps its gate inside native bounds at every orientation", () => {
+  for (const length of [16, 32, 64]) for (const flags of [0, 1, 8, 9]) for (let turn = 0; turn < 4; turn++) {
+    const { toWorld, toLocal } = rotation(turn);
+    const y = flags & 8 ? -16 : 16;
+    const native = element('MosfetElm', ([[0, 0], [length, y], [length, -y]] as const).map(toWorld), { flags });
+    const { result } = placement(native);
+    const [gate, channel1, channel2] = result.pins.map(toLocal);
+    assert(gate.x >= -tolerance && gate.x < length, 'gate artwork must never cross behind its native post');
+    close(gate.y, 0, 'gate must remain on native wire axis');
+    for (const channel of [channel1, channel2]) {
+      close(channel.x, length, 'channel lead axis must match native posts');
+      assert(Math.abs(channel.y) <= 16 + tolerance, 'channel artwork must stay between the native posts');
+    }
+    assert(Math.sign(channel1.y) === Math.sign(y), 'shrinking must preserve source/drain orientation');
+  }
 });
