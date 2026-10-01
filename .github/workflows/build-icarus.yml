@@ -3,7 +3,7 @@ name: Build Icarus Verilog from source
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/eda-learning-workspace]
+    branches: [main, kenshi0905/eda-learning-workspace]
     paths:
       - .github/workflows/build-icarus.yml
       - scripts/*icarus*
