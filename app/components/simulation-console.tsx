@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, Clock3, Cpu, FileCode2, Play, RotateCcw, Send, ShieldCheck, X } from "lucide-react";
 import type { JudgeKind } from "../../lib/challenges";
 import type { CircuitDocument } from "../../lib/circuit-document";
@@ -15,6 +15,8 @@ import {
 } from "../../lib/simulator-contract";
 import { BrowserOscilloscope, type OscilloscopeDomain } from "./browser-oscilloscope";
 import { SpectrumAnalyzer } from "./spectrum-analyzer";
+import { LogicAnalyzer } from "./logic-analyzer";
+import instrumentStyles from "./instrument-workspace.module.css";
 import { validateSimulatorProbes } from "../../lib/simulator-netlist-policy";
 
 type GradeResponse = {
@@ -43,6 +45,11 @@ export function SimulationConsole({
   judge,
   circuitDocument,
   autoRun = false,
+  prepareCircuit,
+  onResult,
+  hideWaveforms = false,
+  requireSchematic = false,
+  prepareGrading,
 }: {
   initialNetlist: string;
   probe?: string | readonly string[];
@@ -50,8 +57,14 @@ export function SimulationConsole({
   judge?: JudgeKind;
   circuitDocument?: CircuitDocument;
   autoRun?: boolean;
+  prepareCircuit?: () => { document: CircuitDocument; deck: string; probes?: readonly string[] };
+  prepareGrading?: () => CircuitDocument;
+  onResult?: (payload: SimulationPayload | null) => void;
+  hideWaveforms?: boolean;
+  requireSchematic?: boolean;
 }) {
   const [netlist, setNetlist] = useState(initialNetlist);
+  const [analysisSource, setAnalysisSource] = useState<"schematic" | "deck">(prepareCircuit ? "schematic" : "deck");
   const initialProbeText = typeof probe === "string" ? probe : probe?.join(", ") ?? "";
   const [probeText, setProbeText] = useState(initialProbeText);
   const [simulation, setSimulation] = useState<SimulationPayload | null>(null);
@@ -64,6 +77,8 @@ export function SimulationConsole({
   const autoRunStartedRef = useRef(false);
   const mountedRef = useRef(false);
   const prepareWorkerRef = useRef<() => SimulatorWorkerSession | null>(() => null);
+
+  useEffect(() => { onResult?.(simulation); }, [simulation, onResult]);
 
   const disposeWorker = useCallback((session = workerSessionRef.current) => {
     if (!session) return;
@@ -208,7 +223,21 @@ export function SimulationConsole({
       setSimError(error instanceof Error ? error.message : "Probe selection is invalid.");
       return;
     }
-    const request = { type: "run", id, netlist, probes } satisfies SimulatorWorkerRequest;
+    let runNetlist = netlist;
+    if (requireSchematic || analysisSource === "schematic") {
+      try {
+        if (!prepareCircuit) throw new Error("Wire the circuit in the schematic before running it.");
+        const prepared = prepareCircuit();
+        runNetlist = prepared.deck;
+        if (prepared.probes) { probes = validateSimulatorProbes(prepared.probes); setProbeText(probes.join(", ")); }
+        setNetlist(runNetlist);
+      } catch (cause) {
+        activeRunRef.current = null; setRunning(false);
+        setSimError(cause instanceof Error ? cause.message : "Check the schematic wiring before running.");
+        return;
+      }
+    }
+    const request = { type: "run", id, netlist: runNetlist, probes } satisfies SimulatorWorkerRequest;
     const session = prepareWorker();
     if (!session) {
       activeRunRef.current = null;
@@ -222,7 +251,7 @@ export function SimulationConsole({
     } else if (session.phase === "ready") {
       dispatchRequest(session, request);
     }
-  }, [cancelSimulation, dispatchRequest, netlist, prepareWorker, probeText]);
+  }, [cancelSimulation, dispatchRequest, netlist, prepareWorker, probeText, requireSchematic, prepareCircuit, analysisSource]);
 
   useEffect(() => {
     prepareWorkerRef.current = prepareWorker;
@@ -248,7 +277,13 @@ export function SimulationConsole({
 
   async function submitSolution() {
     if (!challengeSlug || !judge) return;
-    if (!circuitDocument) {
+    let submittedDocument: CircuitDocument | undefined;
+    try { submittedDocument = prepareGrading?.() ?? prepareCircuit?.().document ?? circuitDocument; }
+    catch (cause) {
+      setGrade({ passed: false, score: 0, summary: cause instanceof Error ? cause.message : "Check the circuit connections before submitting.", diagnostics: [], graderVersion: "client-validation", persisted: false });
+      return;
+    }
+    if (!submittedDocument) {
       setGrade({
         passed: false,
         score: 0,
@@ -269,7 +304,7 @@ export function SimulationConsole({
           problemSlug: challengeSlug,
           problemVersion: 1,
           idempotencyKey: crypto.randomUUID(),
-          circuitDocument,
+          circuitDocument: submittedDocument,
         }),
       });
       const payload = await response.json() as GradeResponse & { error?: string };
@@ -292,8 +327,12 @@ export function SimulationConsole({
   return (
     <div className="sim-console">
       <div className="sim-toolbar">
-        <div className="sim-mode"><span className="ready-dot" /> Circuit engine <small>ngspice · isolated WebAssembly worker</small></div>
+        <div className="sim-mode"><span className="ready-dot" /> Circuit analysis <small>AC · DC · transient</small></div>
         <div className="sim-actions">
+          {prepareCircuit && <button type="button" className="button button-small" onClick={() => {
+            try { const prepared = prepareCircuit(); cancelSimulation(); setAnalysisSource("schematic"); setNetlist(prepared.deck); if (prepared.probes) setProbeText(prepared.probes.join(", ")); setSimulation(null); setSimError(null); }
+            catch (cause) { setSimError(cause instanceof Error ? cause.message : "Check the schematic before preparing analysis."); }
+          }}>Use current schematic</button>}
           <button className="icon-button" type="button" onClick={() => { cancelSimulation(); setNetlist(initialNetlist); setProbeText(initialProbeText); setSimulation(null); setGrade(null); setSimError(null); }} aria-label="Reset simulation"><RotateCcw size={16} /></button>
           <button className="button button-small button-run" type="button" onClick={runSimulation} disabled={running}>
             {running ? <><span className="spinner" /> Running</> : <><Play size={15} fill="currentColor" /> Run simulation</>}
@@ -301,9 +340,10 @@ export function SimulationConsole({
         </div>
       </div>
 
+      {prepareCircuit && <div className="lab-mode-note"><label>Analysis source <select aria-label="SPICE analysis source" value={analysisSource} disabled={requireSchematic} onChange={(event) => { cancelSimulation(); setAnalysisSource(event.target.value as typeof analysisSource); setNetlist(initialNetlist); setProbeText(initialProbeText); setSimulation(null); setSimError(null); }}><option value="schematic">Current schematic</option><option value="deck">Separate reference / custom deck</option></select></label><p>{analysisSource === 'schematic' ? 'Each run reads the current connections and component values. Supported: R, C, L, ideal DC and sine sources. Other models remain available in live measurements.' : 'This is a separate SPICE example or custom deck. Schematic edits are not reflected in this analysis.'}</p></div>}
       <label style={{ display: "grid", gap: 6, padding: "12px 16px", fontSize: 12 }}>
         Probe vectors
-        <input aria-label="Probe vectors" value={probeText} maxLength={2300} placeholder="vin, vout, I(V1)" onChange={(event) => { cancelSimulation(); setProbeText(event.currentTarget.value); }} style={{ width: "100%", padding: "9px 12px", color: "inherit", background: "transparent", border: "1px solid #59616d", borderRadius: 5 }} />
+        <input aria-label="Probe vectors" value={probeText} readOnly={Boolean(prepareCircuit) && (requireSchematic || analysisSource === "schematic")} maxLength={2300} placeholder="vin, vout, I(V1)" onChange={(event) => { cancelSimulation(); setProbeText(event.currentTarget.value); }} style={{ width: "100%", padding: "9px 12px", color: "inherit", background: "transparent", border: "1px solid #59616d", borderRadius: 5 }} />
         <small>Up to 32 node names, V(node), or supported source currents I(source), separated by commas. Leave blank to plot all available vectors.</small>
       </label>
 
@@ -314,11 +354,11 @@ export function SimulationConsole({
             <div className="simulation-message error"><AlertTriangle size={24} /><strong>Simulation stopped</strong><p>{simError}</p></div>
           ) : simulation ? (
             <>
-              {simulation.analysis === "dc" ? (
+              {simulation.analysis === "dc" && !hideWaveforms ? (
                 <div className="op-grid">
                   {simulation.operatingPoint.map((point) => <div key={point.name}><span>{point.name}</span><strong>{formatEngineering(point.value, point.unit ?? "V")}</strong></div>)}
                 </div>
-              ) : <ScopeResult payload={simulation} />}
+              ) : hideWaveforms ? <p className="lab-mode-note">The response is ready in Measurements.</p> : <ScopeResult payload={simulation} />}
               {simulation.warnings.length > 0 && (
                 <ul className="simulation-warnings" aria-label="Simulation warnings">
                   {/* Warning rows belong to one immutable result and may repeat. */}
@@ -346,7 +386,7 @@ export function SimulationConsole({
             <div className="pane-heading"><span>GENERATED SPICE</span><small>Optional expert editing</small></div>
             <div className="editor-wrap">
               <pre className="line-numbers" aria-hidden="true">{netlist.split("\n").map((_, index) => `${index + 1}\n`)}</pre>
-              <textarea aria-label="Advanced SPICE source editor" spellCheck={false} value={netlist} onChange={(event) => { cancelSimulation(); setNetlist(event.target.value); setSimulation(null); setSimError(null); setGrade(null); }} />
+              <textarea aria-label="Advanced SPICE source editor" readOnly={Boolean(prepareCircuit) && (requireSchematic || analysisSource === "schematic")} spellCheck={false} value={netlist} onChange={(event) => { cancelSimulation(); setNetlist(event.target.value); setSimulation(null); setSimError(null); setGrade(null); }} />
             </div>
             <div className="editor-policy"><ShieldCheck size={14} /> Advanced edits stay in this preview and never affect grading. Includes, files, control blocks, and shell directives are disabled.</div>
           </div>
@@ -356,8 +396,8 @@ export function SimulationConsole({
       {challengeSlug && (
         <div className="submission-bar">
           <div>
-            <strong>{judge ? "Ready for the fixed-topology design check?" : "Simulation practice challenge"}</strong>
-            <span>{judge ? "The complete, bounded CircuitDocument is submitted; the server recompiles it and verifies connectivity and values without trusting solver text." : "Automated checks for this topology are still being validated."}</span>
+            <strong>{judge ? "Check your circuit" : "Simulation practice"}</strong>
+            <span>{judge ? "Check the connections and component values in your current schematic against this challenge." : "Explore its response and compare it with the learning objectives."}</span>
           </div>
           <button className="button button-submit" type="button" onClick={submitSolution} disabled={!judge || submitting}>
             {submitting ? <><span className="spinner dark" /> Checking</> : <><Send size={16} /> {judge ? "Check fixed topology" : "Practice only"}</>}
@@ -387,7 +427,9 @@ export function SimulationConsole({
   );
 }
 
-export function ScopeResult({ payload }: { payload: SimulationPayload }) {
+export const ScopeResult = memo(function ScopeResult({ payload }: { payload: SimulationPayload }) {
+  const [view, setView] = useState<'all' | 'scope' | 'spectrum' | 'logic'>('all');
+  if (payload.analysis === "dc") return <div className="op-grid">{payload.operatingPoint.map((point) => <div key={point.name}><span>{point.name}</span><strong>{formatEngineering(point.value, point.unit ?? "V")}</strong></div>)}</div>;
   if (payload.analysis === "ac") {
     const magnitude = payload.traces.filter((trace) => trace.quantity === "magnitude");
     const phase = payload.traces.filter((trace) => trace.quantity === "phase");
@@ -427,7 +469,10 @@ export function ScopeResult({ payload }: { payload: SimulationPayload }) {
   const groups = [...new Set(payload.traces.map((trace) => trace.unit))].map((unit) => ({ unit, traces: payload.traces.filter((trace) => trace.unit === unit) }));
   return (
     <div className="scope-host">
-      {groups.map((group) => <BrowserOscilloscope
+      {payload.analysis === "transient" && <div className={instrumentStyles.views} role="group" aria-label="Measurement view">
+        {(['all', 'scope', 'spectrum', 'logic'] as const).map((value) => <button type="button" key={value} aria-pressed={view === value} onClick={() => setView(value)}>{value === 'all' ? 'Scope + FFT' : value === 'scope' ? 'Oscilloscope' : value === 'spectrum' ? 'Spectrum' : 'Logic analyzer'}</button>)}
+      </div>}
+      {(payload.analysis !== "transient" || view === 'all' || view === 'scope') && groups.map((group) => <BrowserOscilloscope
         key={`${payload.analysis}:${group.unit}:${group.traces.map((trace) => trace.id).join("|")}`}
         x={payload.x}
         traces={group.traces}
@@ -440,7 +485,8 @@ export function ScopeResult({ payload }: { payload: SimulationPayload }) {
         title={`${title}${groups.length > 1 ? ` · ${group.unit === "A" ? "Current" : "Voltage"}` : ""}`}
         height={360}
       />)}
-      {payload.analysis === "transient" && <SpectrumAnalyzer time={payload.x} traces={payload.traces} />}
+      {payload.analysis === "transient" && (view === 'all' || view === 'spectrum') && <SpectrumAnalyzer time={payload.x} traces={payload.traces} />}
+      {payload.analysis === "transient" && view === 'logic' && <LogicAnalyzer payload={payload}/>}
     </div>
   );
-}
+});

@@ -59,7 +59,7 @@ test("renders a real challenge workspace", async () => {
   assert.match(html, /Schematic/);
   assert.match(html, /SPICE/);
   assert.match(html, /Automated checks available/);
-  assert.match(html, /CircuitJS circuit workspace/);
+  assert.match(html, /CircuitJS schematic editor/);
   assert.match(html, /\/circuitjs\/circuitjs\.html/);
 });
 
@@ -74,6 +74,24 @@ test("only the native editor runtime receives the GWT scripting policy", async (
   assert.match(csp, /frame-ancestors 'self'/);
   assert.match(csp, /script-src 'self' 'unsafe-inline' 'unsafe-eval'/);
   assert.match(await response.text(), /Native editor/);
+});
+
+test("HDL routes retain app security while local tools receive a bounded same-origin policy", async () => {
+  const app = await worker();
+  const page = await app.fetch(new Request("https://anacode.example/hdl/playground"), env, context);
+  assert.equal(page.status, 200);
+  assert.match(page.headers.get("content-security-policy"), /frame-ancestors 'none'/);
+  assert.match(await page.text(), /HDL workbench/);
+  for (const path of ["/hdl/viewer/index.html", "/hdl/runner.worker.js"]) {
+    const response = await app.fetch(new Request(`https://anacode.example${path}`), {
+      ASSETS: { fetch: async () => new Response("local tool", { headers: { "content-type": "text/javascript" } }) },
+    }, context);
+    const csp = response.headers.get("content-security-policy");
+    assert.match(csp, /script-src 'self' 'wasm-unsafe-eval'/);
+    assert.doesNotMatch(csp, /script-src[^;]*'unsafe-(?:inline|eval)'/);
+    assert.match(csp, /connect-src 'self' blob:/);
+    assert.equal(response.headers.get("x-frame-options"), "SAMEORIGIN");
+  }
 });
 
 test("auth callbacks preserve no-referrer through the Worker response wrapper", async () => {

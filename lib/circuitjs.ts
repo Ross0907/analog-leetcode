@@ -13,10 +13,17 @@ export interface CircuitJsElement {
   getPostY(post: number): number;
   getNodeId(post: number): number;
   exportElement(): string;
+  getEditableValue(): { name: string; text: string; value: number } | null;
+  /** Applies the upstream numeric editor and returns a validation error, or null. */
+  setEditableValue(text: string): string | null;
 }
 
 export interface CircuitJsApi {
   addElement(nativeType: string): void;
+  startWire(): void;
+  cancelDrawing(): void;
+  setTheme(theme: 'light' | 'dark'): void;
+  getTheme(): 'light' | 'dark';
   getElements(): CircuitJsElement[];
   getHoveredElement(): CircuitJsElement | null;
   getTime(): number;
@@ -110,7 +117,7 @@ export function neutralCircuitJsPresentation(text: string) {
 /** Captures actual accepted solver timesteps through CircuitJS's documented timestep callback. */
 export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], duration: number, requestedSamples: number) {
   if (!(duration >= 1e-9 && duration <= 10) || !Number.isFinite(duration)) throw new Error('Capture duration must be between 1 ns and 10 seconds.');
-  if (!Number.isInteger(requestedSamples) || requestedSamples < 128 || requestedSamples > 16384) throw new Error('Choose between 128 and 16,384 samples.');
+  if (!Number.isInteger(requestedSamples) || requestedSamples < 128 || requestedSamples > 131072) throw new Error('Choose between 128 and 131,072 samples.');
   const active = probes.filter((probe) => probe.enabled);
   if (!active.length || active.length > MAX_CIRCUITJS_PROBES) throw new Error('Enable between 1 and 32 probes before capturing.');
   const elements = api.getElements();
@@ -119,7 +126,8 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
   const initialTime = api.getTime();
   const x: number[] = [];
   const values = active.map(() => [] as number[]);
-  const maxPoints = Math.min(32768, requestedSamples * 4);
+  const maxPoints = Math.min(131072, Math.floor(2097152 / (active.length + 1)), requestedSamples * 2);
+  const previousMaxStep = api.getMaxTimeStep();
   let finished = false;
   let resolve!: (payload: SimulationPayload) => void;
   let reject!: (error: Error) => void;
@@ -130,6 +138,7 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
     finished = true;
     clearTimeout(timeout);
     api.ontimestep = previousHook;
+    api.setMaxTimeStep(previousMaxStep);
     api.setSimRunning(false);
   }
   function fail(message: string) {

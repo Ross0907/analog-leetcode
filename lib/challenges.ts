@@ -1,4 +1,5 @@
 import { practiceChallenges, type PracticeSolution } from "./practice-challenges";
+import { converterChallenges, wiringChallenges } from "./converter-challenges";
 
 export type Difficulty = "Foundation" | "Intermediate" | "Advanced" | "Expert";
 export type Domain = "DC" | "AC" | "Semiconductors" | "Op-amps" | "Digital";
@@ -24,6 +25,14 @@ export type Challenge = {
   available: boolean;
   nativeCircuit?: string;
   solution?: PracticeSolution;
+  starterMode?: "connected" | "parts-only";
+  recommendedProbes?: string[];
+  wiringInstructions?: string[];
+  blocks?: {
+    title: string;
+    stages: { name: string; detail: string }[];
+    connections: { from: number; to: number; signal: string }[];
+  };
 };
 
 export const challenges: Challenge[] = [
@@ -200,7 +209,7 @@ export const challenges: Challenge[] = [
   },
 ];
 
-challenges.push(...practiceChallenges);
+challenges.push(...practiceChallenges, ...converterChallenges, ...wiringChallenges);
 
 export function getChallenge(slug: string) {
   return challenges.find((challenge) => challenge.slug === slug);

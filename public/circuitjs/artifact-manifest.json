@@ -96,14 +96,14 @@
       "sha256": "37b6403fdc1cf6bdb84af3dc62e0f64e818586659d1e6dddca9143f0b46a475f"
     },
     {
-      "path": "circuitjs1/788BAF4E0F81A5E3B4906532BA658955.cache.js",
-      "bytes": 993091,
-      "sha256": "c06d6a18763f80b333d3f758c814cebd92b037c51d948377347155b8ad6b66b1"
+      "path": "circuitjs1/007FD1DB745AFFD5C820E9BEF6D9CBE0.cache.js",
+      "bytes": 998081,
+      "sha256": "fe7317cca4b3ea0303b07d6a1684d91b286c23895100637cb87e79f8d0a6d29d"
     },
     {
-      "path": "circuitjs1/99471686E9FA83DE956276B48AE0052A.cache.js",
-      "bytes": 992598,
-      "sha256": "105e2201663de38b91f2704b7cfbf534fae04c7f4e71c5f87dba70f5aea403b5"
+      "path": "circuitjs1/E6F86849EBCD49E8B3DF5EA4585F3822.cache.js",
+      "bytes": 997698,
+      "sha256": "44487980060a36f9facb3741d587074189833c22600531f379c3f4dc8460ffb5"
     },
     {
       "path": "circuitjs1/circuitjs1.devmode.js",
@@ -113,7 +113,7 @@
     {
       "path": "circuitjs1/circuitjs1.nocache.js",
       "bytes": 7116,
-      "sha256": "9d8161e71a15b7eeb2a8fdb79fc6fd79bf60ab478c5a42f907062310452c5e4c"
+      "sha256": "f487cd6eef54ffac3848deb24b657ddbdfd222a5befb7e6dff59bd046789c6c1"
     },
     {
       "path": "circuitjs1/circuits/3-cgand.txt",
@@ -1988,7 +1988,7 @@
     {
       "path": "circuitjs1/compilation-mappings.txt",
       "bytes": 142,
-      "sha256": "bb925b9006bf6fd83adba32df622431eca298159bd30c474dca483e7a0a98a0e"
+      "sha256": "40b026af1a934138ed439664fc0b554be1fd03264192bea8a61e7ee8c561d72f"
     },
     {
       "path": "circuitjs1/gwt/clean/clean.css",
@@ -2317,8 +2317,8 @@
     },
     {
       "path": "patch-circuitjs-api.mjs",
-      "bytes": 12345,
-      "sha256": "d34fc6c64c0f9481a11bf59dcb6dcdc12a253dd322b05eac6f16932a5b4c5999"
+      "bytes": 27671,
+      "sha256": "a3ea0e92bb2615732065cf73bcb6946d6a85630dc86bdc81f0471588c5e337d5"
     },
     {
       "path": "subcircuits.html",

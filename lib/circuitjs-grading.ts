@@ -1,9 +1,11 @@
 import { circuitDocumentSchema, compileCircuitDocument, type CircuitComponent, type CircuitDocument, type ConnectionPoint } from './circuit-document';
 import type { CircuitJsApi, CircuitJsElement } from './circuitjs';
+import { gradingBlueprint } from './grading-blueprints';
 
-/** Narrow interoperability with the existing three fixed-topology graders. CircuitJS owns the graph. */
+/** Narrow interoperability with the registered fixed-topology graders. CircuitJS owns the graph. */
 export function circuitJsGradingDocument(api: CircuitJsApi, slug: string): CircuitDocument {
-  if (!['precision-voltage-divider', 'rc-cutoff-1khz', 'inverting-gain-stage'].includes(slug)) throw new Error('This challenge does not have a fixed-topology grader.');
+  const blueprint = gradingBlueprint(slug);
+  if (!blueprint) throw new Error('This challenge does not have a fixed-topology grader.');
   if (api.getStopMessage()) throw new Error(`Fix the native circuit before preparing grading: ${api.getStopMessage()}`);
   const elements = api.getElements();
   const components: CircuitComponent[] = [];
@@ -32,22 +34,22 @@ export function circuitJsGradingDocument(api: CircuitJsApi, slug: string): Circu
     if (type === 'GroundElm') {
       components.push({ ...base, reference: `GND${count}`, kind: 'ground', parameters: {} }); bind(element, id, ['gnd']);
     } else if (type === 'ResistorElm') {
-      const reference = slug === 'inverting-gain-stage' ? (count === 1 ? 'RIN' : count === 2 ? 'RF' : `R${count}`) : `R${count}`;
+      const reference = blueprint === 'inverting-gain-stage' ? (count === 1 ? 'RIN' : count === 2 ? 'RF' : `R${count}`) : `R${count}`;
       components.push({ ...base, reference, kind: 'resistor', parameters: { resistanceOhm: number('r') } }); bind(element, id, ['a', 'b']);
     } else if (type === 'CapacitorElm') {
-      if (slug !== 'rc-cutoff-1khz') throw new Error('This grader does not accept capacitors.');
+      if (blueprint !== 'rc-cutoff-1khz') throw new Error('This grader does not accept capacitors.');
       if (number('sr', 0) !== 0) throw new Error('The RC grader requires an ideal capacitor without series resistance.');
       components.push({ ...base, reference: `C${count}`, kind: 'capacitor', parameters: { capacitanceF: number('c'), initialVoltageV: number('iv', 0) } }); bind(element, id, ['a', 'b']);
     } else if (['VoltageElm', 'DCVoltageElm', 'ACVoltageElm'].includes(type)) {
       const waveform = number('wf'), amplitude = number('maxv'), bias = number('bias', 0);
       if (number('ir', 0) !== 0 || number('phaseShift', 0) !== 0) throw new Error('Use the ideal source without internal resistance or phase shift for grading.');
-      if (slug === 'rc-cutoff-1khz' && (waveform !== 1 || bias !== 0)) throw new Error('The RC grader requires a sine source with zero offset; its amplitude becomes the AC test magnitude.');
-      if (slug !== 'rc-cutoff-1khz' && waveform !== 0) throw new Error('This grader requires the original DC voltage source.');
-      components.push({ ...base, reference: `V${count}`, kind: 'voltage-source', parameters: slug === 'rc-cutoff-1khz' ? { dcV: 0, ac: { magnitude: amplitude, phaseDeg: 0 } } : { dcV: amplitude + bias } });
+      if (blueprint === 'rc-cutoff-1khz' && (waveform !== 1 || bias !== 0)) throw new Error('The RC grader requires a sine source with zero offset; its amplitude becomes the AC test magnitude.');
+      if (blueprint !== 'rc-cutoff-1khz' && waveform !== 0) throw new Error('This grader requires the original DC voltage source.');
+      components.push({ ...base, reference: `V${count}`, kind: 'voltage-source', parameters: blueprint === 'rc-cutoff-1khz' ? { dcV: 0, ac: { magnitude: amplitude, phaseDeg: 0 } } : { dcV: amplitude + bias } });
       // CircuitJS voltage-source post 0 is negative and post 1 is positive.
       bind(element, id, ['negative', 'positive']);
     } else if (type === 'OpAmpElm') {
-      if (slug !== 'inverting-gain-stage' || number('ma') !== 15 || number('mi') !== -15) throw new Error('Use the challenge’s original ideal op-amp model and output rails for grading.');
+      if (blueprint !== 'inverting-gain-stage' || number('ma') !== 15 || number('mi') !== -15) throw new Error('Use the challenge’s original ideal op-amp model and output rails for grading.');
       components.push({ ...base, reference: `U${count}`, kind: 'op-amp-ideal', parameters: { openLoopGain: number('ga') } });
       // Swapping display orientation never changes CircuitJS's electrical post order.
       bind(element, id, ['inverting', 'nonInverting', 'output']);
@@ -63,11 +65,23 @@ export function circuitJsGradingDocument(api: CircuitJsApi, slug: string): Circu
     if (!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(name)) throw new Error('Use simple alphanumeric node labels before preparing grading.');
     names.add(name); netLabels.push({ id: `native-label-${netLabels.length + 1}`, name, target, position: { x: element.getPostX(0), y: element.getPostY(0) } });
   }
-  const output = netLabels.find((label) => label.name === 'vout')?.target;
-  if (!output) throw new Error('Keep the vout node label so the SPICE preview and grading refer to the same output.');
+  // Infer the measurement point from the native graph, never drawing order or
+  // a reference deck. A misplaced explicit label is rejected by the server.
+  const voltage = elements.find((element) => ['VoltageElm', 'DCVoltageElm', 'ACVoltageElm'].includes(element.getType()));
+  const resistors = elements.filter((element) => element.getType() === 'ResistorElm');
+  const signalNodes = (element: CircuitJsElement) => Array.from({ length: element.getPostCount() }, (_, post) => element.getNodeId(post)).filter((node) => node > 0 && node !== voltage?.getNodeId(1));
+  const amplifier = elements.find((element) => element.getType() === 'OpAmpElm');
+  const capacitor = elements.find((element) => element.getType() === 'CapacitorElm');
+  const inferredNode = blueprint === 'inverting-gain-stage' ? amplifier?.getNodeId(2)
+    : blueprint === 'rc-cutoff-1khz' ? capacitor && signalNodes(capacitor).find((node) => resistors.some((resistor) => signalNodes(resistor).includes(node)))
+    : resistors.length === 2 ? signalNodes(resistors[0]).find((node) => signalNodes(resistors[1]).includes(node)) : undefined;
+  const inferredOutput = inferredNode === undefined ? undefined : nodePins.get(inferredNode)?.[0];
+  const output = inferredOutput ?? netLabels.find((label) => label.name.toLowerCase() === 'vout')?.target;
+  if (!output) throw new Error('Wire the supplied parts first, then select the output junction or attach the vout label before checking.');
+  if (!netLabels.some((label) => label.name.toLowerCase() === 'vout')) netLabels.push({ id: 'native-auto-vout', name: 'vout', target: output, position: { x: 0, y: 0 } });
   const document = circuitDocumentSchema.parse({ version: 1, id: 'circuitjs-grading', title: 'CircuitJS challenge snapshot', revision: 0, components, junctions: [], wires, netLabels,
     probes: [{ id: 'native-output', label: 'V(vout)', quantity: 'voltage', target: output }],
-    analyses: slug === 'rc-cutoff-1khz' ? [{ id: 'native-ac', name: 'Frequency response', type: 'ac-sweep', scale: 'decade', points: 30, startHz: 10, stopHz: 100000 }] : [{ id: 'native-op', name: 'Operating point', type: 'operating-point' }], settings: { gridSize: 16, snapToGrid: true } });
+    analyses: blueprint === 'rc-cutoff-1khz' ? [{ id: 'native-ac', name: 'Frequency response', type: 'ac-sweep', scale: 'decade', points: 30, startHz: 10, stopHz: 100000 }] : [{ id: 'native-op', name: 'Operating point', type: 'operating-point' }], settings: { gridSize: 16, snapToGrid: true } });
   compileCircuitDocument(document, 'simulation');
   return document;
 }

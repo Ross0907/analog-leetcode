@@ -2,7 +2,7 @@
 
 [Open the application](https://anacode.ross0907.workers.dev) · [Project showcase](https://ross0907.github.io/analog-leetcode/)
 
-AnaCode is a browser circuit workbench and analog electronics practice library. Draw a circuit, probe its nodes, compare waveforms, and check your calculations.
+AnaCode is a browser circuit workbench and electronics practice library. Draw circuits, probe their nodes, compare waveforms, and write Verilog or SystemVerilog in the HDL workspace.
 
 ## Circuit workbench
 
@@ -11,24 +11,33 @@ The primary editor and live solver are **CircuitJS1**, built from pinned upstrea
 - Voltage probes on every electrical node, including ground and unlabeled junctions.
 - Current probes on supported two-terminal components; up to 32 simultaneous probes.
 - Names, colors, visibility, removal, schematic markers, local save and native import/export.
-- Transient capture with adjustable duration and sample target.
+- Continuous live capture and one-shot acquisition, with up to 131,072 samples and a bounded ring buffer.
+- One workspace for the schematic, SPICE, grading, scope, FFT and logic traces; use tabs, side-by-side or stacked scrolling layouts.
+- Connected component movement, one-click wire junctions, W crosshair wiring and inline numeric value editing.
+- Paper-style light mode and matching dark mode, with uniformly scaled KiCad symbols and local reference grounds.
 - Oscilloscope scaling, horizontal zoom/pan, triggering, X/Y cursors and measurements.
 - FFT channel/window selection, linear/log frequency, linear/dB magnitude, DC removal, span and markers.
 - Distortion metrics only when sample quality and coherent capture support them.
 - Neutral schematic drawings by default, without voltage colouring or moving current dots.
 - Normal scrolling over the editor; Ctrl/Cmd + scroll zooms the circuit. Mobile pages keep descriptions and instruments reachable.
 
-The separate **ngspice WebAssembly** workspace provides operating point, DC sweep, AC magnitude/phase and transient analysis in a Web Worker. Probe expressions select any voltage node or current vector actually exported by ngspice.
+The integrated **ngspice WebAssembly** panel provides operating point, DC sweep, AC magnitude/phase and transient analysis in a Web Worker. Probe expressions select any voltage node or current vector actually exported by ngspice.
 
-CircuitJS and ngspice use different device models. Advanced transistor exercises identify the SPICE deck specifying their model. For the three graded exercises, **Prepare SPICE & grading** converts the current native circuit into the existing validated grading document and generates a matching deck.
+CircuitJS and ngspice use different device models. Common passive circuits and supported sources can be analyzed from the current native graph. Graded exercises convert that graph through the validated grading document. Advanced model decks are explicitly identified as reference/custom SPICE, with unsupported native conversions rejected rather than silently analyzing a starter.
 
 ## Practice and accounts
 
-The library contains **24 problems**: nine original exercises and 15 new worked problems covering loading, current division, Thevenin sources, RC/RL transients, filters, feedback, summing, differential amplifiers, capacitive division, buffering and a passive DAC. Every new numerical answer is checked against actual ngspice output.
+The analog library contains **32 problems**, including six converter lessons and two parts-only wiring exercises. ADC/DAC foundations cover R–2R conversion, SAR trial/residue, flash thermometer encoding, comparator thresholds, acquisition settling and sample/hold droop. Circuit and block views explain the stages. Numerical answers are checked against actual ngspice output; parts-only exercises grade the learner's actual connected graph.
 
-Problem descriptions support expanded, compact and hidden modes. Search, difficulty/domain/progress filters, adjacent navigation and random selection help navigate the library. Worked-answer completion is stored on the current device. The three fixed-topology design graders save verified progress to Cloudflare D1 when signed in.
+Problem descriptions support expanded, compact and hidden modes. Search, difficulty/domain/progress filters, adjacent navigation and random selection help navigate the library. Worked-answer completion is stored on the current device. Five supported fixed-topology exercises save verified progress to Cloudflare D1 when signed in.
 
 **Supabase Auth** provides email/password signup, email confirmation, sign-in, sign-out, password recovery and persistent server-verified sessions. Without a configured project, sign-in is clearly unavailable; simulation remains usable.
+
+## HDL workspace
+
+The separate `/hdl` section includes six original coding exercises and an editable playground: multiplexing, saturating arithmetic, enabled counters, flash ADC encoding, PWM DACs and SAR control. **Icarus Verilog** compiles and simulates Verilog 2005 and its supported SystemVerilog 2012 subset in a terminable Web Worker. **CodeMirror** provides source editing and **VCDrom** displays the real VCD output, including multi-bit signals. Console and waveforms support tabs, split and stacked layouts.
+
+Drafts stay in the browser. Run uses the editable testbench; Check solution uses the supplied exercise checks. HDL practice checks are local feedback, not server-verified scores. Download the source/testbench project to continue with Icarus, Yosys and GTKWave in **OSS CAD Suite**. See [HDL integration](docs/hdl-workspace.md) for runtime limits, provenance and supported language features.
 
 ## Development and checks
 
@@ -71,6 +80,7 @@ Build output, caches, local credentials and test captures are excluded from sour
 - [CircuitJS integration and reproducible build](docs/circuitjs-integration.md)
 - [Official KiCad symbols, pins and provenance](docs/kicad-symbols.md)
 - [Waveform measurements and FFT](docs/waveform-instruments.md)
+- [HDL tools, exercises and waveform viewer](docs/hdl-workspace.md)
 - [Supabase authentication](docs/supabase.md)
 - [Challenge audit and authoring](docs/challenge-audit.md)
 - [Simulator provenance](docs/simulator-provenance.md)

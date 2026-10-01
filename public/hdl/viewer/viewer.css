@@ -1,0 +1,3 @@
+@font-face{font-family:'Iosevka Drom Web';font-display:swap;src:url('./IosevkaDrom-Regular.woff2') format('woff2')}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;color:#e2e9f0;font-family:'Iosevka Drom Web',monospace}
+#waveform{height:100%;width:100%}#error{padding:24px;color:#ffad9e}p{padding:16px}

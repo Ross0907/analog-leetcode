@@ -1,4 +1,5 @@
 import { expect, test, type Frame, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import type { CircuitJsApi } from '../../lib/circuitjs';
 
 async function nativeEditor(page: Page): Promise<Frame> {
@@ -120,8 +121,15 @@ test('challenge authoring template is visible, typed, and downloadable', async (
   const summary = page.getByLabel('Summary', { exact: true }); const exportButton = page.getByRole('button', { name: /Download validated JSON/i });
   await summary.fill(''); await expect(exportButton).toBeDisabled();
   await summary.fill('Design a divider that meets the specified sensor-bias target.'); await expect(exportButton).toBeEnabled();
+  await page.getByRole('combobox', { name: 'Starting connections', exact: true }).selectOption('parts-only');
+  await expect(page.getByRole('textbox', { name: 'Wiring guidance', exact: true })).toHaveValue(/source/);
   const downloadEvent = page.waitForEvent('download'); await exportButton.click();
-  expect((await downloadEvent).suggestedFilename()).toBe('anacode-low-noise-sensor-divider.challenge.v1.json');
+  const download = await downloadEvent;
+  expect(download.suggestedFilename()).toBe('anacode-low-noise-sensor-divider.challenge.v1.json');
+  const exported = JSON.parse(await readFile((await download.path())!, 'utf8'));
+  expect(exported.workspace.starterSchematic.partsOnly.nativePresetSlug).toBe('wire-adc-reference');
+  expect(exported.workspace.starterSchematic.partsOnly.outputLabel).toBe('vout');
+  expect(exported.workspace.starterSchematic.partsOnly.autoProbeOutput).toBe(true);
 });
 
 test('the native workspace is contained on a narrow viewport', async ({ page }) => {

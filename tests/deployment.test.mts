@@ -12,7 +12,7 @@ const bundle = {
   name: "anacode",
   d1_databases: [{ binding: "DB", database_id: environment.D1_DATABASE_ID, database_name: environment.D1_DATABASE_NAME }],
   secrets: { required: requiredWorkerSecrets },
-  assets: { binding: "ASSETS", run_worker_first: ["/circuitjs/*"] },
+  assets: { binding: "ASSETS", run_worker_first: ["/circuitjs/*", "/hdl/*"] },
 };
 
 test("deployment requires actual account and D1 settings and rejects local placeholders", () => {
@@ -29,6 +29,7 @@ test("deployment rejects a changed Worker, stale D1 binding or missing runtime g
   assert.throws(() => validateDeploymentBundle(bundle, { ...environment, D1_DATABASE_NAME: "another-database" }), /DB binding/);
   assert.throws(() => validateDeploymentBundle({ ...bundle, secrets: { required: [] } }, environment), /required runtime-secret/);
   assert.throws(() => validateDeploymentBundle({ ...bundle, assets: { binding: "ASSETS" } }, environment), /CircuitJS/);
+  assert.throws(() => validateDeploymentBundle({ ...bundle, assets: { binding: "ASSETS", run_worker_first: ["/circuitjs/*"] } }, environment), /HDL/);
 });
 
 test("omitted deployment secrets preserve existing dashboard configuration", () => {

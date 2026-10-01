@@ -18,7 +18,7 @@ const problems: Input[] = [
     objective: "A 5 V source drives a 10 kΩ / 10 kΩ divider. Add a 10 kΩ load across the lower resistor. Find the loaded output voltage.",
     topics: ["Loading", "Parallel resistance", "Measurement"], assumptions: ["All three resistors are exactly 10 kΩ"],
     starterNetlist: "V1 vin 0 5\nR1 vin out 10k\nR2 out 0 10k\nRL out 0 10k\n.op\n.end",
-    nativeCircuit: native(`${supply}\nr 96 128 288 128 0 10000\nr 288 128 288 320 0 10000\nw 288 128 432 128 0\nr 432 128 432 320 0 10000\nw 96 320 288 320 0\nw 288 320 432 320 0\nO 432 128 496 128 0`),
+    nativeCircuit: native(`${supply}\nr 96 128 288 128 0 10000\nr 288 128 288 320 0 10000\nw 288 128 432 128 0\nr 432 128 432 320 0 10000\ng 288 320 288 352 0\ng 432 320 432 352 0\nO 432 128 496 128 0`),
     solution: { quantity: "Loaded output", value: 5/3, unit: "V", tolerance: .01, explanation: "The lower leg becomes 10 kΩ ∥ 10 kΩ = 5 kΩ. Vout = 5 × 5/(10 + 5) = 1.6667 V. The unloaded value of 2.5 V would be incorrect.", verification: { kind: "op", node: "out" } },
   },
   {
@@ -26,7 +26,7 @@ const problems: Input[] = [
     objective: "A 6 mA source feeds 1 kΩ and 2 kΩ in parallel. Find the current from the shared node to ground through the 2 kΩ branch.",
     topics: ["KCL", "Current division"], assumptions: ["Source injects 6 mA into the node"],
     starterNetlist: "I1 0 out 6m\nR1 out 0 1k\nR2 out 0 2k\n.op\n.end",
-    nativeCircuit: native("i 96 320 96 128 0 .006\ng 96 320 96 352 0\nw 96 128 288 128 0\nr 288 128 288 320 0 1000\nw 288 128 432 128 0\nr 432 128 432 320 0 2000\nw 96 320 288 320 0\nw 288 320 432 320 0\nO 432 128 496 128 0"),
+    nativeCircuit: native("i 96 320 96 128 0 .006\ng 96 320 96 352 0\nw 96 128 288 128 0\nr 288 128 288 320 0 1000\nw 288 128 432 128 0\nr 432 128 432 320 0 2000\ng 288 320 288 352 0\ng 432 320 432 352 0\nO 432 128 496 128 0"),
     solution: { quantity: "2 kΩ branch current", value: .002, unit: "A", tolerance: .01, explanation: "The node voltage is 6 mA × (1 kΩ ∥ 2 kΩ) = 4 V. The 2 kΩ branch carries 2 mA and the 1 kΩ branch carries 4 mA.", verification: { kind: "op", node: "out", scale: 1/2000 } },
   },
   {
@@ -34,7 +34,7 @@ const problems: Input[] = [
     objective: "A Thevenin source has 12 V open-circuit voltage and 4 kΩ resistance. Find the terminal voltage when it drives a 2 kΩ load.",
     topics: ["Thevenin equivalent", "Source resistance"], assumptions: ["Ideal linear source model"],
     starterNetlist: "V1 vin 0 12\nRS vin out 4k\nRL out 0 2k\n.op\n.end",
-    nativeCircuit: native(`${supply.replace("40 5 0", "40 12 0")}\nr 96 128 320 128 0 4000\nr 320 128 320 320 0 2000\nw 96 320 320 320 0\nO 320 128 416 128 0`),
+    nativeCircuit: native(`${supply.replace("40 5 0", "40 12 0")}\nr 96 128 320 128 0 4000\nr 320 128 320 320 0 2000\ng 320 320 320 352 0\nO 320 128 416 128 0`),
     solution: { quantity: "Terminal voltage", value: 4, unit: "V", tolerance: .01, explanation: "The current is 12/(4000 + 2000) = 2 mA. The load voltage is 2 mA × 2 kΩ = 4 V.", verification: { kind: "op", node: "out" } },
   },
   {
@@ -42,7 +42,7 @@ const problems: Input[] = [
     objective: "A 0 → 5 V step drives 10 kΩ in series with an initially discharged 100 nF capacitor. Find its voltage 1 ms after the first rising edge.",
     topics: ["RC charging", "Initial conditions", "Time constant"], assumptions: ["Use Reset before recording the first charging edge"],
     starterNetlist: "V1 vin 0 PULSE(0 5 0 1n 1n 10m 20m)\nR1 vin out 10k\nC1 out 0 100n\n.tran 5u 5m\n.end",
-    nativeCircuit: native(`${pulse}\nr 96 128 320 128 0 10000\nc 320 128 320 320 0 .0000001 0\nw 96 320 320 320 0\nO 320 128 416 128 0`),
+    nativeCircuit: native(`${pulse}\nr 96 128 320 128 0 10000\nc 320 128 320 320 0 .0000001 0\ng 320 320 320 352 0\nO 320 128 416 128 0`),
     solution: { quantity: "Capacitor voltage at 1 ms", value: 5*(1-Math.exp(-1)), unit: "V", tolerance: .01, explanation: "τ = RC = 1 ms. Vc(t) = 5(1 − exp(−t/τ)); at one time constant Vc = 3.1606 V, or 63.2% of its final voltage.", verification: { kind: "transient", node: "out", at: .001 } },
   },
   {
@@ -50,7 +50,7 @@ const problems: Input[] = [
     objective: "A 0 → 5 V step drives 100 Ω in series with 100 mH. Initially the current is zero. Find the current 1 ms after the first rising edge.",
     topics: ["RL transient", "Inductor continuity", "KVL"], assumptions: ["Ideal inductor with zero winding resistance", "Use Reset before capture"],
     starterNetlist: "V1 vin 0 PULSE(0 5 0 1n 1n 10m 20m)\nR1 vin out 100\nL1 out 0 100m\n.tran 5u 5m\n.end",
-    nativeCircuit: native(`${pulse}\nr 96 128 320 128 0 100\nl 320 128 320 320 0 .1 0\nw 96 320 320 320 0\nO 320 128 416 128 0`),
+    nativeCircuit: native(`${pulse}\nr 96 128 320 128 0 100\nl 320 128 320 320 0 .1 0\ng 320 320 320 352 0\nO 320 128 416 128 0`),
     solution: { quantity: "Inductor current at 1 ms", value: .05*(1-Math.exp(-1)), unit: "A", tolerance: .01, explanation: "τ = L/R = 1 ms and I∞ = 50 mA. I(τ) = 50(1 − e⁻¹) = 31.606 mA. Equivalently measure VL and use I = (5 − VL)/100.", verification: { kind: "transient", node: "out", at: .001, scale: -.01, offset: .05 } },
   },
   {
@@ -58,7 +58,7 @@ const problems: Input[] = [
     objective: "A series 10 nF capacitor feeds a 10 kΩ resistor to ground. Find |Vout/Vin| at 1 kHz with the output across the resistor.",
     topics: ["High-pass filter", "Impedance", "Bode plots"], assumptions: ["1 V AC source"],
     starterNetlist: "V1 vin 0 AC 1\nC1 vin out 10n\nR1 out 0 10k\n.ac dec 50 10 100k\n.end",
-    nativeCircuit: native(`${sine}\nc 96 128 320 128 0 .00000001 0\nr 320 128 320 320 0 10000\nw 96 320 320 320 0\nO 320 128 416 128 0`),
+    nativeCircuit: native(`${sine}\nc 96 128 320 128 0 .00000001 0\nr 320 128 320 320 0 10000\ng 320 320 320 352 0\nO 320 128 416 128 0`),
     solution: { quantity: "Gain magnitude at 1 kHz", value: (2*Math.PI*.1)/Math.sqrt(1+(2*Math.PI*.1)**2), unit: "V/V", tolerance: .01, explanation: "H(jω) = jωRC/(1 + jωRC). Since ωRC = 0.628319, |H| = 0.532018, approximately −5.48 dB. The output approaches unity at high frequency.", verification: { kind: "ac", node: "out", at: 1000 } },
   },
   {
@@ -98,7 +98,7 @@ const problems: Input[] = [
     objective: "Put 10 nF and 20 nF in series across an AC source. Find the 1 kHz voltage ratio across the 20 nF capacitor.",
     topics: ["Capacitive impedance", "Charge conservation"], assumptions: ["1 V AC source", "A 1 GΩ output bleed establishes the DC reference"],
     starterNetlist: "V1 vin 0 AC 1\nC1 vin out 10n\nC2 out 0 20n\nRB out 0 1g\n.ac dec 50 10 100k\n.end",
-    nativeCircuit: native(`${sine}\nc 96 128 320 128 0 .00000001 0\nc 320 128 320 320 0 .00000002 0\nw 96 320 320 320 0\nw 320 128 448 128 0\nr 448 128 448 320 0 1000000000\nw 320 320 448 320 0\nO 448 128 512 128 0`),
+    nativeCircuit: native(`${sine}\nc 96 128 320 128 0 .00000001 0\nc 320 128 320 320 0 .00000002 0\ng 320 320 320 352 0\nw 320 128 448 128 0\nr 448 128 448 320 0 1000000000\ng 448 320 448 352 0\nO 448 128 512 128 0`),
     solution: { quantity: "Capacitive division ratio", value: 1/3, unit: "V/V", tolerance: .001, explanation: "The capacitors carry equal AC charge. Since V = Q/C, Vout/Vin = C1/(C1 + C2) = 10/30 = 1/3. The bleed resistor's effect is negligible at 1 kHz.", verification: { kind: "ac", node: "out", at: 1000 } },
   },
   {
@@ -114,7 +114,7 @@ const problems: Input[] = [
     objective: "A 1 kΩ resistor is connected across 5 V. Find its dissipated power and compare it with its 125 mW rating.",
     topics: ["Power", "Ohm's law", "Component rating"], assumptions: ["Ignore temperature coefficient"],
     starterNetlist: "V1 out 0 5\nR1 out 0 1k\n.op\n.end",
-    nativeCircuit: native(`${supply}\nw 96 128 320 128 0\nr 320 128 320 320 0 1000\nw 96 320 320 320 0\nO 320 128 416 128 0`),
+    nativeCircuit: native(`${supply}\nw 96 128 320 128 0\nr 320 128 320 320 0 1000\ng 320 320 320 352 0\nO 320 128 416 128 0`),
     solution: { quantity: "Dissipated power", value: .025, unit: "W", tolerance: .01, explanation: "P = V²/R = 25/1000 = 25 mW, which is 20% of the 125 mW rating. Real circuits also need temperature derating.", verification: { kind: "op", node: "out", scale: .005 } },
   },
   {
@@ -122,7 +122,7 @@ const problems: Input[] = [
     objective: "A series 100 mH inductor drives 1 kΩ to ground. Find the load voltage amplitude for a 1 V, 1 kHz input.",
     topics: ["RL filter", "Inductive reactance", "Frequency response"], assumptions: ["Ideal inductor with no winding resistance"],
     starterNetlist: "V1 vin 0 AC 1\nL1 vin out 100m\nR1 out 0 1k\n.ac dec 50 10 100k\n.end",
-    nativeCircuit: native(`${sine}\nl 96 128 320 128 0 .1 0\nr 320 128 320 320 0 1000\nw 96 320 320 320 0\nO 320 128 416 128 0`),
+    nativeCircuit: native(`${sine}\nl 96 128 320 128 0 .1 0\nr 320 128 320 320 0 1000\ng 320 320 320 352 0\nO 320 128 416 128 0`),
     solution: { quantity: "Load amplitude at 1 kHz", value: 1/Math.sqrt(1+(2*Math.PI*.1)**2), unit: "V", tolerance: .01, explanation: "H(jω) = R/(R + jωL). Here ωL/R = 0.628319 and |H| = 0.846733. Its corner is R/(2πL) = 1591.55 Hz.", verification: { kind: "ac", node: "out", at: 1000 } },
   },
   {

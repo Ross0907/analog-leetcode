@@ -39,6 +39,27 @@ test("the strict contract rejects executable or simulator-authored fields", () =
   }
 });
 
+test("parts-only authoring binds a disconnected native starter to its existing topology and output probe", () => {
+  const draft = structuredClone(challengeAuthoringStarterTemplate);
+  draft.workspace.starterSchematic.partsOnly = {
+    nativePresetSlug: "wire-adc-reference", outputLabel: "vout", autoProbeOutput: true,
+    wiringInstructions: ["Connect source + to the upper resistor.", "Connect the resistor pair and return the lower leg to ground.", "Ground source − and attach vout to the midpoint."],
+  };
+  assert.equal(validateChallengeAuthoringTemplate(draft).ok, true);
+  const swapped = structuredClone(draft);
+  swapped.workspace.starterSchematic.partsOnly!.nativePresetSlug = "wire-antialias-filter";
+  const mismatched = validateChallengeAuthoringTemplate(swapped);
+  assert.equal(mismatched.ok, false);
+  assert.ok(mismatched.diagnostics.some((item) => item.path.includes("partsOnly.nativePresetSlug")));
+  const missingGuidance = structuredClone(draft);
+  missingGuidance.workspace.starterSchematic.partsOnly!.wiringInstructions = [];
+  assert.equal(validateChallengeAuthoringTemplate(missingGuidance).ok, false);
+  const executable = structuredClone(draft) as unknown as Record<string, unknown>;
+  const starter = (executable.workspace as Record<string, unknown>).starterSchematic as Record<string, unknown>;
+  (starter.partsOnly as Record<string, unknown>).wiringCode = "connectAll()";
+  assert.equal(validateChallengeAuthoringTemplate(executable).ok, false);
+});
+
 test("semantic validation binds grader, preset, analysis, references, probes, and parameters", () => {
   const mismatchedGrader = structuredClone(challengeAuthoringStarterTemplate);
   mismatchedGrader.workspace.starterSchematic.presetSlug = "rc-cutoff-1khz";

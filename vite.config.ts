@@ -18,7 +18,7 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
 const localBindingConfig = {
   main: "./worker/index.ts",
-  assets: { binding: "ASSETS", run_worker_first: ["/circuitjs/*"] },
+  assets: { binding: "ASSETS", run_worker_first: ["/circuitjs/*", "/hdl/*"] },
   // Pin runtime semantics so a platform default change cannot silently alter
   // a release. Review and advance this date deliberately.
   compatibility_date: "2026-08-29",
@@ -81,7 +81,10 @@ export default defineConfig(async ({ command, mode }) => {
       client: { optimizeDeps: { include: ["lucide-react"] } },
     },
     server: {
-      watch: {
+      // A test run must not reload when screenshots, fixtures or another
+      // process writes a file. Restart the isolated server after source edits.
+      hmr: isE2E ? false : undefined,
+      watch: isE2E ? null : {
         ignored: ["**/build/**", "**/.tmp/**", "**/artifacts/**"],
         ...(isCodexSeatbeltSandbox ? { useFsEvents: false, usePolling: true } : {}),
       },

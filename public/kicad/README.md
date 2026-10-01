@@ -49,19 +49,23 @@ official exports retain their single original electrical endpoint.
 `renderer.js` is application integration code maintained separately from these
 generated assets. It is excluded from the generated SVG/source hash inventory.
 It derives display copies for the editor, including an open transistor style
-that omits the optional enclosure and MOS external pin leads before aligning
+that omits the optional enclosure and transistor external pin leads before aligning
 the body to native terminal anchors. Gate/channel/arrow artwork remains KiCad's;
 the original exported files and their hashes are retained. These display
 adaptations do not alter CircuitJS's connectivity or device models and retain
 the KiCad asset attribution and license.
 The enclosure omission applies to NPN, PNP and MOS artwork. Native electrical
-terminals stay unchanged while the MOS display leads use their body endpoints.
-The presentation copy also adjusts colors and the minimum stroke weight for
+terminals stay unchanged while transistor display leads use their body endpoints.
+Hollow diode display copies omit the internal crossing stroke while preserving
+the body outline, cathode bar and polarity. DC sources use the official battery
+graphic with its positive pin mapped to the native positive terminal. Passive
+devices and transistor bodies share a common scale, limited by terminal spacing.
+The presentation copy also adjusts light/dark colors and the minimum stroke weight for
 readability while preserving heavier upstream strokes.
 
 After each native export, run `node scripts/build-kicad-presentation.mjs` to
 refresh the 22 palette previews in `presentation/` using that same display
 function. These are adapted previews, not unmodified official exports. Their
-MOS view boxes crop unused margins; live circuit placement retains the original
+transistor view boxes crop unused margins; live circuit placement retains the original
 coordinate system. Finish with `node scripts/audit-kicad-symbols.mjs` to verify
 the original exports and source/pin inventory.

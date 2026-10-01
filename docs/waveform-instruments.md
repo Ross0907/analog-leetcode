@@ -9,7 +9,17 @@
 - ngspice supports operating point, transient, DC sweep, and complex AC results. AC plots show magnitude in dB relative to 1 V (or 1 A) and unwrapped phase. A unit AC source is needed when interpreting node magnitude as voltage gain. The normalizer retains actual source/inductor branch currents provided by ngspice; requesting an unavailable device current produces an error.
 - All trace arrays must match the result axis and contain finite numbers. Transient time and AC frequency must increase. The existing ngspice resource bounds and isolated worker timeout remain in place.
 - The worker prepends a comment title before sending a deck to ngspice. SPICE reserves its first line for a title; this preserves voltage sources that are the first line of older challenge decks.
-- Users can rename, hide, remove, and restore result traces. These controls change the displayed capture. Native editor probe controls change which nodes are acquired in the next capture.
+- Users can rename, hide, remove, and restore result traces. These controls change the displayed capture. Native editor probe controls change the next capture and restart an active live record with the updated enabled channels.
+
+## Live acquisition and workspace
+
+The shared workspace offers tabs, stacked panels and side-by-side schematic/measurements. A source selector distinguishes a native capture from an actual ngspice result. Schematic-mode analysis reads the current native graph every time; separate reference/custom decks require an explicit selection and disclose that schematic edits are not reflected.
+
+Live mode records real native `ontimestep` values without pausing the solver. Freeze holds the final measured record while simulation keeps running. The default depth is 65,536 samples per channel and the maximum is 131,072, limited by a shared 2,097,152-Float64-value storage budget including timestamps. Reduced depth is reported. Fixed ring storage drops oldest samples; UI publication is capped at two updates per second. Numeric snapshots and waveform/FFT rendering use additional bounded memory. One-shot capture retains the existing pause-on-completion behavior. See [native integration](circuitjs-integration.md) for callback lifetime, reset/edit behavior and conversion coverage.
+
+## Logic analyzer
+
+The logic view applies user-configured low and high voltage thresholds to actual acquired voltage samples. Values at/below low become 0, at/above high become 1, and the in-between band becomes X. Invalid thresholds show an error. It draws transitions only where sampled data changes state; it cannot reveal pulses missed by acquisition. Up to 16 checked channels form a bus, with the first checked channel in displayed list order as bit 0. The cursor reads the selected actual sample and reports binary/hex, or X for an indeterminate bit. More than 6,000 transitions per channel produces a visible shorten-window notice rather than an invented compressed waveform.
 
 ## Oscilloscope
 
@@ -19,7 +29,7 @@ For time records, minimum, maximum, peak-to-peak, mean, and RMS use the visible 
 
 ## FFT
 
-The spectrum uses the established MIT-licensed [`fft.js`](https://github.com/indutny/fft.js) transform. The user selects the captured channel, power-of-two record length (64–32768), Rectangular/Hann/Hamming/Blackman window, DC removal, linear/log frequency, linear/dB peak magnitude, frequency span, and marker. Record lengths use the final portion of the capture. There is no zero padding that could suggest additional measured resolution.
+The spectrum uses the established MIT-licensed [`fft.js`](https://github.com/indutny/fft.js) transform. The user selects the captured channel, power-of-two record length (64–131072), Rectangular/Hann/Hamming/Blackman window, DC removal, linear/log frequency, linear/dB peak magnitude, frequency span, and marker. Record lengths use the final portion of the capture. There is no zero padding that could suggest additional measured resolution.
 
 Uniform captures retain their original sample spacing. Adaptive records are explicitly interpolated at the largest recorded time interval, with a visible interpolation warning. The transform refuses a record too short for the requested length at that interval. Frequency resolution is sample rate divided by FFT length; Nyquist is half the sample rate. Magnitude is one-sided peak amplitude with coherent window gain correction; DC and Nyquist bins are not doubled. dB is relative to one trace unit, clamped at −300 dB for display.
 
@@ -27,8 +37,8 @@ The dominant bin is reported only for a resolved signal with at least three cycl
 
 ## Validation
 
-`tests/waveform-analysis.test.mts` checks analytical ramp integration on adaptive time intervals, sine frequency and duty, cursor interpolation, all four window gains, DC/Nyquist normalization, known harmonic distortion, sparse/noncoherent record guards, and stable colors. `tests/simulator-results.test.mts` checks 32 simultaneous nodes, exact sample preservation, current units, missing node and invalid-axis errors, DC sweeps, and complex AC phase unwrapping. `tests/simulator-policy.test.mts` retains deck-containment and output-bound tests.
+`tests/waveform-analysis.test.mts` checks analytical ramp integration on adaptive time intervals, sine frequency and duty, cursor interpolation, all four window gains, DC/Nyquist normalization, known harmonic distortion, sparse/noncoherent record guards, stable colors, and a 131,072-point coherent FFT. `tests/circuitjs-acquisition.test.mts` checks ring wrap/order/memory, actual callback readings, reset handling, callback restoration and freeze without solver pauses. `tests/logic-analysis.test.mts` covers threshold edges, unknown states and bus bit order. `tests/circuitjs-analysis.test.mts` checks native graph/value mapping, polarity, source phase and unsupported-model failures. `tests/simulator-results.test.mts` checks 32 simultaneous nodes, exact sample preservation, current units, missing node and invalid-axis errors, DC sweeps, and complex AC phase unwrapping. `tests/simulator-policy.test.mts` retains deck-containment and output-bound tests.
 
-The result tests also execute the actual ngspice WebAssembly engine on 32 independent divider nodes and an untitled source-first deck. `tests/e2e/instruments.spec.ts` exercises native CircuitJS captures, multiple ngspice voltage/current probes, Bode plots, trace management, and FFT controls in a browser.
+The result tests also execute the actual ngspice WebAssembly engine on 32 independent divider nodes and an untitled source-first deck. `tests/e2e/instruments.spec.ts` exercises native CircuitJS captures, multiple ngspice voltage/current probes, Bode plots, trace management, FFT controls, live/freeze and logic views, layout changes, and fresh SPICE analysis after editing a native resistor in a browser.
 
 The upstream [ngspice manual](https://ngspice.sourceforge.io/docs/ngspice-manual.pdf) documents voltage-source branch currents as `i(source)` / `source#branch`; the adapter accepts those actual result-vector forms.

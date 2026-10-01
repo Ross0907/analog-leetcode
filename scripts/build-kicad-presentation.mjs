@@ -12,7 +12,7 @@ const check = process.argv.includes('--check');
 if (!check) mkdirSync(target, { recursive: true });
 for (const symbol of Object.values(manifest.symbols)) {
   let svg = presentationSvg(readFileSync(resolve('public', symbol.svg.slice(1)), 'utf8'), symbol);
-  if (/^Device:Q_[NP]MOS$/.test(symbol.sourceId)) {
+  if (/^Device:Q_(?:[NP]MOS|NPN|PNP)$/.test(symbol.sourceId)) {
     // The palette can crop transparent margins left by shortened display leads.
     // Circuit placement continues to use the original KiCad coordinate system.
     const xs = symbol.pins.map((pin) => pin.bodyX), ys = symbol.pins.map((pin) => pin.bodyY);
