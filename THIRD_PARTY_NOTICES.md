@@ -59,6 +59,12 @@ AnaCode acknowledges [Analog Canvas](https://analog-canvas.tokenzhang.com/editor
 
 AnaCode does not copy, bundle, frame, or execute Analog Canvas JavaScript, source code, schema, SVG assets, or hosted application. The external reference does not make Analog Canvas a runtime dependency of this repository.
 
+## HDL simulation, editing and waveforms
+
+Icarus Verilog 14.0 (devel) is built from official source revision `c7530dbcc186de2f21eacde14fd28061b885924c` with the distributed AnaCode static-link patch, under GPL-2.0-or-later. Complete corresponding source, pinned build inputs, scripts and license notices accompany the engine at [public/hdl/icarus/](public/hdl/icarus/). The runner adapter retains GPL-2.0-or-later. VeriSim is acknowledged as an architectural reference; its prebuilt WASM is not the deployed artifact.
+
+VCDrom 1.6.0 (WaveDrom contributors, MIT) supplies the unmodified VCD parser and waveform renderer. The AnaCode input wrapper is separate; the upstream analytics page is not distributed. Iosevka Drom retains SIL OFL 1.1. CodeMirror 6 (Marijn Haverbeke and contributors, MIT) supplies the HDL editor. [Deployed HDL notices](public/hdl/NOTICE.txt) link complete license texts, source materials and artifact inventory. EDA Playground and HDLBits are workflow references; the six AnaCode coding exercises are original. Yosys and GTKWave are supported through exported OSS CAD Suite projects, not bundled as browser engines.
+
 ## AnaCode project code
 
 AnaCode-authored source code is licensed under the repository's root [MIT License](LICENSE), subject to the exclusions described there for third-party material.

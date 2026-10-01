@@ -42,6 +42,13 @@ but their repository contains no corresponding static-loader patches or build
 scripts. The source rebuild replaces those artifacts; merely attaching upstream
 source to those modified binaries does not establish correspondence.
 
-Current build verification: pending the first completed workflow run and local
-artifact/browser validation. Do not represent this recipe alone as a verified
-runtime build.
+Source build verification: GitHub Actions run
+[`36900660027`](https://github.com/Ross0907/analog-leetcode/actions/runs/36900660027)
+at AnaCode commit `ff3c63667b2db8366d7811eb8a324bb1e5fa33c4` compiled all three
+modules with Emscripten 5.0.4. All **11 actual-engine checks passed**, including
+every supplied learning testbench, negative cases, real math and 64-bit function
+return types. The downloaded artifact's 19 runtime/source/license file hashes
+were verified, including exact byte correspondence between the local recipes
+and the copies bundled in its source directory. Its `build-manifest.json`
+identifies the distributed bytes. Browser integration against the promoted
+artifact is checked separately by the application's end-to-end suite.

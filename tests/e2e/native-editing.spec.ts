@@ -11,10 +11,10 @@ r 320 80 320 240 0 1000
 w 320 240 96 240 0
 g 96 240 96 288 0`;
 
-async function open(page: Page, text = divider) {
+async function open(page: Page, text = divider, showInfo = false) {
   page.on('pageerror', (error) => console.error('Native runtime:', error.message));
   page.on('console', (message) => { if (message.type() === 'error') console.error('Native asset:', message.text()); });
-  await page.goto('/circuitjs/circuitjs.html?running=false&hideSidebar=true&hideInfoBox=true');
+  await page.goto(`/circuitjs/circuitjs.html?running=false&hideSidebar=true&hideInfoBox=${!showInfo}`);
   await expect.poll(() => page.evaluate(() => typeof window.CircuitJS1?.setTheme === 'function' && window.AnaCodeKiCad?.ready === true)).toBe(true);
   await page.evaluate((text) => { window.CircuitJS1.importCircuit(text, false); window.CircuitJS1.setTheme('light'); window.CircuitJS1.setSimRunning(true); }, text);
   await expect.poll(() => page.evaluate(() => window.CircuitJS1.getElements().length)).toBeGreaterThan(0);
@@ -104,4 +104,30 @@ test('wire placement supports empty-space endpoints and Escape cancels an unfini
   await page.keyboard.press('w');
   await page.mouse.click(start.x, start.y); await page.mouse.move(end.x, end.y); await page.mouse.click(end.x, end.y);
   await expect.poll(() => page.evaluate(() => window.CircuitJS1.getElements().some((element) => element.getType() === 'RoutedWireElm' && element.getPostX(0) === 400 && element.getPostY(0) === 96 && element.getPostX(1) === 480 && element.getPostY(1) === 160))).toBe(true);
+});
+
+test('source labels edit their displayed voltage or frequency using native fields', async ({ page }) => {
+  await open(page); await expect.poll(() => output(page)).toBeCloseTo(5, 6);
+  let value = await point(page, 64, 160); await page.mouse.click(value.x, value.y);
+  let input = page.getByRole('textbox', { name: 'Voltage', exact: true });
+  await expect(input).toBeVisible(); await input.fill('8'); await input.press('Enter');
+  await expect.poll(() => output(page)).toBeCloseTo(4, 6);
+  await page.evaluate((text) => window.CircuitJS1.importCircuit(text, false), divider.replace('0 0 40 10 0 0 0.5', '0 1 1000 10 0 0 0.5'));
+  await expect.poll(() => page.evaluate(() => window.CircuitJS1.getElements()[0].getEditableValue()?.name)).toBe('Frequency (Hz)');
+  value = await point(page, 64, 160); await page.mouse.click(value.x, value.y);
+  input = page.getByRole('textbox', { name: 'Frequency (Hz)', exact: true });
+  await expect(input).toBeVisible(); await input.fill('2k'); await input.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.CircuitJS1.getElements()[0].getEditableValue()?.value)).toBe(2000);
+});
+
+test('solver information backing remains readable in light and dark themes', async ({ page }) => {
+  await open(page, divider, true);
+  await page.mouse.move(10, 10);
+  const backing = () => page.evaluate(() => {
+    const canvas = document.querySelector('canvas')!;
+    return Array.from(canvas.getContext('2d')!.getImageData(canvas.width - 20, canvas.height - 20, 1, 1).data);
+  });
+  await expect.poll(backing).toEqual([237, 242, 247, 255]);
+  await page.evaluate(() => window.CircuitJS1.setTheme('dark'));
+  await expect.poll(backing).toEqual([32, 36, 43, 255]);
 });

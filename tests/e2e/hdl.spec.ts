@@ -9,6 +9,7 @@ test('HDL playground executes Icarus and renders actual VCD in the embedded view
   await expect(page.getByRole('status')).toContainText('Finished',{timeout:30_000});
   const viewer=page.frameLocator('iframe[title="VCDrom logic waveform viewer"]');
   await expect(viewer.locator('canvas').first()).toBeVisible({timeout:25_000});
+  await page.screenshot({path:'artifacts/qa/hdl-workspace.png',fullPage:true});
   await expect(viewer.getByRole('alert')).toBeHidden();
   await page.getByRole('combobox',{name:'Output layout'}).selectOption('split');
   await expect(page.getByLabel('Simulator console')).toContainText('ANACODE_RESULT checks=64 failures=0');

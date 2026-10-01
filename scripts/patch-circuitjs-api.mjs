@@ -68,6 +68,7 @@ replace('MouseManager.java', '    \tif (circuitChanged) {\n    \t    sim.needAna
 // Unsupported elements, printing, voltage/power display and missing assets use native draw.
 replace('CircuitElm.java', '    native void addJSMethods() /*-{', `    boolean anacodeSymbolApiReady;
     void drawWithKiCad(Graphics g) {
+        anacodeValueBounds = null;
         boolean previousDrawing = g.anacodeSchematicDrawing;
         g.anacodeSchematicDrawing = true;
         try {
@@ -331,6 +332,19 @@ replace('UIManager.java', `    \t\t\tfor (int i = 0; i != elmList.size(); i++) {
 // setter and analysis invalidation as the upstream properties dialog.
 replace('CircuitElm.java', '    boolean anacodeSymbolApiReady;', `    Rectangle anacodeValueBounds;
     int anacodeValueIndex() {
+        if (this instanceof VoltageElm) {
+            VoltageElm source = (VoltageElm)this;
+            int showVoltage = source instanceof RailElm ? VoltageElm.FLAG_SHOW_VOLTAGE_RAIL : VoltageElm.FLAG_SHOW_VOLTAGE;
+            if (source.waveform != VoltageElm.WF_DC && source.waveform != VoltageElm.WF_NOISE && (flags & showVoltage) == 0) {
+                // Frequency-only source labels must edit frequency, not amplitude.
+                for (int n = 0; n < 20; n++) {
+                    EditInfo ei = getEditInfo(n);
+                    if (ei == null) break;
+                    if (ei.name.equals("Frequency (Hz)")) return n;
+                }
+                return -1;
+            }
+        }
         for (int n = 0; n < 20; n++) {
             EditInfo ei = getEditInfo(n);
             if (ei == null) break;
@@ -350,7 +364,7 @@ replace('CircuitElm.java', '    boolean anacodeSymbolApiReady;', `    Rectangle 
             if (input.length() == 0 || input.length() > 80) return "Enter a numeric value.";
             double value = EditDialog.parseUnits(input);
             if (Double.isNaN(value) || Double.isInfinite(value) || Math.abs(value) > 1e15) return "Enter a finite value.";
-            if ((ei.positive || this instanceof ResistorElm || this instanceof CapacitorElm || this instanceof InductorElm) && value <= 0) return "Value must be greater than zero.";
+            if ((ei.positive || ei.name.equals("Frequency (Hz)") || this instanceof ResistorElm || this instanceof CapacitorElm || this instanceof InductorElm) && value <= 0) return "Value must be greater than zero.";
             if (ei.nonNegative && value < 0) return "Value must not be negative.";
             ei.value = value;
             app.undoManager.pushUndo();
@@ -413,6 +427,9 @@ replace('UIManager.java', '    public void onPreviewNativeEvent(NativePreviewEve
     }-*/;
     public void onPreviewNativeEvent(NativePreviewEvent e) {
         if (anacodeInlineEditing()) return;`);
+replace('VoltageElm.java', 'boolean showV = (flags & FLAG_SHOW_VOLTAGE) != 0;', 'boolean showV = (flags & FLAG_SHOW_VOLTAGE) != 0 || (showValues() && waveform == WF_DC);');
+replace('CurrentElm.java', 'if (showValues() && current != 0) {', 'if (showValues()) {');
+replace('CurrentElm.java', 'String s = getShortUnitText(current, "A");', 'String s = getShortUnitText(currentValue, "A");');
 
 // One theme contract controls the native canvas, diagrams and GWT dialogs.
 replace('UIManager.java', '    void drawAnaCodeGrid(Graphics g) {', `    boolean anacodeLight = true;
@@ -422,6 +439,9 @@ replace('UIManager.java', 'CircuitElm.lightGrayColor = new Color("#aab2bf");', '
 replace('UIManager.java', 'g.setColor("#17191d");', 'g.setColor(anacodeLight ? "#fafbfc" : "#17191d");');
 replace('UIManager.java', 'cv.getElement().getStyle().setBackgroundColor("#17191d");', 'cv.getElement().getStyle().setBackgroundColor(anacodeLight ? "#fafbfc" : "#17191d");');
 replace('UIManager.java', 'g.context.setFillStyle("#323740");', 'g.context.setFillStyle(anacodeLight ? "#dce2e8" : "#323740");');
+replace('UIManager.java', 'g.setColor(menus.printableCheckItem.getState() ? "#eee" : "#111");', 'g.setColor(menus.printableCheckItem.getState() ? "#eee" : anacodeLight ? "#edf2f7" : "#20242b");');
+replace('UIManager.java', '    Color getBackgroundColor() {\n\tif (menus.printableCheckItem.getState())\n\t    return Color.white;\n\treturn Color.black;\n    }', '    Color getBackgroundColor() {\n\tif (menus.printableCheckItem.getState())\n\t    return Color.white;\n\treturn new Color(anacodeLight ? "#fafbfc" : "#17191d");\n    }');
+replaceEvery('VoltageElm.java', 'g.setColor(needsHighlight() ? selectColor : Color.gray);', 'g.setColor(needsHighlight() ? selectColor : whiteColor);', 2);
 replace('JSInterface.java', '    void addElement(String type)', `    String getTheme() { return app.ui.anacodeLight ? "light" : "dark"; }
     void setTheme(String theme) { app.ui.anacodeLight = !theme.equals("dark"); applyTheme(getTheme()); app.repaint(); }
     native void applyTheme(String theme) /*-{

@@ -22,13 +22,18 @@ async function point(page: Page, frame: Frame, x: number, y: number) {
 test('native branching splits a wire, preserves its electrical node, and supports undo/redo', async ({ page }) => {
   await page.goto('/problems/precision-voltage-divider');
   const frame = await nativeEditor(page);
+  await page.getByLabel('Workspace layout', { exact: true }).selectOption('tabs');
+  await frame.locator('canvas').scrollIntoViewIfNeeded();
+  await frame.locator('canvas').focus();
+  // Focus/scroll and the layout change must settle before projecting native coordinates.
+  await frame.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   const before = await frame.evaluate(() => (window as unknown as { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().length);
   const start = await point(page, frame, 240, 112);
   const end = await point(page, frame, 240, 176);
-  await page.mouse.click(start.x, start.y);
   await page.keyboard.press('w');
-  await page.mouse.move(start.x, start.y); await page.mouse.down();
-  await page.mouse.move(end.x, end.y, { steps: 8 }); await page.mouse.up();
+  await expect(frame.locator('canvas')).toHaveCSS('cursor', 'crosshair');
+  await page.mouse.click(start.x, start.y);
+  await page.mouse.move(end.x, end.y, { steps: 8 }); await page.mouse.click(end.x, end.y);
   await page.keyboard.press('Escape');
   await expect.poll(() => frame.evaluate(() => (window as unknown as { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().length)).toBeGreaterThan(before);
   const branchVoltage = () => frame.evaluate(() => {
@@ -36,6 +41,14 @@ test('native branching splits a wire, preserves its electrical node, and support
     for (const element of api.getElements()) for (let post = 0; post < element.getPostCount(); post++) if (element.getPostX(post) === 240 && element.getPostY(post) === 176) return element.getVoltage(post);
     return null;
   });
+  await expect.poll(() => frame.evaluate(() => {
+    const api = (window as unknown as { CircuitJS1: CircuitJsApi }).CircuitJS1;
+    const elements = api.getElements();
+    const branch = elements.find((element) => element.getType() === 'RoutedWireElm' && element.getPostX(0) === 240 && element.getPostY(0) === 112 && element.getPostX(1) === 240 && element.getPostY(1) === 176);
+    const source = elements.find((element) => element.getType() === 'VoltageElm');
+    const junctionPosts = elements.flatMap((element) => Array.from({ length: element.getPostCount() }, (_, post) => ({ x: element.getPostX(post), y: element.getPostY(post), node: element.getNodeId(post) }))).filter((post) => post.x === 240 && post.y === 112);
+    return Boolean(branch && source && junctionPosts.length === 3 && junctionPosts.every((post) => post.node === source.getNodeId(1)) && branch.getNodeId(1) === source.getNodeId(1));
+  })).toBe(true);
   await expect.poll(branchVoltage).toBeCloseTo(5, 6);
   await frame.getByRole('menuitem', { name: 'Edit', exact: true }).click();
   await frame.getByRole('menuitem', { name: /Undo/ }).click({ timeout: 10_000 });
@@ -71,14 +84,21 @@ test('native probes can be placed on the schematic and saved with an interoperab
   await expect(page.getByLabel('Capture target samples')).toHaveValue('4096');
 });
 
-test('grading is prepared from native electrical values and connectivity', async ({ page }) => {
-  await page.goto('/problems/precision-voltage-divider'); await nativeEditor(page);
-  await page.getByRole('button', { name: 'Prepare SPICE & grading', exact: true }).click();
-  await expect(page.getByRole('tab', { name: 'SPICE & grading' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByText('Prepared from the current CircuitJS electrical graph and component values.', { exact: false })).toBeVisible();
+test('grading reads fresh native electrical values and connectivity', async ({ page }) => {
+  await page.goto('/problems/precision-voltage-divider'); const frame = await nativeEditor(page);
+  await page.getByLabel('Workspace layout', { exact: true }).selectOption('tabs');
+  await page.getByRole('button', { name: 'SPICE & grading', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'SPICE & grading', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('SPICE analysis source', { exact: true })).toHaveValue('schematic');
+  await page.getByRole('button', { name: 'Use current schematic', exact: true }).click();
+  // A later edit must be read again by Check, without requiring a prepared snapshot.
+  const edits = await frame.evaluate(() => (window as unknown as { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().filter((element) => element.getType() === 'ResistorElm').map((element) => element.setEditableValue('12k')));
+  expect(edits).toEqual([null, null]);
   const gradeResponse = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/grade' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Check fixed topology' }).click();
   const response = await gradeResponse;
+  const submitted = response.request().postDataJSON().circuitDocument as { components: Array<{ kind: string; parameters: { resistanceOhm?: number } }> };
+  expect(submitted.components.filter((component) => component.kind === 'resistor').map((component) => component.parameters.resistanceOhm)).toEqual([12000, 12000]);
   const result = await response.json();
   expect(response.status(), `Grading API returned ${response.status()}: ${JSON.stringify(result)}`).toBe(200);
   expect(result.passed).toBe(true);
@@ -101,7 +121,9 @@ test('invalid imports show an actionable error and retain the native circuit', a
 
 test('the supplied Sallen-Key SPICE model produces real Bode instruments', async ({ page }) => {
   await page.goto('/problems/sallen-key-q'); await nativeEditor(page);
-  await page.getByRole('tab', { name: 'SPICE & grading' }).click();
+  await page.getByRole('button', { name: 'SPICE & grading', exact: true }).click();
+  await page.getByLabel('SPICE analysis source', { exact: true }).selectOption('deck');
+  await expect(page.getByText('This is a separate SPICE example or custom deck. Schematic edits are not reflected in this analysis.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Run simulation', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Bode magnitude' })).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole('region', { name: 'Bode phase' })).toBeVisible();

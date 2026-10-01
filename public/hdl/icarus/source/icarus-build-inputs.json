@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "icarus": {
+    "revision": "c7530dbcc186de2f21eacde14fd28061b885924c",
+    "url": "https://codeload.github.com/steveicarus/iverilog/tar.gz/c7530dbcc186de2f21eacde14fd28061b885924c",
+    "sha256": "323acb25d721492c9be6b945d863dfd925bfc29c0f2ba218ac09b09bd629925b"
+  },
+  "buildImage": "emscripten/emsdk:5.0.4@sha256:61aa4ca6e3dcdf0cfce9c3018767a0698bdc0f7ff72ca5982a0536c5caff93f7"
+}
