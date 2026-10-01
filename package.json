@@ -25,7 +25,7 @@
     "@codemirror/view": "6.43.13",
     "@spice-ts/core": "0.3.0",
     "@supabase/ssr": "0.12.7",
-    "@supabase/supabase-js": "2.116.0",
+    "@supabase/supabase-js": "2.117.2",
     "@tisoap/react-flow-smart-edge": "5.0.0",
     "@xyflow/react": "12.11.6",
     "drizzle-orm": "0.45.2",
