@@ -22,7 +22,7 @@ await writeFile(configPath, JSON.stringify({
   main: resolve(root, "worker/index.ts"),
   compatibility_date: "2026-08-29",
   compatibility_flags: ["nodejs_compat"],
-  assets: { binding: "ASSETS", run_worker_first: ["/circuitjs/*"] },
+  assets: { binding: "ASSETS", run_worker_first: ["/circuitjs/*", "/hdl/*"] },
   d1_databases: [{
     binding: "DB",
     database_name: "anacode-local-e2e",

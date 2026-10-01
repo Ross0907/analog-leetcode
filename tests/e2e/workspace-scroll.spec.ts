@@ -61,7 +61,10 @@ test('plain wheel over the native canvas scrolls the workbench and modified whee
   await expect.poll(scale).not.toBe(originalScale);
   expect(await panel.evaluate((element) => element.scrollTop)).toBe(0);
   await panel.evaluate((element) => { element.scrollTop = element.scrollHeight; });
-  await expect(page.getByRole('button', { name: 'Capture all probes' })).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Check fixed topology', exact: true })).toBeInViewport();
+  const capture = page.getByRole('button', { name: 'Capture all probes', exact: true });
+  await capture.scrollIntoViewIfNeeded();
+  await expect(capture).toBeInViewport();
 });
 
 test('a narrow challenge page scrolls naturally over the embedded canvas to its capture controls', async ({ page }) => {

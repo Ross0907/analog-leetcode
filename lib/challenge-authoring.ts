@@ -8,6 +8,7 @@ import {
   circuitPresets,
   type CircuitPresetSlug,
 } from "./circuit-presets";
+import { gradingBlueprint } from "./grading-blueprints";
 
 /**
  * Portable, declarative challenge-authoring contract.
@@ -212,6 +213,12 @@ export const challengeAuthoringTemplateSchema = z
             presetSlug: circuitPresetSlugSchema,
             circuitDocumentVersion: z.literal(1),
             instructions: paragraphSchema,
+            partsOnly: z.object({
+              nativePresetSlug: z.enum(["wire-adc-reference", "wire-antialias-filter"]),
+              wiringInstructions: z.array(paragraphSchema.max(500)).min(3).max(12),
+              outputLabel: z.literal("vout"),
+              autoProbeOutput: z.literal(true),
+            }).strict().optional(),
           })
           .strict(),
         allowedComponents: z
@@ -317,6 +324,14 @@ export function validateChallengeAuthoringTemplate(input: unknown): ChallengeTem
   const starterCountByKind = new Map<ComponentKind, number>();
   for (const component of starter.components) {
     starterCountByKind.set(component.kind, (starterCountByKind.get(component.kind) ?? 0) + 1);
+  }
+
+  const partsOnly = template.workspace.starterSchematic.partsOnly;
+  if (partsOnly && gradingBlueprint(partsOnly.nativePresetSlug) !== template.workspace.starterSchematic.presetSlug) {
+    diagnostics.push({
+      path: "$.workspace.starterSchematic.partsOnly.nativePresetSlug",
+      message: "The disconnected native starter must use the same reviewed topology as the selected preset and grader.",
+    });
   }
 
   if (grader.starterPreset !== template.workspace.starterSchematic.presetSlug) {

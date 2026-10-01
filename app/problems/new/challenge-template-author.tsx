@@ -348,6 +348,41 @@ export function ChallengeTemplateAuthor() {
                 <small>{draft.statement.context.length}/2,000</small>
               </label>
               <label>
+                <span>Starting connections</span>
+                <select aria-label="Starting connections" value={draft.workspace.starterSchematic.partsOnly ? "parts-only" : "connected"} onChange={(event) => {
+                  const partsOnly = event.target.value === "parts-only";
+                  setDraft((current) => ({ ...current, workspace: { ...current.workspace, starterSchematic: {
+                    ...current.workspace.starterSchematic,
+                    instructions: partsOnly ? "Connect the supplied parts to make the required divider. Place vout at the resistor junction and inspect that node before checking." : challengeAuthoringStarterTemplate.workspace.starterSchematic.instructions,
+                    partsOnly: partsOnly ? {
+                      nativePresetSlug: "wire-adc-reference",
+                      outputLabel: "vout",
+                      autoProbeOutput: true,
+                      wiringInstructions: [
+                        "Connect source + to the upper resistor.",
+                        "Join the two resistors at the output junction.",
+                        "Connect source − and the lower resistor to ground symbols.",
+                        "Attach vout to the midpoint; the final check automatically probes the actual output.",
+                      ],
+                    } : undefined,
+                  } } }));
+                }}>
+                  <option value="connected">Connected circuit — tune component values</option>
+                  <option value="parts-only">Separate parts — learner wires the circuit</option>
+                </select>
+                <small>The parts-only option uses a tested native starter and the same server topology checks.</small>
+              </label>
+              {draft.workspace.starterSchematic.partsOnly && <label>
+                <span>Wiring guidance</span>
+                <textarea aria-label="Wiring guidance" rows={5} maxLength={6_000}
+                  value={draft.workspace.starterSchematic.partsOnly.wiringInstructions.join("\n")}
+                  onChange={(event) => setDraft((current) => ({ ...current, workspace: { ...current.workspace, starterSchematic: {
+                    ...current.workspace.starterSchematic,
+                    partsOnly: current.workspace.starterSchematic.partsOnly && { ...current.workspace.starterSchematic.partsOnly, wiringInstructions: event.target.value.split(/\r?\n/) },
+                  } } }))}/>
+                <small>One step per line, 3–12 steps. Output node: vout; the actual output is probed automatically before checking.</small>
+              </label>}
+              <label>
                 <span>Workspace instructions</span>
                 <textarea
                   rows={3}
@@ -469,6 +504,7 @@ export function ChallengeTemplateAuthor() {
             <dl>
               <div><dt>Blueprint</dt><dd>Precision voltage divider</dd></div>
               <div><dt>Topology</dt><dd>Fixed and exact</dd></div>
+              <div><dt>Starting circuit</dt><dd>{draft.workspace.starterSchematic.partsOnly ? "Separate parts" : "Connected"}</dd></div>
               <div><dt>Analysis</dt><dd>Operating point</dd></div>
               <div><dt>Grader</dt><dd>Registered v2.0.0</dd></div>
             </dl>

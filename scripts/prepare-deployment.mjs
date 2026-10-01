@@ -64,6 +64,7 @@ export function validateDeploymentBundle(config, environment) {
   }
   if (!requiredWorkerSecrets.every((name) => config.secrets?.required?.includes(name))) throw new Error("The generated Worker is missing its required runtime-secret declarations. Rebuild before deployment.");
   if (config.assets?.binding !== "ASSETS" || !config.assets.run_worker_first?.includes("/circuitjs/*")) throw new Error("The generated Worker is missing the CircuitJS assets and security-policy routing.");
+  if (!config.assets.run_worker_first.includes("/hdl/*")) throw new Error("The generated Worker is missing the HDL assets and security-policy routing.");
 }
 
 async function main() {

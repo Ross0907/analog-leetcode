@@ -117,9 +117,11 @@ for (const pChannel of [false, true]) {
         assert.deepEqual(definition.pins, pChannel ? ["G", "D", "S"] : ["G", "S", "D"]);
         const [gate, post1, post2] = result.pins.map(toLocal);
         close(post1.x, 64, "first channel terminal x");
-        close(post1.y, post1Y, "first channel terminal y");
+        close(post1.y, Math.sign(post1Y) * 12.7, "first channel body uses the common 25.4px height");
         close(post2.x, 64, "second channel terminal x");
-        close(post2.y, -post1Y, "second channel terminal y");
+        close(post2.y, -Math.sign(post1Y) * 12.7, "second channel body uses the common 25.4px height");
+        close(toLocal(result.posts[1]).y, post1Y, "native first terminal remains unchanged");
+        close(toLocal(result.posts[2]).y, -post1Y, "native second terminal remains unchanged");
         close(gate.y, 0, "gate stays on its native axis");
         assert(gate.x >= 0 && gate.x < post1.x, "gate must stay on the input side, without crossing the channel");
       }
@@ -138,8 +140,10 @@ test("serialized BJT descriptions select the correct polarity and collector/emit
       const { definition, result } = placement(native);
       assert.equal(definition.source, pnp ? "Device:Q_PNP" : "Device:Q_NPN");
       assert.deepEqual(definition.pins, ["B", "C", "E"]);
-      close(result.pins[1].y, collectorY, "collector must keep its native post");
-      close(result.pins[2].y, -collectorY, "emitter must keep its native post");
+      close(result.posts[1].y, collectorY, "collector must keep its native post");
+      close(result.posts[2].y, -collectorY, "emitter must keep its native post");
+      close(result.pins[1].y, Math.sign(collectorY) * 12.7, "collector artwork has the same height as MOS artwork");
+      close(result.pins[2].y, -Math.sign(collectorY) * 12.7, "emitter artwork retains its side");
       assert(result.pins[0].x < result.pins[1].x, "base must not move across the collector/emitter channel");
     }
   }
@@ -148,7 +152,7 @@ test("serialized BJT descriptions select the correct polarity and collector/emit
 test("DC voltage uses the positive native terminal and every other waveform keeps native artwork", () => {
   const posts = [[0, 0], [0, 96]] as const;
   const { definition, result } = placement(element("VoltageElm", posts, { waveform: 0 }));
-  assert.equal(definition.source, "Simulation_SPICE:VDC");
+  assert.equal(definition.source, "Device:Battery");
   assert.deepEqual(definition.pins, ["2", "1"], "KiCad positive pin 1 must map to native positive post 1");
   assert(result.pins[1].y > result.pins[0].y);
   // VoltageElm.WF_AC/SQUARE/TRIANGLE/SAWTOOTH/PULSE/NOISE/VAR are 1..7.
@@ -190,14 +194,14 @@ test("open transistor presentation preserves all polarity artwork and junction d
     assert.deepEqual(circles(preview), circles(original).filter((radius) => radius / symbol.unitsPerMm < 2));
     const paths = (svg: string) => [...svg.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map((match) => match[1]);
     const before = paths(original), after = paths(preview);
-    assert.equal(before.length - after.length, id.endsWith('MOS') ? 3 : 0, 'only MOS external leads may be shortened');
+    assert.equal(before.length - after.length, 3, 'only the three external transistor leads may be shortened');
     assert(after.every((path) => before.includes(path)), 'no replacement glyph geometry may be invented');
     assert.deepEqual(after.filter((path) => /Z/i.test(path)), before.filter((path) => /Z/i.test(path)), 'polarity arrows must remain unchanged');
     assert.equal(JSON.stringify(symbol), snapshot, 'display styling must not mutate electrical pin metadata');
   }
 });
 
-test("MOS presentation enlarges the channel safely within the native terminals", () => {
+test("MOS and BJT presentation share a readable bounded scale without moving native terminals", () => {
   for (const type of ['NMosfetElm', 'PMosfetElm']) {
     const native = element(type, [[0, 0], [64, 16], [64, -16]]);
     const { symbol, definition, result } = placement(native);
@@ -205,10 +209,23 @@ test("MOS presentation enlarges the channel safely within the native terminals",
       const pin = symbol.pins.find((pin) => pin.number === definition.pins[index])!;
       const body = transform(result.matrix, { x: pin.bodyX, y: pin.bodyY });
       close(body.x, native.getPostX(index), 'channel body x');
-      close(body.y, native.getPostY(index), 'channel body y');
+      close(body.y, Math.sign(native.getPostY(index)) * 12.7, 'channel body y');
+      close(result.posts[index].y, native.getPostY(index), 'native terminal y');
     }
-    assert(Math.abs(result.matrix[0]) > 5, 'channel details must be readable at native scale');
+    close(Math.hypot(result.matrix[0], result.matrix[1]), 5, 'glyphs use five native pixels per source millimeter');
   }
+});
+
+test('diode presentation omits only the body-crossing stroke and preserves the cathode and triangle', () => {
+  const symbol = manifest.symbols['Device:D'];
+  const source = readFileSync(new URL(`../public${symbol.svg}`, import.meta.url), 'utf8');
+  const paths = (svg: string) => [...svg.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map((match) => match[1]);
+  const original = paths(source), presented = paths(presentationSvg(source, symbol));
+  assert.equal(original.length - presented.length, 1);
+  assert(presented.every((path) => original.includes(path)));
+  assert.deepEqual(presented.filter((path) => path.includes('Z')), original.filter((path) => path.includes('Z')));
+  assert(presented.includes('M 3.7592,0.4064 3.7592,2.9464 '), 'original cathode bar stays intact');
+  assert(!presented.includes('M 6.2992,1.6764 3.7592,1.6764 '), 'interior horizontal line is omitted');
 });
 
 test("palette and circuit select KiCad zigzag resistor and reference-ground geometry", () => {

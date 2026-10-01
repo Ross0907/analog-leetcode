@@ -1,0 +1,22 @@
+{
+  "name": "vcdrom",
+  "version": "1.6.0",
+  "repository": {
+    "url": "git+https://github.com/wavedrom/vcdrom.git",
+    "type": "git"
+  },
+  "license": "MIT",
+  "dist": {
+    "shasum": "5934447b34dcb00abe6e2170bfa55cea7e56e1e4",
+    "tarball": "https://registry.npmjs.org/vcdrom/-/vcdrom-1.6.0.tgz",
+    "fileCount": 9,
+    "integrity": "sha512-xvhbBOHrJb2zDhHTrdFjpOb2PWgcqqHh80YaRoVFFzYVtjrSGmj0mVsqxS5Tm1Gd9hoomdarQCaYJ+nMGWAM2A==",
+    "signatures": [
+      {
+        "sig": "MEQCIHQ6RqeXLL6Ov0ClM3xZ1elmDU0h5OykuMQFUFpIJpLIAiAzsODSx3JZWatMUdlMTJMuYZull+H+ClGjJmJw/O61OA==",
+        "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+      }
+    ],
+    "unpackedSize": 2326932
+  }
+}

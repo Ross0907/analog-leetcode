@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { challenges } from "../../lib/challenges";
 
 test("problem panel modes persist and a worked answer updates searchable progress", async ({ page }) => {
   await page.goto("/problems/loaded-divider");
@@ -20,7 +21,7 @@ test("problem panel modes persist and a worked answer updates searchable progres
   await page.locator(".practice-answer summary").click();
   await expect(page.locator(".practice-answer details")).toContainText("5 kΩ");
   await page.goto("/problems");
-  await expect(page.getByText("1 / 24 completed", { exact: true })).toBeVisible();
+  await expect(page.getByText(`1 / ${challenges.length} completed`, { exact: true })).toBeVisible();
   await page.getByRole("radio", { name: "Solved", exact: true }).check();
   await expect(page.locator(".catalog-row")).toHaveCount(1);
   await expect(page.locator(".catalog-row")).toContainText("A voltmeter that loads the divider");

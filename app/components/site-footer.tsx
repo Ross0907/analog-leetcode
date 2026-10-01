@@ -12,6 +12,7 @@ export function SiteFooter() {
         <div className="footer-links">
           <Link href="/problems">Problems</Link>
           <Link href="/lab">Circuit Lab</Link>
+          <Link href="/hdl">HDL practice</Link>
           <Link href="/learn">Learning paths</Link>
           <Link href="/about">Engineering principles</Link>
         </div>

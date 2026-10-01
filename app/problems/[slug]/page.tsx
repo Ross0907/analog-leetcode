@@ -8,6 +8,7 @@ import { ChallengeWorkbench } from "../../components/challenge-workbench";
 import { ChallengeSplitWorkspace } from "../../components/challenge-split-workspace";
 import { ThemeToggle } from "../../components/theme-toggle";
 import { PracticeAnswer } from "../../components/practice-answer";
+import { ConverterBlockDiagram } from "../../components/converter-block-diagram";
 
 export function generateStaticParams() {
   return challenges.map((challenge) => ({ slug: challenge.slug }));
@@ -80,6 +81,8 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
               <div><span>Required analysis</span><strong>{challenge.analysis}</strong></div>
               <small>Probe: V({challenge.probe})</small>
             </div>
+
+            {challenge.blocks && <ConverterBlockDiagram diagram={challenge.blocks} />}
 
             <div className="brief-section">
               <h2>Concepts</h2>

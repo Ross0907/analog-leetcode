@@ -78,14 +78,20 @@ part of the generated SVG/source hash inventory.
 
 The browser derives a presentation copy of the verified KiCad SVG for the
 editor. For the open NPN, PNP and MOS presentation, it omits the optional enclosure
-circle and shortens the MOS display leads to their body endpoints before fitting
+circle and shortens transistor display leads to their body endpoints before fitting
 the remaining body to the native terminal anchors. Native electrical terminals
 are unchanged. KiCad's gate, channel, terminal
 and arrow artwork is retained; CircuitJS continues to supply connectivity and
 simulation. These are display adaptations of the pinned KiCad artwork, not new
 electrical models.
 
-The presentation copy also uses the editor's neutral/selected colors and a
+The presentation copy removes the optional stroke through hollow diode bodies,
+preserving the original outline, cathode bar, polarity and terminals. DC voltage
+sources use the official battery graphic with native post 1 mapped to its positive
+terminal; waveform sources and one-terminal rails keep their native artwork.
+Passive devices and transistor bodies use a common physical scale, clamped only
+when their native terminal spacing requires it. Longer placements extend leads.
+The presentation copy also uses light/dark neutral and selected colors and a
 minimum line weight for readability, preserving heavier upstream strokes.
 
 The original `stock/` exports and the exported `svg/` files remain unchanged by
@@ -95,7 +101,7 @@ same upstream attribution and asset license apply to those adapted views.
 
 `scripts/build-kicad-presentation.mjs` uses the same `presentationSvg` function
 to generate the 22 palette previews in `public/kicad/presentation/`. These are
-explicitly adapted previews, not unmodified KiCad exports. The MOS preview view
+explicitly adapted previews, not unmodified KiCad exports. The transistor preview view
 box crops transparent margins left by shortened leads; live circuit placement
 continues to use the original pin coordinate system. Regenerate these previews
 after importing a fresh native export or changing the display treatment.

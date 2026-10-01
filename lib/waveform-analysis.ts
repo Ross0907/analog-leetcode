@@ -47,8 +47,11 @@ export function measureWaveform(points: readonly WaveformPoint[]): WaveformMeasu
   const periods = rising.slice(1).map((time, i) => time - rising[i]!);
   const sorted = [...periods].sort((a, b) => a - b); const period = sorted[Math.floor(sorted.length / 2)]!;
   if (period <= maxStep * 8 || periods.some((candidate) => Math.abs(candidate / period - 1) > 0.1)) return measured;
+  let fallingIndex = 0;
   const widths = rising.slice(0, -1).flatMap((start, i) => {
-    const end = falling.find((time) => time > start && time < rising[i + 1]!);
+    while (fallingIndex < falling.length && falling[fallingIndex]! <= start) fallingIndex++;
+    const candidate = falling[fallingIndex];
+    const end = candidate !== undefined && candidate < rising[i + 1]! ? candidate : undefined;
     return end === undefined ? [] : [(end - start) / periods[i]!];
   });
   const dutyCycle = widths.length === periods.length ? 100 * widths.reduce((sum, width) => sum + width, 0) / widths.length : null;
@@ -76,7 +79,7 @@ export function computeSpectrum(time: ArrayLike<number>, values: ArrayLike<numbe
   length: number; window: WindowFunction; removeDc: boolean;
 }): Spectrum {
   const { length, window, removeDc } = options;
-  if (!Number.isInteger(length) || length < 64 || length > 32768 || (length & (length - 1)) !== 0) throw new Error("FFT length must be a power of two from 64 to 32768.");
+  if (!Number.isInteger(length) || length < 64 || length > 131072 || (length & (length - 1)) !== 0) throw new Error("FFT length must be a power of two from 64 to 131072.");
   if (time.length !== values.length || time.length < length) throw new Error(`Capture at least ${length} samples for this FFT length.`);
   const points: WaveformPoint[] = [];
   let largestStep = 0; let smallestStep = Infinity;

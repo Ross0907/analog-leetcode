@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { gradingBlueprint } from "./grading-blueprints";
 import {
   CircuitDocumentError,
   circuitDocumentSchema,
@@ -26,6 +27,8 @@ export const gradeRequestSchema = z.discriminatedUnion("problemSlug", [
     ...requestEnvelope,
     problemSlug: z.literal("inverting-gain-stage"),
   }).strict(),
+  z.object({ ...requestEnvelope, problemSlug: z.literal("wire-adc-reference") }).strict(),
+  z.object({ ...requestEnvelope, problemSlug: z.literal("wire-antialias-filter") }).strict(),
 ]);
 
 export type GradeRequest = z.infer<typeof gradeRequestSchema>;
@@ -168,10 +171,10 @@ function verifyFixedTopology(input: GradeRequest): Verification {
     return { ok: false, reason: "The circuit document could not be compiled." };
   }
 
-  if (input.problemSlug === "precision-voltage-divider") {
+  if (gradingBlueprint(input.problemSlug) === "precision-voltage-divider") {
     return verifyVoltageDivider(circuit);
   }
-  if (input.problemSlug === "rc-cutoff-1khz") {
+  if (gradingBlueprint(input.problemSlug) === "rc-cutoff-1khz") {
     return verifyRcLowPass(circuit);
   }
   return verifyInvertingAmplifier(circuit);
@@ -187,9 +190,12 @@ function verifyVoltageDivider(circuit: CircuitIR): Verification {
   if (!matched.ok) return matched;
   const ground = matched.components.GND1.nodes.gnd;
   const source = matched.components.V1;
-  const r1 = matched.components.R1;
-  const r2 = matched.components.R2;
   const input = source.nodes.positive;
+  // Component creation order is not circuit topology. Either resistor may be
+  // the upper leg when a learner wires the supplied parts or reverses a part.
+  const pair = [matched.components.R1, matched.components.R2];
+  const r1 = pair.find((resistor) => otherNode(resistor, input) !== null) ?? pair[0];
+  const r2 = pair.find((resistor) => resistor !== r1)!;
   const output = otherNode(r1, input);
   if (
     !input || !output ||
@@ -201,6 +207,7 @@ function verifyVoltageDivider(circuit: CircuitIR): Verification {
   ) {
     return { ok: false, reason: "Use the fixed V1 → R1 → R2 → ground divider topology with the 5 V source." };
   }
+  if (!hasOutputProbe(circuit, output)) return outputProbeFailure();
   return {
     ok: true,
     solution: {
@@ -236,6 +243,7 @@ function verifyRcLowPass(circuit: CircuitIR): Verification {
   ) {
     return { ok: false, reason: "Use the fixed V1 → R1 → output topology with C1 from output to ground and the 1 V AC source." };
   }
+  if (!hasOutputProbe(circuit, output)) return outputProbeFailure();
   return {
     ok: true,
     solution: {
@@ -274,6 +282,7 @@ function verifyInvertingAmplifier(circuit: CircuitIR): Verification {
   ) {
     return { ok: false, reason: "Use the fixed grounded non-inverting op-amp topology, with RIN into the summing node and RF from output to that node." };
   }
+  if (!hasOutputProbe(circuit, output)) return outputProbeFailure();
   return {
     ok: true,
     solution: {
@@ -295,10 +304,15 @@ type ExactMatch<T extends ExpectedComponents> =
 
 function exactComponents<T extends ExpectedComponents>(circuit: CircuitIR, expected: T): ExactMatch<T> {
   const entries = Object.entries(expected);
-  if (circuit.components.length !== entries.length) {
+  const grounds = circuit.components.filter((component) => component.kind === "ground");
+  const electricalParts = circuit.components.filter((component) => component.kind !== "ground");
+  if (!grounds.length || electricalParts.length + 1 !== entries.length) {
     return { ok: false, reason: `This fixed-topology check requires exactly ${entries.length} electrical components.` };
   }
-  const components = new Map(circuit.components.map((component) => [component.reference.toUpperCase(), component]));
+  // Ground glyphs denote the same electrical reference, not extra circuit parts.
+  // Connecting one to a signal still shorts that net and fails topology below.
+  const components = new Map<string, CircuitIRComponent>(electricalParts.map((component) => [component.reference.toUpperCase(), component]));
+  components.set("GND1", grounds[0]);
   const matched: Partial<Record<keyof T, CircuitIRComponent>> = {};
   for (const [reference, kind] of entries) {
     const component = components.get(reference);
@@ -333,11 +347,22 @@ function nearlyEqual(actual: number, expected: number) {
   return Math.abs(actual - expected) <= Math.max(1e-12, Math.abs(expected) * 1e-12);
 }
 
+function hasOutputProbe(circuit: CircuitIR, output: string) {
+  const markedOutput = circuit.nets.find((net) => net.labels.some((label) => label.toLowerCase() === "vout"));
+  return (!markedOutput || markedOutput.name === output) && circuit.probes.some((probe) => probe.quantity === "voltage" && probe.node === output);
+}
+
+function outputProbeFailure(): Verification {
+  return { ok: false, reason: "Place the vout label and a voltage probe on the actual output junction before the final check. A probe on the supply or ground cannot verify the output." };
+}
+
 function topologyFailure(problemSlug: GradeRequest["problemSlug"], reason: string): GradeResult {
   const versions: Record<GradeRequest["problemSlug"], string> = {
     "precision-voltage-divider": "divider-fixed-topology-v2.0.0",
     "rc-cutoff-1khz": "rc-lowpass-fixed-topology-v2.0.0",
     "inverting-gain-stage": "inverting-gain-fixed-topology-v2.0.0",
+    "wire-adc-reference": "divider-fixed-topology-v2.0.0",
+    "wire-antialias-filter": "rc-lowpass-fixed-topology-v2.0.0",
   };
   return {
     passed: false,

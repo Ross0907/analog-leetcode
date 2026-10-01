@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "engines": [
+    "Icarus Verilog",
+    "VCDrom 1.6.0"
+  ],
+  "files": [
+    {
+      "path": "NOTICE.txt",
+      "bytes": 2527,
+      "sha256": "6780eb523e27b90c9d0caa6dda8fcae7fe06375f93487b28735db97243eab5c7"
+    },
+    {
+      "path": "icarus/LICENSE",
+      "bytes": 18092,
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+    },
+    {
+      "path": "icarus/README.md",
+      "bytes": 1059,
+      "sha256": "d8ea8494caa4fc254b5a238e387eaef4f5bc1779cf8b05266b5281dc410ffa08"
+    },
+    {
+      "path": "icarus/build-manifest.json",
+      "bytes": 2305,
+      "sha256": "d657b7bfeaa9afdc9fa7405ae68d68423381488c28f5428e5be9ef8281d88f3b"
+    },
+    {
+      "path": "icarus/ivl.js",
+      "bytes": 67982,
+      "sha256": "da108adbf0d1454200b8e73d0965eedb03dd138348a91a4c70a48b43f43c8818"
+    },
+    {
+      "path": "icarus/ivl.wasm",
+      "bytes": 1765663,
+      "sha256": "e9cf7371e79a2cbe2ce8cf95dcce8cda986e6678939b5a334183efe38c697d37"
+    },
+    {
+      "path": "icarus/ivlpp.js",
+      "bytes": 60179,
+      "sha256": "6ff8fafa3c6babc9da14a9db28b440e9111fb219d1ae903e06e32cd5e06a432c"
+    },
+    {
+      "path": "icarus/ivlpp.wasm",
+      "bytes": 102389,
+      "sha256": "de05d8e5b23f5436b9c253b7ea9966bf3ad53f1d50822b5486557d28a6d541c1"
+    },
+    {
+      "path": "icarus/source/EMSCRIPTEN-LICENSE.txt",
+      "bytes": 5093,
+      "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86"
+    },
+    {
+      "path": "icarus/source/build-icarus-wasm.sh",
+      "bytes": 2048,
+      "sha256": "cd0d797ff66f22136c7b3c3e8a2fcd3443c92c03c72aeecfd5faca80006e9888"
+    },
+    {
+      "path": "icarus/source/build-packages.txt",
+      "bytes": 7167,
+      "sha256": "24553aa91653106df98e1468933614155044746d33664c18a37ad9dee10d193b"
+    },
+    {
+      "path": "icarus/source/config.log",
+      "bytes": 78360,
+      "sha256": "d487e2387f9645f2442fd2c538a21c4a446129d3bdf2dc8a31d045ac79a91747"
+    },
+    {
+      "path": "icarus/source/emscripten-system-licenses.tar.gz",
+      "bytes": 9569,
+      "sha256": "fac013cda7c7d86e0cab62dcacd51353f9d8c1a41f91613c5785726aa1a4ad36"
+    },
+    {
+      "path": "icarus/source/emscripten-version.txt",
+      "bytes": 330,
+      "sha256": "7ab6d5e58a386e143e994545042cece661efbf3b038088cf3bb8c6410f984cb2"
+    },
+    {
+      "path": "icarus/source/icarus-build-inputs.json",
+      "bytes": 410,
+      "sha256": "3b488c4abaf080a09ceeabdf3cc01ea86f0c002192417378404bae4ca1f5a131"
+    },
+    {
+      "path": "icarus/source/package-icarus-source.mjs",
+      "bytes": 3371,
+      "sha256": "a95240920f374e4f50b680b2bc040bf1574c27a37697c304d66541d6d9b5d486"
+    },
+    {
+      "path": "icarus/source/patch-icarus-wasm.mjs",
+      "bytes": 5822,
+      "sha256": "89319cc461233db5ae2990475c0d2d94813efd9831acf1a218857ab9d675a1a0"
+    },
+    {
+      "path": "icarus/source/prepare-icarus-source.mjs",
+      "bytes": 1149,
+      "sha256": "4bcfaadaa9d8950b7a613fddc4e65f72020fd8dcdfb5aaf003f0b9b6884dad43"
+    },
+    {
+      "path": "icarus/source/upstream-source.tar.gz",
+      "bytes": 3184699,
+      "sha256": "323acb25d721492c9be6b945d863dfd925bfc29c0f2ba218ac09b09bd629925b"
+    },
+    {
+      "path": "icarus/vvp.js",
+      "bytes": 66392,
+      "sha256": "00a2ed0e7103a94c8e3c4d09518fb18a1c5d294e7b0595da55df24f3fab4a0de"
+    },
+    {
+      "path": "icarus/vvp.wasm",
+      "bytes": 943397,
+      "sha256": "1964b70003a378f88ff5bb52f59e2d706c0a3666af123d4de61bcb5ef0429fee"
+    },
+    {
+      "path": "run-engine.js",
+      "bytes": 6070,
+      "sha256": "1e6f9534dcf758c9dfff2490bb3fceb1b3b7952a8804bea31178ea14a8c9f5d2"
+    },
+    {
+      "path": "runner.worker.js",
+      "bytes": 410,
+      "sha256": "a0ec10bc4f703d89e3347e244f239a134f1d42f81197e088e31b13691a7b0b2e"
+    },
+    {
+      "path": "sources/codemirror-commands-LICENSE",
+      "bytes": 1118,
+      "sha256": "05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07"
+    },
+    {
+      "path": "sources/codemirror-language-LICENSE",
+      "bytes": 1118,
+      "sha256": "05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07"
+    },
+    {
+      "path": "sources/codemirror-legacy-modes-LICENSE",
+      "bytes": 1118,
+      "sha256": "05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07"
+    },
+    {
+      "path": "sources/codemirror-state-LICENSE",
+      "bytes": 1118,
+      "sha256": "05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07"
+    },
+    {
+      "path": "sources/codemirror-view-LICENSE",
+      "bytes": 1118,
+      "sha256": "05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07"
+    },
+    {
+      "path": "viewer/FONT-LICENSE.md",
+      "bytes": 4493,
+      "sha256": "4ba53c7c1cb39279aae5f8d7d22054c485c71169920e5a36ed098b115e2e3c5d"
+    },
+    {
+      "path": "viewer/IosevkaDrom-Regular.woff2",
+      "bytes": 321788,
+      "sha256": "48caee88b5ea4270b8bc106f5fdf42bc6a6360fcaf3f497331d60bef91a09cd4"
+    },
+    {
+      "path": "viewer/LICENSE",
+      "bytes": 1070,
+      "sha256": "4b5c074d0b561efbf6c9665831baaf0041685c5854ee926f0c1a0bd5dfe9f3dc"
+    },
+    {
+      "path": "viewer/bridge.js",
+      "bytes": 1706,
+      "sha256": "30b4f0c53adeaccbcf3d8b6ba49c927bf838bcbe501ebff9fb0516f9c6fa3670"
+    },
+    {
+      "path": "viewer/index.html",
+      "bytes": 405,
+      "sha256": "3eef38c089b9359109a9ea9fa40905b9742985427ef32ceab277e724e111f314"
+    },
+    {
+      "path": "viewer/package-provenance.json",
+      "bytes": 701,
+      "sha256": "eed14f49b778acc98a30d6204096b53be86d65995f67ad460c497c73d49c702c"
+    },
+    {
+      "path": "viewer/vcd.wasm",
+      "bytes": 127007,
+      "sha256": "f1289c7a9e1c7da36b2164c54821835c557a2465e92f73425fa2650a14176d9b"
+    },
+    {
+      "path": "viewer/vcdrom.js",
+      "bytes": 1149787,
+      "sha256": "85588198b8944e889b9ecb504f1ca8db5f1b252b1b962dc2e8f7afcd7c3b80a8"
+    },
+    {
+      "path": "viewer/viewer.css",
+      "bytes": 332,
+      "sha256": "068a6896752fce10f23d0d624aba71187f919be5a8e91f4ebb19b5ea2e4c6262"
+    }
+  ]
+}

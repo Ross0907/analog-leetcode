@@ -11,3 +11,10 @@
 .metrics { display: flex; flex-wrap: wrap; gap: 26px; margin: 0; padding: 14px 16px; background: #181d23; }
 .metrics dt { color: #94a1af; font-size: 11px; margin-bottom: 6px; }
 .metrics dd { margin: 0; font: 13px ui-monospace, monospace; color: #edf3fa; }
+
+:global([data-theme=light]) .panel { background: #fff; color: #243044; border-color: #d6dee8; }
+:global([data-theme=light]) .heading { border-color: #d6dee8; }
+:global([data-theme=light]) .heading span, :global([data-theme=light]) .note, :global([data-theme=light]) .controls label, :global([data-theme=light]) .metrics dt { color: #5d6b7d; }
+:global([data-theme=light]) .controls input, :global([data-theme=light]) .controls select { background: #f8fafc; border-color: #cbd5e1; color: #243044; }
+:global([data-theme=light]) .metrics { background: #f0f4f8; }
+:global([data-theme=light]) .metrics dd, :global([data-theme=light]) .controls output { color: #243044; }

@@ -8,3 +8,9 @@ public/kicad/editor-theme.css linguist-vendored=false
 public/simulator/** -text -whitespace linguist-vendored
 vendor/eecircuit-engine/** -text -whitespace linguist-vendored
 scripts/build-ngspice-wasm.sh text eol=lf
+SETUP-SUPABASE.bat text eol=crlf
+public/hdl/** -text -whitespace
+public/hdl/icarus/** linguist-vendored
+public/hdl/viewer/vcdrom.js -text -whitespace linguist-vendored
+public/hdl/viewer/vcd.wasm -text linguist-vendored
+scripts/build-icarus-wasm.sh text eol=lf

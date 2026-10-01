@@ -34,10 +34,10 @@ export function SpectrumAnalyzer({ time, traces }: { time: number[]; traces: Tra
   const display = (value: number | null | undefined, unit: string) => value === null || value === undefined ? "Unavailable" : formatEngineering(value, unit);
 
   return <section className={styles.panel} aria-label="Spectrum analyzer">
-    <div className={styles.heading}><strong>Spectrum analyzer</strong><span>FFT of captured simulator samples</span></div>
+    <div className={styles.heading}><strong>Spectrum analyzer</strong><span>Spectrum of measured samples</span></div>
     <div className={styles.controls}>
       <label htmlFor={`${id}-channel`}>Channel<select id={`${id}-channel`} value={trace?.id ?? ""} onChange={(event) => setSelectedId(event.currentTarget.value)}>{traces.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}</select></label>
-      <label htmlFor={`${id}-length`}>FFT samples<select id={`${id}-length`} value={length} onChange={(event) => setLength(Number(event.currentTarget.value))}>{[64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+      <label htmlFor={`${id}-length`}>FFT samples<select id={`${id}-length`} value={length} onChange={(event) => setLength(Number(event.currentTarget.value))}>{[64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
       <label htmlFor={`${id}-window`}>Window<select id={`${id}-window`} value={windowName} onChange={(event) => setWindowName(event.currentTarget.value as WindowFunction)}><option value="rectangular">Rectangular</option><option value="hann">Hann</option><option value="hamming">Hamming</option><option value="blackman">Blackman</option></select></label>
       <label className={styles.toggle}><input type="checkbox" checked={removeDc} onChange={(event) => setRemoveDc(event.currentTarget.checked)} /> Remove DC</label>
       <label className={styles.toggle}><input type="checkbox" checked={logFrequency} onChange={(event) => setLogFrequency(event.currentTarget.checked)} /> Log frequency</label>

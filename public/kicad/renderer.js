@@ -4,22 +4,23 @@
 const definitions = {
   ResistorElm: { source: 'Device:R_US', pins: ['1', '2'], scale: 5 },
   CapacitorElm: { source: 'Device:C', pins: ['1', '2'], scale: 5 },
-  PolarCapacitorElm: { source: 'Device:C_Polarized', pins: ['1', '2'] },
-  InductorElm: { source: 'Device:L', pins: ['1', '2'], scale: 6 },
-  DiodeElm: { source: 'Device:D', pins: ['2', '1'] },
-  ZenerElm: { source: 'Device:D_Zener', pins: ['2', '1'] },
-  LEDElm: { source: 'Device:LED', pins: ['2', '1'] },
+  PolarCapacitorElm: { source: 'Device:C_Polarized', pins: ['1', '2'], scale: 5 },
+  InductorElm: { source: 'Device:L', pins: ['1', '2'], scale: 5 },
+  DiodeElm: { source: 'Device:D', pins: ['2', '1'], scale: 5 },
+  ZenerElm: { source: 'Device:D_Zener', pins: ['2', '1'], scale: 5 },
+  LEDElm: { source: 'Device:LED', pins: ['2', '1'], scale: 5 },
   // CircuitJS voltage sources have their positive terminal at native post 1.
-  VoltageElm: { source: 'Simulation_SPICE:VDC', pins: ['2', '1'] },
-  DCVoltageElm: { source: 'Simulation_SPICE:VDC', pins: ['2', '1'] },
-  CurrentElm: { source: 'Simulation_SPICE:IDC', pins: ['1', '2'] },
+  VoltageElm: { source: 'Device:Battery', pins: ['2', '1'], scale: 5 },
+  DCVoltageElm: { source: 'Device:Battery', pins: ['2', '1'], scale: 5 },
+  BatteryElm: { source: 'Device:Battery', pins: ['2', '1'], scale: 5 },
+  CurrentElm: { source: 'Simulation_SPICE:IDC', pins: ['1', '2'], scale: 5 },
   GroundElm: { source: 'power:GNDREF', pins: ['1'] },
   OpAmpElm: { source: 'Amplifier_Operational:LM2904', pins: ['2', '3', '1'], anchors: [0, 1], center: true },
   MosfetElm: { source: 'Device:Q_NMOS', pins: ['G', 'S', 'D'], anchors: [1, 2], bodyAnchors: true },
   NMosfetElm: { source: 'Device:Q_NMOS', pins: ['G', 'S', 'D'], anchors: [1, 2], bodyAnchors: true },
   PMosfetElm: { source: 'Device:Q_PMOS', pins: ['G', 'D', 'S'], anchors: [1, 2], bodyAnchors: true },
-  NTransistorElm: { source: 'Device:Q_NPN', pins: ['B', 'C', 'E'], anchors: [1, 2] },
-  PTransistorElm: { source: 'Device:Q_PNP', pins: ['B', 'C', 'E'], anchors: [1, 2] },
+  NTransistorElm: { source: 'Device:Q_NPN', pins: ['B', 'C', 'E'], anchors: [1, 2], bodyAnchors: true },
+  PTransistorElm: { source: 'Device:Q_PNP', pins: ['B', 'C', 'E'], anchors: [1, 2], bodyAnchors: true },
 };
 
 export function symbolDefinition(element) {
@@ -66,7 +67,7 @@ export function symbolPlacement(symbol, definition, element) {
     const sourceLength = Math.hypot(pins[1].x - pins[0].x, pins[1].y - pins[0].y);
     const targetLength = Math.hypot(posts[1].x - posts[0].x, posts[1].y - posts[0].y);
     if (sourceLength < 1e-6 || targetLength < 2) return null;
-    matrix = align(pins[0], pins[1], posts[0], posts[1], Math.min((definition.scale ?? 4) / symbol.unitsPerMm, targetLength / sourceLength));
+    matrix = align(pins[0], pins[1], posts[0], posts[1], Math.min((definition.scale ?? 5) / symbol.unitsPerMm, targetLength / sourceLength));
     const end = at(matrix, pins[1]);
     matrix[4] += (posts[1].x - end.x) / 2;
     matrix[5] += (posts[1].y - end.y) / 2;
@@ -81,7 +82,7 @@ export function symbolPlacement(symbol, definition, element) {
     // by reflecting the drawing, instead of putting an op-amp output backwards.
     const sourceCross = cross(pins[a], pins[b], pins[other]), targetCross = cross(posts[a], posts[b], posts[other]);
     const reflection = sourceCross * targetCross < 0 ? -1 : 1;
-    let scale = targetLength / sourceLength;
+    let scale = Math.min(targetLength / sourceLength, (definition.bodyAnchors ? 5 : 6.3) / symbol.unitsPerMm);
     if (definition.center || definition.bodyAnchors) {
       const sourceDepth = Math.abs(sourceCross) / sourceLength, targetDepth = Math.abs(targetCross) / targetLength;
       if (sourceDepth < 1e-6 || targetDepth < 2) return null;
@@ -116,7 +117,7 @@ export function presentationSvg(source, symbol, color = '#d2d8df') {
     });
     if (enclosures !== 1) throw new Error(`Unexpected KiCad transistor enclosure: ${symbol.sourceId}`);
   }
-  if (/^Device:Q_[NP]MOS$/.test(symbol.sourceId)) {
+  if (/^Device:Q_(?:[NP]MOS|NPN|PNP)$/.test(symbol.sourceId)) {
     // Remove exactly the three exported external pin leads, then extend from
     // their body endpoints to the real CircuitJS posts in draw(). This gives
     // the transistor a readable body without expanding its terminal spacing.
@@ -131,7 +132,21 @@ export function presentationSvg(source, symbol, color = '#d2d8df') {
       removed.add(pin.number);
       return '';
     });
-    if (removed.size !== 3) throw new Error(`Unexpected KiCad MOS lead geometry: ${symbol.sourceId}`);
+    if (removed.size !== 3) throw new Error(`Unexpected KiCad transistor lead geometry: ${symbol.sourceId}`);
+  }
+  if (/^Device:(?:D|D_Zener|LED)$/.test(symbol.sourceId)) {
+    // Omit the optional stroke crossing the hollow diode body, keeping its
+    // original outline, cathode bar, terminal positions and polarity intact.
+    let removed = 0;
+    source = source.replace(/<path\b[^>]*\bd="([^"<>]+)"[^>]*\/>/g, (path, d) => {
+      const match = /^M\s*([-\d.]+)[\s,]+([-\d.]+)\s+(?:L\s*)?([-\d.]+)[\s,]+([-\d.]+)\s*$/.exec(d);
+      if (!match) return path;
+      const points = [[Number(match[1]), Number(match[2])], [Number(match[3]), Number(match[4])]];
+      const same = (point, pin) => Math.hypot(point[0] - pin.bodyX, point[1] - pin.bodyY) < 0.0002 * symbol.unitsPerMm;
+      if (symbol.pins.length === 2 && ((same(points[0], symbol.pins[0]) && same(points[1], symbol.pins[1])) || (same(points[1], symbol.pins[0]) && same(points[0], symbol.pins[1])))) { removed++; return ''; }
+      return path;
+    });
+    if (symbol.sourceId === 'Device:D' && removed !== 1) throw new Error('Unexpected KiCad diode body stroke.');
   }
   return source.replace(/rgb\(\s*0\s*,\s*0\s*,\s*0\s*\)/gi, color)
     .replace(/#000000\b/gi, color)
@@ -157,14 +172,18 @@ export async function createKiCadRenderer() {
   const manifest = await response.json();
   if (manifest.schemaVersion !== 1 || manifest.generator !== 'official kicad-cli sym export svg') throw new Error('Unexpected KiCad symbol manifest.');
   const assets = new Map();
+  let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
   await Promise.all([...new Set(Object.values(definitions).map((definition) => definition.source))].map(async (id) => {
     const symbol = manifest.symbols[id];
     if (!symbol || !symbol.svg.startsWith('/kicad/svg/')) throw new Error(`Missing official KiCad symbol: ${id}`);
     const svgResponse = await fetch(symbol.svg);
     if (!svgResponse.ok) throw new Error(`Unable to load KiCad symbol: ${id}`);
     const svg = await svgResponse.text();
-    const [normal, selected] = await Promise.all([loadImage(presentationSvg(svg, symbol)), loadImage(presentationSvg(svg, symbol, '#e4b568'))]);
-    assets.set(id, { symbol, normal, selected });
+    const [normal, selected, light, lightSelected] = await Promise.all([
+      loadImage(presentationSvg(svg, symbol)), loadImage(presentationSvg(svg, symbol, '#e4b568')),
+      loadImage(presentationSvg(svg, symbol, '#252b32')), loadImage(presentationSvg(svg, symbol, '#a96809')),
+    ]);
+    assets.set(id, { symbol, normal, selected, light, lightSelected });
   }));
   const select = (element) => {
     const definition = symbolDefinition(element);
@@ -175,6 +194,7 @@ export async function createKiCadRenderer() {
   return {
     ready: true,
     source: 'KiCad official symbol library',
+    setTheme(value) { theme = value === 'dark' ? 'dark' : 'light'; },
     canDraw(element) {
       try { return Boolean(select(element)); }
       catch { return false; }
@@ -187,7 +207,7 @@ export async function createKiCadRenderer() {
       const { asset, placement } = entry;
       context.save();
       try {
-        context.strokeStyle = selected ? '#e4b568' : '#d2d8df';
+        context.strokeStyle = theme === 'light' ? (selected ? '#a96809' : '#252b32') : (selected ? '#e4b568' : '#d2d8df');
         context.lineWidth = 1.5;
         context.lineCap = 'round';
         context.beginPath();
@@ -201,7 +221,7 @@ export async function createKiCadRenderer() {
         });
         context.stroke();
         context.transform(...placement.matrix);
-        context.drawImage(selected ? asset.selected : asset.normal, ...asset.symbol.viewBox);
+        context.drawImage(theme === 'light' ? (selected ? asset.lightSelected : asset.light) : (selected ? asset.selected : asset.normal), ...asset.symbol.viewBox);
       } catch { return false; }
       finally { context.restore(); }
       return true;

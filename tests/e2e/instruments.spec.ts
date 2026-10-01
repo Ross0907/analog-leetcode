@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import type { CircuitJsApi } from "../../lib/circuitjs";
+import { CIRCUITJS_STARTERS } from "../../lib/circuitjs-starters";
 
 async function expectScopeCanvasFits(scope: Locator) {
   await expect.poll(() => scope.locator(".anacode-scope__canvas").evaluate((canvas) => {
@@ -12,8 +14,8 @@ async function expectScopeCanvasFits(scope: Locator) {
 async function openSpice(page: Page) {
   await page.goto("/lab");
   await expect(page.getByRole("region", { name: "CircuitJS schematic and simulation workspace", exact: true }).locator('p[role="status"]')).toContainText("Editor ready", { timeout: 45_000 });
-  await page.getByRole("tab", { name: "SPICE analysis", exact: true }).click();
-  await expect(page.getByRole("tab", { name: "SPICE analysis", exact: true })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("button", { name: "SPICE & grading", exact: true }).click();
+  await page.getByLabel("SPICE analysis source", { exact: true }).selectOption("deck");
   await page.locator(".advanced-netlist > summary").click();
 }
 
@@ -34,8 +36,10 @@ test("real ngspice acquires more than four probes and the waveform/FFT controls 
   await page.setViewportSize({ width: 1100, height: 1000 });
   await expectScopeCanvasFits(voltageScope);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByRole("tab", { name: "Schematic editor", exact: true }).click();
-  await page.getByRole("tab", { name: "SPICE analysis", exact: true }).click();
+  await page.getByLabel("Workspace layout", { exact: true }).selectOption("tabs");
+  await page.getByRole("button", { name: "Schematic", exact: true }).click();
+  await page.getByRole("button", { name: "Oscilloscope & FFT", exact: true }).click();
+  await page.getByLabel("Workspace layout", { exact: true }).selectOption("stacked");
   await expectScopeCanvasFits(voltageScope);
   await expect(voltageScope.locator(".anacode-scope__channel")).toHaveCount(7);
   await expect(currentScope.getByRole("button", { name: "Hide I(v1)", exact: true })).toBeVisible();
@@ -112,6 +116,71 @@ test("the native CircuitJS editor captures node and component probes into shared
   const spectrum = workspace.getByRole("region", { name: "Spectrum analyzer", exact: true });
   await spectrum.getByRole("combobox", { name: "FFT samples", exact: true }).selectOption("256");
   await expect(spectrum.getByRole("region", { name: "FFT spectrum", exact: true })).toBeVisible();
+});
+
+test("live acquisition remains bounded, updates real samples and freezes without pausing the solver", async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/lab');
+  const workspace = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
+  await expect(workspace.locator('p[role="status"]')).toContainText('Editor ready', { timeout: 45000 });
+  const native = page.frameLocator('iframe[title="CircuitJS schematic editor"]');
+  const settings = workspace.getByLabel('Capture target samples', { exact: true });
+  await expect(settings).toHaveValue('65536');
+  await settings.selectOption('131072');
+  await expect(settings).toHaveValue('131072');
+  await settings.selectOption('1024');
+  await workspace.getByLabel('Probe 1 name', { exact: true }).fill('Input rail');
+  await workspace.getByRole('button', { name: 'Start live measurements', exact: true }).click();
+  const status = workspace.getByLabel('Live acquisition status', { exact: true });
+  const samples = async () => Number((await status.textContent())!.replace(/[^0-9]/g, ''));
+  await expect.poll(samples, { timeout: 45000 }).toBeGreaterThan(500);
+  expect(await samples()).toBeLessThanOrEqual(1024);
+  await expect(workspace.getByRole('region', { name: 'Oscilloscope', exact: true })).toBeVisible();
+  await expect(workspace.getByRole('region', { name: 'Oscilloscope', exact: true }).getByLabel('Rename Input rail', { exact: true })).toBeVisible();
+  await expect(workspace.getByRole('region', { name: 'FFT spectrum', exact: true })).toBeVisible();
+  const timeBefore = await native.locator('body').evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.getTime());
+  await expect.poll(() => native.locator('body').evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.getTime())).toBeGreaterThan(timeBefore);
+  await workspace.getByRole('button', { name: 'Logic analyzer', exact: true }).click();
+  const logic = workspace.getByRole('region', { name: 'Logic analyzer', exact: true });
+  await expect(logic.getByRole('img', { name: 'Input rail digital waveform', exact: true })).toBeVisible();
+  await logic.getByRole('checkbox').first().check();
+  await expect(logic.getByLabel('Logic bus value', { exact: true })).toBeVisible();
+  await workspace.getByRole('button', { name: 'Freeze measurements', exact: true }).click();
+  await expect(status).toHaveCount(0);
+  expect(await native.locator('body').evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.isRunning())).toBe(true);
+  const frozen = await logic.getByRole('img', { name: 'Input rail digital waveform', exact: true }).locator('path').getAttribute('d');
+  const frozenTime = await native.locator('body').evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.getTime());
+  await expect.poll(() => native.locator('body').evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.getTime())).toBeGreaterThan(frozenTime);
+  await expect(logic.getByRole('img', { name: 'Input rail digital waveform', exact: true }).locator('path')).toHaveAttribute('d', frozen!);
+  await workspace.getByLabel('Workspace layout', { exact: true }).selectOption('tabs');
+  await workspace.getByRole('button', { name: 'Schematic', exact: true }).click();
+  await expect(logic).toBeHidden();
+  await workspace.getByRole('button', { name: 'Oscilloscope & FFT', exact: true }).click();
+  await expect(logic).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("SPICE reads changed native component values and never silently substitutes an unsupported graph", async ({ page }) => {
+  await page.goto('/lab');
+  const workspace = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
+  await expect(workspace.locator('p[role="status"]')).toContainText('Editor ready', { timeout: 45000 });
+  const native = page.frameLocator('iframe[title="CircuitJS schematic editor"]');
+  await native.locator('body').evaluate((_, text) => { const api = (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1; api.importCircuit(text, false); api.setSimRunning(true); }, CIRCUITJS_STARTERS['precision-voltage-divider']!);
+  await expect(workspace.getByLabel('Probe 1 name', { exact: true })).toHaveValue('V(vin)');
+  await workspace.getByLabel('Schematic analysis type', { exact: true }).selectOption('operating-point');
+  await expect(workspace.getByLabel('SPICE analysis source', { exact: true })).toHaveValue('schematic');
+  await workspace.getByRole('button', { name: 'Run simulation', exact: true }).click();
+  await expect(workspace.locator('.op-grid')).toContainText('2.5 V', { timeout: 45000 });
+  const editError = await native.locator('body').evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().filter((element) => element.getType() === 'ResistorElm')[1]!.setEditableValue('20k'));
+  expect(editError).toBeNull();
+  await expect.poll(() => native.locator('body').evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().filter((element) => element.getType() === 'ResistorElm')[1]!.getEditableValue()?.value)).toBe(20000);
+  await workspace.getByRole('button', { name: 'Run simulation', exact: true }).click();
+  await expect(workspace.locator('.op-grid')).toContainText('3.333 V', { timeout: 45000 });
+  await native.locator('body').evaluate((_, text) => { const api = (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1; api.importCircuit(text, false); api.setSimRunning(true); }, CIRCUITJS_STARTERS['inverting-gain-stage']!);
+  await expect.poll(() => native.locator('body').evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().some((element) => element.getType() === 'OpAmpElm'))).toBe(true);
+  await workspace.getByRole('button', { name: 'Run simulation', exact: true }).click();
+  await expect(workspace.getByText(/has no equivalent SPICE model/)).toBeVisible();
+  await expect(workspace.locator('.op-grid')).toHaveCount(0);
 });
 
 

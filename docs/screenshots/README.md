@@ -6,5 +6,6 @@ These captures document the native editor and real simulator workflows exercised
 - `multiple-probe-oscilloscope.png`: seven voltage channels from six distinct divider taps plus the input. A separate current plot is exercised in the same test.
 - `fft-analyzer.png`: the FFT of an actual captured divider waveform; unsupported distortion measurements are withheld.
 - `login-desktop.png`: account entry and clear project-configuration status.
+- `hdl-workspace.png`: the actual Icarus counter simulation loaded into VCDrom.
 
-The instrument captures temporarily hide the sticky site header during the screenshot so it does not cover the instrument title. No plot data or circuit image is altered. The RC, CMOS and Sallen–Key renderer baselines live in `tests/e2e/visual-baselines/` and are compared by Playwright with a small font-rasterization tolerance.
+The instrument captures temporarily hide the sticky site header during the screenshot so it does not cover the instrument title. No plot data or circuit image is altered. The RC, CMOS and Sallen–Key renderer baselines live in `tests/e2e/visual-baselines/`, cover both light and dark themes, and are compared by Playwright with a small font-rasterization tolerance. Current browser runs write their application captures to `artifacts/qa/`.

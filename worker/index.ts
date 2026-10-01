@@ -29,6 +29,18 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    if (/^\/hdl\/(?:icarus|viewer|sources)\//.test(url.pathname) || ["/hdl/runner.worker.js", "/hdl/run-engine.js", "/hdl/NOTICE.txt", "/hdl/artifact-manifest.json"].includes(url.pathname)) {
+      const response = await env.ASSETS.fetch(request);
+      const headers = new Headers(response.headers);
+      headers.set("X-Content-Type-Options", "nosniff");
+      headers.set("X-Frame-Options", "SAMEORIGIN");
+      headers.set("Referrer-Policy", "no-referrer");
+      // VCDrom mounts its own styles. The main app and login retain nonce CSP.
+      // No HDL source is sent to another origin; the runtime only loads local WASM.
+      headers.set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob:; worker-src 'self'; form-action 'none'");
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+    }
+
     if (url.pathname.startsWith("/circuitjs/")) {
       const response = await env.ASSETS.fetch(request);
       const headers = new Headers(response.headers);

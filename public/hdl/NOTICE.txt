@@ -1,0 +1,53 @@
+AnaCode HDL tools — source and attribution
+
+Icarus Verilog — Stephen Williams and contributors
+https://github.com/steveicarus/iverilog
+GPL-2.0-or-later. The application MIT license does not relicense this engine.
+Pinned source: c7530dbcc186de2f21eacde14fd28061b885924c (14.0 devel).
+Runtime and complete corresponding source:
+  /hdl/icarus/LICENSE
+  /hdl/icarus/README.md
+  /hdl/icarus/build-manifest.json
+  /hdl/icarus/source/upstream-source.tar.gz
+  /hdl/icarus/source/icarus-build-inputs.json
+  /hdl/icarus/source/patch-icarus-wasm.mjs
+  /hdl/icarus/source/prepare-icarus-source.mjs
+  /hdl/icarus/source/build-icarus-wasm.sh
+  /hdl/icarus/source/package-icarus-source.mjs
+The exact Emscripten container digest and source hash are recorded in the input
+manifest. Emscripten/system-library notices accompany the source. The AnaCode
+static-link patch and runner adapter are GPL-2.0-or-later. Build commands are in
+docs/icarus-source-build.md in the repository. No external simulation service
+receives HDL source. Icarus implements a subset of SystemVerilog.
+
+VeriSim — https://github.com/senolgulgonul/verisim
+Acknowledged for its three-stage browser-port approach. The deployed compiler
+is built from the complete official Icarus source and the distributed AnaCode
+patch, rather than redistributing VeriSim's prebuilt engine.
+
+VCDrom 1.6.0 — WaveDrom contributors (MIT)
+https://github.com/wavedrom/vcdrom
+  /hdl/viewer/LICENSE
+  /hdl/viewer/package-provenance.json
+Its vcdrom.js and vcd.wasm are the unmodified npm release. The AnaCode wrapper
+uses the upstream file importer and removes the upstream page's analytics.
+The Iosevka Drom font remains SIL Open Font License 1.1:
+  /hdl/viewer/FONT-LICENSE.md
+Iosevka copyright Renzhi Li and contributors. Original font project:
+https://github.com/be5invis/Iosevka
+
+CodeMirror 6 — Marijn Haverbeke and contributors (MIT)
+https://codemirror.net/
+See /hdl/sources/codemirror-view-LICENSE, codemirror-state-LICENSE,
+codemirror-language-LICENSE, codemirror-commands-LICENSE, and
+codemirror-legacy-modes-LICENSE for the bundled packages.
+
+The original AnaCode exercises reference the learning workflows of HDLBits and
+EDA Playground; their problems and proprietary waveform viewers are not copied.
+Yosys and GTKWave are supported through exported OSS CAD Suite projects; they
+are not advertised as in-browser engines in this release.
+
+All deployed runtime files and their SHA-256 hashes:
+  /hdl/artifact-manifest.json
+
+Repository: https://github.com/Ross0907/analog-leetcode

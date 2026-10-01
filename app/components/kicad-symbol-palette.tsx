@@ -9,8 +9,11 @@ const symbols = [
   { label: 'Diode', short: 'D', file: 'Device--D', native: 'DiodeElm' },
   { label: 'N-channel MOSFET', short: 'NMOS', file: 'Device--Q_NMOS', native: 'NMosfetElm' },
   { label: 'P-channel MOSFET', short: 'PMOS', file: 'Device--Q_PMOS', native: 'PMosfetElm' },
+  { label: 'NPN transistor', short: 'NPN', file: 'Device--Q_NPN', native: 'NTransistorElm' },
+  { label: 'PNP transistor', short: 'PNP', file: 'Device--Q_PNP', native: 'PTransistorElm' },
   { label: 'Operational amplifier', short: 'Op-amp', file: 'Amplifier_Operational--LM2904', native: 'OpAmpElm' },
-  { label: 'Voltage source', short: 'V', file: 'Simulation_SPICE--VDC', native: 'DCVoltageElm' },
+  { label: 'Voltage source', short: 'DC', file: 'Device--Battery', native: 'DCVoltageElm' },
+  { label: 'Power rail', short: 'Rail', file: null, native: 'RailElm' },
   { label: 'Current source', short: 'I', file: 'Simulation_SPICE--IDC', native: 'CurrentElm' },
   { label: 'Ground', short: 'GND', file: 'power--GNDREF', native: 'GroundElm' },
 ] as const;
@@ -20,12 +23,12 @@ export function KiCadSymbolPalette({ disabled, onAdd }: { disabled: boolean; onA
     <div className={styles.symbolButtons}>{symbols.map((symbol) => <button
       type="button" key={symbol.native} disabled={disabled}
       aria-label={`Add ${symbol.label.toLowerCase()}`}
-      title={`${symbol.label} · KiCad library symbol`}
+      title={`${symbol.label} · ${symbol.file ? 'KiCad library symbol' : 'CircuitJS one-terminal supply'}`}
       onClick={() => onAdd(symbol.native)}
     >
       {/* Same KiCad artwork and presentation treatment as the live editor. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/kicad/presentation/${symbol.file}.svg`} alt="" width={30} height={30}/>
+      {symbol.file ? <img src={`/kicad/presentation/${symbol.file}.svg`} alt="" width={30} height={30}/> : <span aria-hidden="true">V+</span>}
       <span>{symbol.short}</span>
     </button>)}</div>
     <a href="/kicad/NOTICE.html" target="_blank" rel="noreferrer">KiCad symbols</a>

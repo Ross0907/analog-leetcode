@@ -98,3 +98,12 @@ test("trace color depends on identity rather than adjacent probe order", () => {
   const before = ["in", "out", "sense"].map(probeColor);
   assert.equal(before[1], ["out", "sense"].map(probeColor)[0]);
 });
+
+test("131072-point FFT resolves a coherent real sample record without truncation", () => {
+  const { time, values } = signal(131072, 1024, 131072);
+  const spectrum = computeSpectrum(time, values, { length: 131072, window: "rectangular", removeDc: true });
+  assert.equal(spectrum.length, 131072);
+  assert.equal(spectrum.frequencies.length, 65537);
+  near(spectrum.dominantFrequency, 1024, 1e-6);
+  near(spectrum.amplitudes[1024]!, 1, 1e-6);
+});

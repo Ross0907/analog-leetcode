@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "engine": "Icarus Verilog",
+  "source": {
+    "revision": "c7530dbcc186de2f21eacde14fd28061b885924c",
+    "url": "https://codeload.github.com/steveicarus/iverilog/tar.gz/c7530dbcc186de2f21eacde14fd28061b885924c",
+    "sha256": "323acb25d721492c9be6b945d863dfd925bfc29c0f2ba218ac09b09bd629925b"
+  },
+  "buildImage": "emscripten/emsdk:5.0.4@sha256:61aa4ca6e3dcdf0cfce9c3018767a0698bdc0f7ff72ca5982a0536c5caff93f7",
+  "sourceBuild": true,
+  "files": {
+    "LICENSE": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+    "README.md": "d8ea8494caa4fc254b5a238e387eaef4f5bc1779cf8b05266b5281dc410ffa08",
+    "ivl.js": "da108adbf0d1454200b8e73d0965eedb03dd138348a91a4c70a48b43f43c8818",
+    "ivl.wasm": "e9cf7371e79a2cbe2ce8cf95dcce8cda986e6678939b5a334183efe38c697d37",
+    "ivlpp.js": "6ff8fafa3c6babc9da14a9db28b440e9111fb219d1ae903e06e32cd5e06a432c",
+    "ivlpp.wasm": "de05d8e5b23f5436b9c253b7ea9966bf3ad53f1d50822b5486557d28a6d541c1",
+    "source/EMSCRIPTEN-LICENSE.txt": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86",
+    "source/build-icarus-wasm.sh": "cd0d797ff66f22136c7b3c3e8a2fcd3443c92c03c72aeecfd5faca80006e9888",
+    "source/build-packages.txt": "24553aa91653106df98e1468933614155044746d33664c18a37ad9dee10d193b",
+    "source/config.log": "d487e2387f9645f2442fd2c538a21c4a446129d3bdf2dc8a31d045ac79a91747",
+    "source/emscripten-system-licenses.tar.gz": "fac013cda7c7d86e0cab62dcacd51353f9d8c1a41f91613c5785726aa1a4ad36",
+    "source/emscripten-version.txt": "7ab6d5e58a386e143e994545042cece661efbf3b038088cf3bb8c6410f984cb2",
+    "source/icarus-build-inputs.json": "3b488c4abaf080a09ceeabdf3cc01ea86f0c002192417378404bae4ca1f5a131",
+    "source/package-icarus-source.mjs": "a95240920f374e4f50b680b2bc040bf1574c27a37697c304d66541d6d9b5d486",
+    "source/patch-icarus-wasm.mjs": "89319cc461233db5ae2990475c0d2d94813efd9831acf1a218857ab9d675a1a0",
+    "source/prepare-icarus-source.mjs": "4bcfaadaa9d8950b7a613fddc4e65f72020fd8dcdfb5aaf003f0b9b6884dad43",
+    "source/upstream-source.tar.gz": "323acb25d721492c9be6b945d863dfd925bfc29c0f2ba218ac09b09bd629925b",
+    "vvp.js": "00a2ed0e7103a94c8e3c4d09518fb18a1c5d294e7b0595da55df24f3fab4a0de",
+    "vvp.wasm": "1964b70003a378f88ff5bb52f59e2d706c0a3666af123d4de61bcb5ef0429fee"
+  }
+}

@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { BookOpen, ChevronDown, FlaskConical, Gauge, Menu } from "lucide-react";
+import { BookOpen, Braces, ChevronDown, FlaskConical, Gauge, Menu } from "lucide-react";
 import { BrandMark } from "./brand-mark";
 import { ThemeToggle } from "./theme-toggle";
 import { getUser } from "../auth";
 
-export async function SiteHeader({ active }: { active?: "problems" | "learn" | "lab" }) {
+export async function SiteHeader({ active }: { active?: "problems" | "learn" | "lab" | "hdl" }) {
   const user = await getUser();
   return (
     <header className="site-header">
@@ -16,6 +16,7 @@ export async function SiteHeader({ active }: { active?: "problems" | "learn" | "
           <Link className={active === "problems" ? "nav-link active" : "nav-link"} href="/problems">Problems</Link>
           <Link className={active === "learn" ? "nav-link active" : "nav-link"} href="/learn">Learn</Link>
           <Link className={active === "lab" ? "nav-link active" : "nav-link"} href="/lab">Circuit Lab</Link>
+          <Link className={active === "hdl" ? "nav-link active" : "nav-link"} href="/hdl">HDL</Link>
         </nav>
         <div className="header-actions">
           <ThemeToggle />
@@ -27,6 +28,7 @@ export async function SiteHeader({ active }: { active?: "problems" | "learn" | "
               <Link href="/problems"><Gauge size={17} /> Problems</Link>
               <Link href="/learn"><BookOpen size={17} /> Learn</Link>
               <Link href="/lab"><FlaskConical size={17} /> Circuit Lab</Link>
+              <Link href="/hdl"><Braces size={17} /> HDL</Link>
               <Link href={user ? "/profile" : "/login"}>{user ? "Your profile" : "Sign in"} <ChevronDown size={15} /></Link>
             </nav>
           </details>

@@ -20,8 +20,13 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # Match @playwright/test in package-lock.json. Browsers and system libraries
+    # are included, avoiding slow apt mirror installs on each validation run.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      options: --ipc=host
 
     steps:
       - name: Checkout
@@ -58,8 +63,8 @@ jobs:
       - name: Tests
         run: npm test
 
-      - name: Playwright Chromium
-        run: npx --no-install playwright install --with-deps chromium
+      - name: Verify bundled Playwright Chromium
+        run: node -e "const {chromium}=require('@playwright/test'); if (!require('node:fs').existsSync(chromium.executablePath())) throw Error('Update the pinned Playwright container to match package-lock.json.');"
 
       - name: Browser E2E
         run: npm run test:e2e
@@ -133,7 +138,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4.132.0"
+          wranglerVersion: "4.145.0"
           command: deploy --config dist/server/wrangler.json --secrets-file "${{ steps.deployment.outputs.secrets_file }}"
 
       - name: Remove temporary deployment secret file
