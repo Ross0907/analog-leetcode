@@ -40,6 +40,7 @@ const inventory = {};
 function visit(directory, prefix = '') {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name), name = prefix + entry.name;
+    if (name === 'build-manifest.json') continue;
     if (entry.isDirectory()) visit(path, name + '/');
     else inventory[name] = createHash('sha256').update(readFileSync(path)).digest('hex');
   }

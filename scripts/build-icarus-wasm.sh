@@ -12,7 +12,7 @@ export ac_cv_lib_readline_readline=no ac_cv_lib_readline_add_history=no
 export ac_cv_lib_history_add_history=no ac_cv_lib_termcap_tputs=no
 export ac_cv_lib_pthread_pthread_create=no ac_cv_lib_z_gzwrite=no
 export ac_cv_lib_bz2_main=no ac_cv_lib_bz2_BZ2_bzdopen=no
-emconfigure ./configure --build="$(gcc -dumpmachine)" --host=wasm32-unknown-emscripten --disable-libvvp CFLAGS=-O2 CXXFLAGS=-O2
+emconfigure ./configure --build="$(gcc -dumpmachine)" --host=wasm32-unknown-emscripten CFLAGS=-O2 CXXFLAGS=-O2
 # Repository archives have no .git metadata; record the exact source revision.
 printf '#define VERSION_TAG "c7530dbcc186de2f21eacde14fd28061b885924c-anacode.1"\n' > version_tag.h
 emmake make -j2 -C tgt-vvp anacode-target.a

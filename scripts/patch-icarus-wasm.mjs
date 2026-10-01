@@ -85,5 +85,5 @@ append('tgt-vvp/Makefile.in', 'anacode-target.a: $(O)\n\temar rcs $@ $^\n');
 append('vpi/Makefile.in', 'anacode-system.a: $(O) $(OPP) $(V2005) $(V2009) $(VA_MATH)\n\t$(AR) rcs $@ $^\n');
 append('ivlpp/Makefile.in', `anacode-ivlpp.js: $(O)\n\t$(CC) ${flags} -o $@ $(O)\n`);
 append('Makefile.in', `anacode-ivl.js: $(O) tgt-vvp/anacode-target.a vpi/anacode-system.a\n\t$(CXX) ${flags} -o $@ $(O) tgt-vvp/anacode-target.a vpi/anacode-system.a\n`);
-append('vvp/Makefile.in', `anacode-vvp.js: $(VVP_OBJ) ../vpi/anacode-system.a\n\t$(CXX) ${flags} -o $@ $(VVP_OBJ) ../vpi/anacode-system.a $(LIBS)\n`);
+append('vvp/Makefile.in', `anacode-vvp.js: main.o $(LIB_OBJ) ../vpi/anacode-system.a\n\t$(CXX) ${flags} -o $@ main.o $(LIB_OBJ) ../vpi/anacode-system.a $(LIBS)\n`);
 console.log('Applied static Icarus target/VPI and browser build integration.');
