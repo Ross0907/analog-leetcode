@@ -4,6 +4,13 @@ AnaCode uses Supabase Auth for email/password accounts. Passwords and identity v
 
 ## Connect a project
 
+For a Windows owner who prefers a guided setup, send the standalone
+[`SETUP-SUPABASE.bat`](../SETUP-SUPABASE.bat) and the
+[plain-language instructions](../OWNER-SETUP-README.txt). The helper validates
+the public key, previews optional Supabase/Cloudflare setting changes before
+applying them, and saves a report without credentials. It requires access to
+the actual owning accounts; email delivery and live login still need testing.
+
 Create or select a Supabase project, then copy its **Project URL** and **publishable API key** from the project connection/API settings. The required server environment values are:
 
 ```dotenv
