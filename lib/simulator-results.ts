@@ -26,7 +26,9 @@ export function chooseProbes(available: string[], requested: string[]): string[]
 
 /** Convert only actual ngspice vectors. No circuit evaluation or synthetic waveforms. */
 export function normalizeNgspiceResult(result: ResultType, analysisLine: string, requested: string[], warnings: string[], runtimeMs: number): SimulationPayload {
-  if (result.numPoints < 1 || result.numPoints > SIMULATOR_NETLIST_LIMITS.outputPoints) throw new Error(`ngspice returned ${result.numPoints} points; the limit is ${SIMULATOR_NETLIST_LIMITS.outputPoints}.`);
+  if (!Number.isInteger(result.numPoints) || result.numPoints < 1 || result.numPoints > SIMULATOR_NETLIST_LIMITS.adaptiveOutputPoints) throw new Error(`ngspice returned ${result.numPoints} points; the adaptive record limit is ${SIMULATOR_NETLIST_LIMITS.adaptiveOutputPoints}. Reduce the sample target or shorten the run.`);
+  const values = result.data.reduce((count, series) => count + series.values.length * (result.dataType === "complex" ? 2 : 1), 0);
+  if (values > SIMULATOR_NETLIST_LIMITS.resultValues) throw new Error(`Simulation exceeds the ${SIMULATOR_NETLIST_LIMITS.resultValues.toLocaleString()}-value memory budget. Reduce the sample target or circuit size.`);
   const directive = analysisLine.trim().split(/\s+/)[0]?.toLowerCase();
   const base = { engine: "ngspice-wasm" as const, warnings, runtimeMs, operatingPoint: [] };
   function samples(values: number[], label: string) {

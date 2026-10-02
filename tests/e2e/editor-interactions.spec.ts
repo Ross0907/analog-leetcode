@@ -8,6 +8,10 @@ async function nativeEditor(page: Page): Promise<Frame> {
   if (!frame) throw new Error('The native editor frame is missing.');
   return frame;
 }
+async function showProbeSettings(page: Page) {
+  const details = page.locator('details').filter({ has: page.locator('summary', { hasText: 'Probes & capture settings' }) }).first();
+  if (await details.getAttribute('open') === null) await details.locator(':scope > summary').click();
+}
 async function point(page: Page, frame: Frame, x: number, y: number) {
   const offset = await frame.evaluate(({ x, y }) => {
     const api = (window as unknown as { CircuitJS1: CircuitJsApi }).CircuitJS1;
@@ -65,6 +69,7 @@ test('native probes can be placed on the schematic and saved with an interoperab
   await page.getByRole('button', { name: 'Voltage probe', exact: true }).click();
   const target = await point(page, frame, 560, 224);
   await page.mouse.move(target.x, target.y); await page.mouse.click(target.x, target.y);
+  await showProbeSettings(page);
   await expect(page.getByRole('textbox', { name: 'Probe 3 name' })).toBeVisible();
   await page.getByRole('textbox', { name: 'Probe 3 name' }).fill('Filter output');
   await page.getByLabel('Capture duration in seconds').fill('0.02');
@@ -79,6 +84,7 @@ test('native probes can be placed on the schematic and saved with an interoperab
   if (stream) for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   expect(Buffer.concat(chunks).toString('utf8')).toMatch(/^<cir[\s>]/);
   await page.reload(); await nativeEditor(page);
+  await showProbeSettings(page);
   await expect(page.getByRole('textbox', { name: 'Probe 3 name' })).toHaveValue('Filter output');
   await expect(page.getByLabel('Capture duration in seconds')).toHaveValue('0.02');
   await expect(page.getByLabel('Capture target samples')).toHaveValue('4096');
@@ -88,9 +94,11 @@ test('grading reads fresh native electrical values and connectivity', async ({ p
   await page.goto('/problems/precision-voltage-divider'); const frame = await nativeEditor(page);
   await page.getByLabel('Workspace layout', { exact: true }).selectOption('tabs');
   await page.getByRole('button', { name: 'SPICE & grading', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'SPICE & grading', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Oscilloscope & FFT', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('SPICE analysis source', { exact: true })).toHaveValue('schematic');
-  await page.getByRole('button', { name: 'Use current schematic', exact: true }).click();
+  await page.getByLabel('Schematic analysis type', { exact: true }).selectOption('operating-point');
+  await page.getByRole('button', { name: 'Run simulation', exact: true }).click();
+  await expect(page.locator('.op-grid')).toContainText('2.5 V', { timeout: 45_000 });
   // A later edit must be read again by Check, without requiring a prepared snapshot.
   const edits = await frame.evaluate(() => (window as unknown as { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().filter((element) => element.getType() === 'ResistorElm').map((element) => element.setEditableValue('12k')));
   expect(edits).toEqual([null, null]);
@@ -111,7 +119,9 @@ test('invalid imports show an actionable error and retain the native circuit', a
   await page.locator('input[type="file"]').setInputFiles({ name: 'invalid.txt', mimeType: 'text/plain', buffer: Buffer.from('not a native circuit') });
   await expect(page.getByRole('alert')).toContainText('Choose a CircuitJS circuit');
   expect(await frame.evaluate(() => (window as unknown as { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().length)).toBe(before);
+  await showProbeSettings(page);
   const probeNames = page.getByRole('textbox', { name: /^Probe \d+ name$/ });
+  await expect(probeNames).toHaveCount(2);
   const probesBefore = await probeNames.evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value));
   await page.locator('input[type="file"]').setInputFiles({ name: 'broken.xml', mimeType: 'application/xml', buffer: Buffer.from('<cir><broken') });
   await expect(page.getByRole('alert')).toContainText('well-formed CircuitJS XML');

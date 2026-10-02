@@ -14,3 +14,7 @@ public/hdl/icarus/** linguist-vendored
 public/hdl/viewer/vcdrom.js -text -whitespace linguist-vendored
 public/hdl/viewer/vcd.wasm -text linguist-vendored
 scripts/build-icarus-wasm.sh text eol=lf
+public/analog-canvas/** -text -whitespace linguist-vendored
+public/analog-canvas/renderer.js linguist-vendored=false
+public/spice-models/** -text -whitespace linguist-vendored
+scripts/patch-circuitjs-stimulus.mjs -text

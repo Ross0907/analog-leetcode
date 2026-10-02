@@ -42,7 +42,9 @@ test("analysis count, syntax, direction, and output sizes are bounded", () => {
   assert.throws(() => validateSimulatorNetlist("R1 in 0 1k\n.op unexpected\n.end"), /does not accept/i);
   assert.throws(() => validateSimulatorNetlist("R1 in 0 1k\n.dc V1 0 5 -0.1\n.end"), /must move/i);
   assert.throws(() => validateSimulatorNetlist("R1 in 0 1k\n.tran 1n 1m\n.end"), /point preview limit/i);
-  assert.throws(() => validateSimulatorNetlist("R1 in 0 1k\n.ac dec 1000 1 1meg\n.end"), /point preview limit/i);
+  assert.throws(() => validateSimulatorNetlist("R1 in 0 1k\n.ac dec 1000 1e-130 1e12\n.end"), /point preview limit/i);
+  assert.throws(() => validateSimulatorNetlist("R1 in 0 1k\n.tran 1u 1m 0 1n\n.end"), /point preview limit/i);
+  for (const samples of [65_536, 131_072]) assert.doesNotThrow(() => validateSimulatorNetlist(`R1 in 0 1k\n.tran ${.001 / (samples - 1)} .001\n.end`));
 });
 
 test("periodic-source event bombs and oversized decks are rejected", () => {

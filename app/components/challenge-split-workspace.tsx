@@ -5,9 +5,9 @@
 import { Children, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 
 const STORAGE_KEY = "anacode-challenge-split";
-const MIN_PERCENT = 22;
+const MIN_PERCENT = 16;
 const MAX_PERCENT = 58;
-const DEFAULT_PERCENT = 32;
+const DEFAULT_PERCENT = 25;
 type ProblemMode = "expanded" | "compact" | "collapsed";
 const subscribeHydration = () => () => {};
 
@@ -61,6 +61,10 @@ export function ChallengeSplitWorkspace({ children }: { children: ReactNode }) {
         <button key={mode} type="button" disabled={!hydrated} aria-pressed={problemMode === mode}
           aria-controls="problem-description-pane" onClick={() => {
             setProblemMode(mode);
+            if (mode === 'compact' && problemMode !== 'compact') {
+              const next = Math.min(problemPercent, 21);
+              setProblemPercent(next); latestPercentRef.current = next; persist(STORAGE_KEY, String(next));
+            }
             persist(`${STORAGE_KEY}-mode`, mode);
           }}>{mode === "expanded" ? "Expand description" : mode === "compact" ? "Compact description" : "Hide description"}</button>
       ))}

@@ -6,7 +6,7 @@ AnaCode is a browser circuit workbench and electronics practice library. Draw ci
 
 ## Circuit workbench
 
-The primary editor and live solver are **CircuitJS1**, built from pinned upstream source and served with the application. CircuitJS provides the components, wiring, electrical graph, undo, viewport and file format. Supported component drawings and the quick palette use **official KiCad symbols**, exported with KiCad's own CLI and mapped to the existing native terminals. This is symbol presentation, not a replacement schematic backend or a KiCad project editor. AnaCode connects a probe panel and waveform viewer through the native JavaScript API.
+The primary editor and live solver are **CircuitJS1**, built from pinned upstream source and served with the application. CircuitJS provides the components, wiring, electrical graph, undo, viewport and file format. Common symbols and the quick palette use pinned **Analog Canvas** definitions from the supplied reference project, with official **KiCad** artwork for the remaining supported symbols. Both map to the native terminals. AnaCode connects its instruments through the native JavaScript API.
 
 - Voltage probes on every electrical node, including ground and unlabeled junctions.
 - Current probes on supported two-terminal components; up to 32 simultaneous probes.
@@ -14,7 +14,9 @@ The primary editor and live solver are **CircuitJS1**, built from pinned upstrea
 - Continuous live capture and one-shot acquisition, with up to 131,072 samples and a bounded ring buffer.
 - One workspace for the schematic, SPICE, grading, scope, FFT and logic traces; use tabs, side-by-side or stacked scrolling layouts.
 - Connected component movement, one-click wire junctions, W crosshair wiring and inline numeric value editing.
-- Paper-style light mode and matching dark mode, with uniformly scaled KiCad symbols and local reference grounds.
+- Independent schematic paper/light mode, matching instrument light/dark themes, and uniformly scaled source-derived symbols.
+- Adjustable description, schematic, instrument and probe panes; waveform displays stay beside the drawing.
+- Short component leads in bundled starters, probe-shaped markers that scale with the native viewport, and outside-click dismissal of editors.
 - Oscilloscope scaling, horizontal zoom/pan, triggering, X/Y cursors and measurements.
 - FFT channel/window selection, linear/log frequency, linear/dB magnitude, DC removal, span and markers.
 - Distortion metrics only when sample quality and coherent capture support them.
@@ -23,11 +25,11 @@ The primary editor and live solver are **CircuitJS1**, built from pinned upstrea
 
 The integrated **ngspice WebAssembly** panel provides operating point, DC sweep, AC magnitude/phase and transient analysis in a Web Worker. Probe expressions select any voltage node or current vector actually exported by ngspice.
 
-CircuitJS and ngspice use different device models. Common passive circuits and supported sources can be analyzed from the current native graph. Graded exercises convert that graph through the validated grading document. Advanced model decks are explicitly identified as reference/custom SPICE, with unsupported native conversions rejected rather than silently analyzing a starter.
+CircuitJS and ngspice use different device models. Current-schematic SPICE supports passive networks, bounded ideal op-amps, selectable LM741 and transistor/diode models, and DC, sine, PWL and bitstream sources. AC sweeps select the excitation, spacing, point count and phase. Native source edits remain the source of truth. Graded exercises convert the current graph through the validated grading document. Unsupported native devices produce an explicit explanation.
 
 ## Practice and accounts
 
-The analog library contains **32 problems**, including six converter lessons and two parts-only wiring exercises. ADC/DAC foundations cover R–2R conversion, SAR trial/residue, flash thermometer encoding, comparator thresholds, acquisition settling and sample/hold droop. Circuit and block views explain the stages. Numerical answers are checked against actual ngspice output; parts-only exercises grade the learner's actual connected graph.
+The analog library contains **38 problems**, including converter foundations, two parts-only wiring exercises, and six new expert designs covering residue amplification, DAC settling, SAR timing, reconstruction filtering, TIA compensation and flash threshold calibration. Prerequisite exercises can supply reusable native circuit blocks for later designs. Expert targets are measured from real ngspice results as local practice feedback; supported fixed-topology exercises use the separate server judge.
 
 Problem descriptions support expanded, compact and hidden modes. Search, difficulty/domain/progress filters, adjacent navigation and random selection help navigate the library. Worked-answer completion is stored on the current device. Five supported fixed-topology exercises save verified progress to Cloudflare D1 when signed in.
 
@@ -79,6 +81,7 @@ Build output, caches, local credentials and test captures are excluded from sour
 - [Architecture and file formats](docs/architecture.md)
 - [CircuitJS integration and reproducible build](docs/circuitjs-integration.md)
 - [Official KiCad symbols, pins and provenance](docs/kicad-symbols.md)
+- [Analog Canvas reference symbols and provenance](docs/analog-canvas-symbols.md)
 - [Waveform measurements and FFT](docs/waveform-instruments.md)
 - [HDL tools, exercises and waveform viewer](docs/hdl-workspace.md)
 - [Supabase authentication](docs/supabase.md)
@@ -88,6 +91,6 @@ Build output, caches, local credentials and test captures are excluded from sour
 
 ## Licensing and credits
 
-AnaCode application code uses the [MIT license](LICENSE). CircuitJS1 is GPL-2.0-or-later and retains its own license. The complete pinned source, GPL integration patch and build script are distributed under `public/circuitjs/` and linked from the workbench.
+The root [MIT license](LICENSE) covers AnaCode-authored material for which the project owns the necessary rights. Third-party software, artwork, simulator artifacts, fonts and device models retain their own terms. CircuitJS1 and its integration patches are GPL-2.0-or-later; complete pinned source and build scripts are distributed under `public/circuitjs/`. The 15 redistributed Analog Canvas definitions and their presentation adapter retain AGPL-3.0-only, with source and license in `public/analog-canvas/`. KiCad fallback artwork retains CC-BY-SA 4.0 with the KiCad library exception. Published SPICE models retain their original notices in `public/spice-models/`, including the National Semiconductor LM741 distribution terms. The root MIT license does not relicense any of these materials.
 
-Thanks to Paul Falstad, Iain Sharp and the CircuitJS community; ngspice; EEcircuit Engine; spice-ts; Supabase; fft.js; React; Vinext; Vite; Drizzle; and contributors to the retained legacy schematic importer. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution.
+Thanks to Paul Falstad, Iain Sharp and the CircuitJS community; the Analog Canvas and KiCad contributors; ngspice and its model collection; National Semiconductor and Texas Instruments; EEcircuit Engine; spice-ts; Supabase; fft.js; React; Vinext; Vite; Drizzle; and contributors to the retained legacy schematic importer. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for source links, model adaptations and attribution.

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, Check, Clock3, Cpu, FileCode2, Play, RotateCcw, Send, ShieldCheck, X } from "lucide-react";
 import type { JudgeKind } from "../../lib/challenges";
 import type { CircuitDocument } from "../../lib/circuit-document";
@@ -13,10 +13,7 @@ import {
   type SimulatorWorkerMessage,
   type SimulatorWorkerRequest,
 } from "../../lib/simulator-contract";
-import { BrowserOscilloscope, type OscilloscopeDomain } from "./browser-oscilloscope";
-import { SpectrumAnalyzer } from "./spectrum-analyzer";
-import { LogicAnalyzer } from "./logic-analyzer";
-import instrumentStyles from "./instrument-workspace.module.css";
+import { ScopeResult } from "./scope-result";
 import { validateSimulatorProbes } from "../../lib/simulator-netlist-policy";
 
 type GradeResponse = {
@@ -50,6 +47,9 @@ export function SimulationConsole({
   hideWaveforms = false,
   requireSchematic = false,
   prepareGrading,
+  compact = false,
+  settingsSlot,
+  invalidationKey,
 }: {
   initialNetlist: string;
   probe?: string | readonly string[];
@@ -62,6 +62,9 @@ export function SimulationConsole({
   onResult?: (payload: SimulationPayload | null) => void;
   hideWaveforms?: boolean;
   requireSchematic?: boolean;
+  compact?: boolean;
+  settingsSlot?: ReactNode;
+  invalidationKey?: string;
 }) {
   const [netlist, setNetlist] = useState(initialNetlist);
   const [analysisSource, setAnalysisSource] = useState<"schematic" | "deck">(prepareCircuit ? "schematic" : "deck");
@@ -77,6 +80,8 @@ export function SimulationConsole({
   const autoRunStartedRef = useRef(false);
   const mountedRef = useRef(false);
   const prepareWorkerRef = useRef<() => SimulatorWorkerSession | null>(() => null);
+  const submissionSequenceRef = useRef(0);
+  const previousInvalidationRef = useRef(invalidationKey);
 
   useEffect(() => { onResult?.(simulation); }, [simulation, onResult]);
 
@@ -207,6 +212,14 @@ export function SimulationConsole({
     if (mountedRef.current) setRunning(false);
   }, [disposeWorker]);
 
+  useEffect(() => {
+    if (previousInvalidationRef.current === invalidationKey) return;
+    previousInvalidationRef.current = invalidationKey;
+    submissionSequenceRef.current++;
+    const timer = setTimeout(() => { cancelSimulation(); setSimulation(null); setGrade(null); setSimError(null); setSubmitting(false); }, 0);
+    return () => clearTimeout(timer);
+  }, [invalidationKey, cancelSimulation]);
+
   const runSimulation = useCallback(() => {
     cancelSimulation();
     setRunning(true);
@@ -277,6 +290,7 @@ export function SimulationConsole({
 
   async function submitSolution() {
     if (!challengeSlug || !judge) return;
+    const submissionSequence = ++submissionSequenceRef.current;
     let submittedDocument: CircuitDocument | undefined;
     try { submittedDocument = prepareGrading?.() ?? prepareCircuit?.().document ?? circuitDocument; }
     catch (cause) {
@@ -309,9 +323,9 @@ export function SimulationConsole({
       });
       const payload = await response.json() as GradeResponse & { error?: string };
       if (!response.ok) throw new Error(payload.error || "The judge rejected this request.");
-      setGrade(payload);
+      if (submissionSequenceRef.current === submissionSequence) setGrade(payload);
     } catch (error) {
-      setGrade({
+      if (submissionSequenceRef.current === submissionSequence) setGrade({
         passed: false,
         score: 0,
         summary: error instanceof Error ? error.message : "The judge is temporarily unavailable.",
@@ -320,16 +334,16 @@ export function SimulationConsole({
         persisted: false,
       });
     } finally {
-      setSubmitting(false);
+      if (submissionSequenceRef.current === submissionSequence) setSubmitting(false);
     }
   }
 
   return (
-    <div className="sim-console">
+    <div className={`sim-console${compact ? ' sim-console-compact' : ''}`}>
       <div className="sim-toolbar">
-        <div className="sim-mode"><span className="ready-dot" /> Circuit analysis <small>AC · DC · transient</small></div>
+        <div className="sim-mode"><span className="ready-dot" /> SPICE <small>AC · DC · transient</small></div>
         <div className="sim-actions">
-          {prepareCircuit && <button type="button" className="button button-small" onClick={() => {
+          {prepareCircuit && !compact && <button type="button" className="button button-small" onClick={() => {
             try { const prepared = prepareCircuit(); cancelSimulation(); setAnalysisSource("schematic"); setNetlist(prepared.deck); if (prepared.probes) setProbeText(prepared.probes.join(", ")); setSimulation(null); setSimError(null); }
             catch (cause) { setSimError(cause instanceof Error ? cause.message : "Check the schematic before preparing analysis."); }
           }}>Use current schematic</button>}
@@ -337,18 +351,23 @@ export function SimulationConsole({
           <button className="button button-small button-run" type="button" onClick={runSimulation} disabled={running}>
             {running ? <><span className="spinner" /> Running</> : <><Play size={15} fill="currentColor" /> Run simulation</>}
           </button>
+          {compact && challengeSlug && judge && <button className="button button-small button-submit" type="button" onClick={submitSolution} disabled={submitting}>{submitting ? 'Checking…' : <><Send size={14}/>Check fixed topology</>}</button>}
         </div>
       </div>
 
-      {prepareCircuit && <div className="lab-mode-note"><label>Analysis source <select aria-label="SPICE analysis source" value={analysisSource} disabled={requireSchematic} onChange={(event) => { cancelSimulation(); setAnalysisSource(event.target.value as typeof analysisSource); setNetlist(initialNetlist); setProbeText(initialProbeText); setSimulation(null); setSimError(null); }}><option value="schematic">Current schematic</option><option value="deck">Separate reference / custom deck</option></select></label><p>{analysisSource === 'schematic' ? 'Each run reads the current connections and component values. Supported: R, C, L, ideal DC and sine sources. Other models remain available in live measurements.' : 'This is a separate SPICE example or custom deck. Schematic edits are not reflected in this analysis.'}</p></div>}
+      <details className="analysis-controls" open={compact ? undefined : true}>
+      <summary>Analysis, sources &amp; models</summary>
+      {settingsSlot}
+      {prepareCircuit && <div className="lab-mode-note"><label>Analysis source <select aria-label="SPICE analysis source" value={analysisSource} disabled={requireSchematic} onChange={(event) => { cancelSimulation(); setAnalysisSource(event.target.value as typeof analysisSource); setNetlist(initialNetlist); setProbeText(initialProbeText); setSimulation(null); setSimError(null); }}><option value="schematic">Current schematic</option><option value="deck">Separate reference / custom deck</option></select></label><p>{analysisSource === 'schematic' ? 'Each run reads the current connections and values, with the sources and device models selected above.' : 'This is a separate SPICE example or custom deck. Schematic edits are not reflected in this analysis.'}</p></div>}
       <label style={{ display: "grid", gap: 6, padding: "12px 16px", fontSize: 12 }}>
         Probe vectors
         <input aria-label="Probe vectors" value={probeText} readOnly={Boolean(prepareCircuit) && (requireSchematic || analysisSource === "schematic")} maxLength={2300} placeholder="vin, vout, I(V1)" onChange={(event) => { cancelSimulation(); setProbeText(event.currentTarget.value); }} style={{ width: "100%", padding: "9px 12px", color: "inherit", background: "transparent", border: "1px solid #59616d", borderRadius: 5 }} />
         <small>Up to 32 node names, V(node), or supported source currents I(source), separated by commas. Leave blank to plot all available vectors.</small>
       </label>
+      </details>
 
       <div className="sim-output">
-        <div className="results-pane scope-results-pane">
+        {(!compact || simError || simulation) && <div className="results-pane scope-results-pane">
           <div className="pane-heading"><span>RESULTS</span>{simulation && <small><Clock3 size={12} /> {simulation.runtimeMs.toFixed(1)} ms</small>}</div>
           {simError ? (
             <div className="simulation-message error"><AlertTriangle size={24} /><strong>Simulation stopped</strong><p>{simError}</p></div>
@@ -358,7 +377,7 @@ export function SimulationConsole({
                 <div className="op-grid">
                   {simulation.operatingPoint.map((point) => <div key={point.name}><span>{point.name}</span><strong>{formatEngineering(point.value, point.unit ?? "V")}</strong></div>)}
                 </div>
-              ) : hideWaveforms ? <p className="lab-mode-note">The response is ready in Measurements.</p> : <ScopeResult payload={simulation} />}
+              ) : hideWaveforms ? null : <ScopeResult payload={simulation} />}
               {simulation.warnings.length > 0 && (
                 <ul className="simulation-warnings" aria-label="Simulation warnings">
                   {/* Warning rows belong to one immutable result and may repeat. */}
@@ -375,7 +394,7 @@ export function SimulationConsole({
           ) : (
             <div className="simulation-message"><div className="empty-wave" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></div><strong>Ready to measure</strong><p>Run the circuit to inspect its operating point, response, and waveforms.</p></div>
           )}
-        </div>
+        </div>}
 
         <details className="advanced-netlist">
           <summary>
@@ -393,15 +412,15 @@ export function SimulationConsole({
         </details>
       </div>
 
-      {challengeSlug && (
+      {challengeSlug && !compact && (
         <div className="submission-bar">
           <div>
             <strong>{judge ? "Check your circuit" : "Simulation practice"}</strong>
             <span>{judge ? "Check the connections and component values in your current schematic against this challenge." : "Explore its response and compare it with the learning objectives."}</span>
           </div>
-          <button className="button button-submit" type="button" onClick={submitSolution} disabled={!judge || submitting}>
+          {judge && <button className="button button-submit" type="button" onClick={submitSolution} disabled={submitting}>
             {submitting ? <><span className="spinner dark" /> Checking</> : <><Send size={16} /> {judge ? "Check fixed topology" : "Practice only"}</>}
-          </button>
+          </button>}
         </div>
       )}
 
@@ -427,66 +446,4 @@ export function SimulationConsole({
   );
 }
 
-export const ScopeResult = memo(function ScopeResult({ payload }: { payload: SimulationPayload }) {
-  const [view, setView] = useState<'all' | 'scope' | 'spectrum' | 'logic'>('all');
-  if (payload.analysis === "dc") return <div className="op-grid">{payload.operatingPoint.map((point) => <div key={point.name}><span>{point.name}</span><strong>{formatEngineering(point.value, point.unit ?? "V")}</strong></div>)}</div>;
-  if (payload.analysis === "ac") {
-    const magnitude = payload.traces.filter((trace) => trace.quantity === "magnitude");
-    const phase = payload.traces.filter((trace) => trace.quantity === "phase");
-    return (
-      <div className="scope-host bode-analyzer-stack">
-        <BrowserOscilloscope
-          key={`magnitude:${magnitude.map((trace) => trace.id).join("|")}`}
-          x={payload.x}
-          traces={magnitude}
-          domain="frequency"
-          xScale="log"
-          xLabel={payload.xLabel}
-          xUnit={payload.xUnit}
-          yLabel="Magnitude"
-          yUnit="dB"
-          title="Bode magnitude"
-          height={270}
-        />
-        <BrowserOscilloscope
-          key={`phase:${phase.map((trace) => trace.id).join("|")}`}
-          x={payload.x}
-          traces={phase}
-          domain="frequency"
-          xScale="log"
-          xLabel={payload.xLabel}
-          xUnit={payload.xUnit}
-          yLabel="Phase"
-          yUnit="°"
-          title="Bode phase"
-          height={270}
-        />
-      </div>
-    );
-  }
-  const domain: OscilloscopeDomain = payload.analysis === "dc-sweep" ? "sweep" : "time";
-  const title = payload.analysis === "dc-sweep" ? "Curve tracer" : "Oscilloscope";
-  const groups = [...new Set(payload.traces.map((trace) => trace.unit))].map((unit) => ({ unit, traces: payload.traces.filter((trace) => trace.unit === unit) }));
-  return (
-    <div className="scope-host">
-      {payload.analysis === "transient" && <div className={instrumentStyles.views} role="group" aria-label="Measurement view">
-        {(['all', 'scope', 'spectrum', 'logic'] as const).map((value) => <button type="button" key={value} aria-pressed={view === value} onClick={() => setView(value)}>{value === 'all' ? 'Scope + FFT' : value === 'scope' ? 'Oscilloscope' : value === 'spectrum' ? 'Spectrum' : 'Logic analyzer'}</button>)}
-      </div>}
-      {(payload.analysis !== "transient" || view === 'all' || view === 'scope') && groups.map((group) => <BrowserOscilloscope
-        key={`${payload.analysis}:${group.unit}:${group.traces.map((trace) => trace.id).join("|")}`}
-        x={payload.x}
-        traces={group.traces}
-        domain={domain}
-        xScale="linear"
-        xLabel={payload.xLabel}
-        xUnit={payload.xUnit}
-        yLabel={group.unit === "A" ? "Current" : payload.yLabel}
-        yUnit={group.unit}
-        title={`${title}${groups.length > 1 ? ` · ${group.unit === "A" ? "Current" : "Voltage"}` : ""}`}
-        height={360}
-      />)}
-      {payload.analysis === "transient" && (view === 'all' || view === 'spectrum') && <SpectrumAnalyzer time={payload.x} traces={payload.traces} />}
-      {payload.analysis === "transient" && view === 'logic' && <LogicAnalyzer payload={payload}/>}
-    </div>
-  );
-});
+export { ScopeResult } from './scope-result';

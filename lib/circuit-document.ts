@@ -184,6 +184,18 @@ export const COMPONENT_DEFINITIONS = {
       { id: "output", label: "OUT", required: true },
     ],
   },
+  "op-amp-model": {
+    displayName: "Operational amplifier IC",
+    category: "Amplifiers",
+    referencePrefix: "U",
+    pins: [
+      { id: "nonInverting", label: "+", required: true },
+      { id: "inverting", label: "−", required: true },
+      { id: "positiveSupply", label: "V+", required: true },
+      { id: "negativeSupply", label: "V−", required: true },
+      { id: "output", label: "OUT", required: true },
+    ],
+  },
 } as const satisfies Record<string, ComponentDefinition>;
 
 export type ComponentKind = keyof typeof COMPONENT_DEFINITIONS;
@@ -244,6 +256,13 @@ const pulseWaveSchema = z
 const transientWaveSchema = z.discriminatedUnion("type", [
   sineWaveSchema,
   pulseWaveSchema,
+  z.object({
+    type: z.literal("pwl"),
+    points: z.array(z.object({
+      timeS: nonNegativeSchema.max(1e9),
+      value: finiteSchema.min(-1_000_000).max(1_000_000),
+    }).strict()).min(2).max(2048).refine(points => points.every((point, index) => index === 0 || point.timeS > points[index - 1].timeS), "PWL times must increase strictly."),
+  }).strict(),
 ]);
 
 const voltageSourceParametersSchema = z
@@ -329,7 +348,7 @@ const componentSchema = z.discriminatedUnion("kind", [
       kind: z.literal("diode"),
       parameters: z
         .object({
-          model: z.enum(["generic-silicon", "rectifier"]),
+          model: z.enum(["generic-silicon", "rectifier", "1n4148"]),
           area: positiveSchema.max(1e6).default(1),
         })
         .strict(),
@@ -341,7 +360,7 @@ const componentSchema = z.discriminatedUnion("kind", [
       kind: z.literal("bjt-npn"),
       parameters: z
         .object({
-          model: z.enum(["generic-npn"]),
+          model: z.enum(["generic-npn", "bc546b"]),
           area: positiveSchema.max(1e6).default(1),
         })
         .strict(),
@@ -353,7 +372,7 @@ const componentSchema = z.discriminatedUnion("kind", [
       kind: z.literal("bjt-pnp"),
       parameters: z
         .object({
-          model: z.enum(["generic-pnp"]),
+          model: z.enum(["generic-pnp", "bc556b"]),
           area: positiveSchema.max(1e6).default(1),
         })
         .strict(),
@@ -365,7 +384,9 @@ const componentSchema = z.discriminatedUnion("kind", [
       kind: z.literal("mosfet-nmos"),
       parameters: z
         .object({
-          model: z.enum(["generic-nmos", "generic-nmos-90nm"]),
+          model: z.enum(["generic-nmos", "generic-nmos-90nm", "native-nmos", "irfp240"]),
+          thresholdV: finiteSchema.min(-100).max(100).optional(),
+          beta: positiveSchema.max(1e6).optional(),
           widthM: positiveSchema.min(1e-9).max(1),
           lengthM: positiveSchema.min(1e-9).max(1),
           multiplier: positiveSchema.max(1e6).default(1),
@@ -379,7 +400,9 @@ const componentSchema = z.discriminatedUnion("kind", [
       kind: z.literal("mosfet-pmos"),
       parameters: z
         .object({
-          model: z.enum(["generic-pmos", "generic-pmos-90nm"]),
+          model: z.enum(["generic-pmos", "generic-pmos-90nm", "native-pmos", "irfp9240"]),
+          thresholdV: finiteSchema.min(-100).max(100).optional(),
+          beta: positiveSchema.max(1e6).optional(),
           widthM: positiveSchema.min(1e-9).max(1),
           lengthM: positiveSchema.min(1e-9).max(1),
           multiplier: positiveSchema.max(1e6).default(1),
@@ -403,10 +426,17 @@ const componentSchema = z.discriminatedUnion("kind", [
       parameters: z
         .object({
           openLoopGain: positiveSchema.min(1).max(1e12).default(1e6),
+          outputMinV: finiteSchema.min(-1e6).max(1e6).optional(),
+          outputMaxV: finiteSchema.min(-1e6).max(1e6).optional(),
         })
-        .strict(),
+        .strict().refine(parameters => (parameters.outputMinV === undefined && parameters.outputMaxV === undefined) || (parameters.outputMinV !== undefined && parameters.outputMaxV !== undefined && parameters.outputMinV < parameters.outputMaxV), 'Provide both op-amp output limits with lower < upper, or neither.'),
     })
     .strict(),
+  z.object({
+    ...baseComponentShape,
+    kind: z.literal("op-amp-model"),
+    parameters: z.object({ model: z.enum(["lm741"]) }).strict(),
+  }).strict(),
 ]);
 
 export const circuitComponentSchema = componentSchema;

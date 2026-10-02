@@ -3,13 +3,17 @@ import { parseEngineeringNumber } from "./engineering";
 export const SIMULATOR_NETLIST_LIMITS = Object.freeze({
   bytes: 12_000,
   lines: 180,
-  outputPoints: 5_000,
+  outputPoints: 131_072,
+  // ngspice adds accepted points around startup and waveform breakpoints.
+  adaptiveOutputPoints: 262_144,
+  // All raw vectors, including the axis and both complex components, count.
+  resultValues: 8_388_608,
   probes: 32,
   transientEvents: 2_000,
 });
 
 const FORBIDDEN_DIRECTIVE = /^\s*\.(?:inc|lib|control|endc|shell|exec|csparam|func|global|hdl|verilog|load)\b/im;
-const ALLOWED_DIRECTIVES = new Set(["op", "ac", "tran", "dc", "model", "include", "end"]);
+const ALLOWED_DIRECTIVES = new Set(["op", "ac", "tran", "dc", "model", "subckt", "ends", "include", "end"]);
 const TRUSTED_BROWSER_MODELCARDS = new Set(["modelcard.cmos90"]);
 
 /** ngspice consumes its first line as a title, including when that line is a source. */
@@ -49,7 +53,64 @@ export function validateSimulatorNetlist(netlist: string) {
   if (analyses.length !== 1) throw new Error("Use exactly one analysis directive per run.");
   validateAnalysis(analyses[0]!);
   validateTransientEvents(netlist, analyses[0]!);
+  validateSimulatorDeviceBudget(lines);
   return analyses[0]!;
+}
+
+/** Resource accounting only. ngspice remains the parser and circuit solver.
+ * The previous partial SPICE parser rejected standard B and X devices before
+ * they reached ngspice. Count top-level devices and bounded subcircuit expansion
+ * without interpreting their models or expressions.
+ */
+function validateSimulatorDeviceBudget(lines: string[]) {
+  type Device = { model?: string };
+  const top: Device[] = [], models = new Map<string, Device[]>();
+  let active: Device[] | null = null;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith('*') || line.startsWith('+')) continue;
+    const fields = line.split(/\s+/), directive = fields[0].toLowerCase();
+    if (directive === '.subckt') {
+      if (active) throw new Error('Nested subcircuit definitions are not supported in the bounded preview.');
+      const name = fields[1]?.toLowerCase();
+      if (!name || !/^[a-z0-9_./-]{1,64}$/.test(name) || models.has(name)) throw new Error('Subcircuit names must be valid and unique.');
+      active = []; models.set(name, active); continue;
+    }
+    if (directive === '.ends') {
+      if (!active) throw new Error('Unexpected .ends in the preview deck.');
+      active = null; continue;
+    }
+    if (line.startsWith('.')) continue;
+    if (!/^[a-z]/i.test(line)) throw new Error('A device line must begin with its SPICE reference.');
+    let model: string | undefined;
+    if (/^x/i.test(line)) {
+      const parameters = fields.findIndex(field => /^(?:params:|[^=]+=)/i.test(field));
+      model = fields[(parameters < 0 ? fields.length : parameters) - 1]?.toLowerCase();
+      if (!model) throw new Error('Subcircuit instance is missing its model name.');
+    }
+    (active ?? top).push({ model });
+  }
+  if (active) throw new Error('Close each subcircuit definition with .ends.');
+  if (top.length > 80) throw new Error('This preview is limited to 80 top-level components.');
+  const budget = 2048;
+  function expanded(devices: Device[], stack: string[]): number {
+    if (stack.length > 8) throw new Error('Subcircuit nesting exceeds the eight-level preview limit.');
+    let count = 0;
+    for (const device of devices) {
+      if (!device.model) count++;
+      else {
+        if (stack.includes(device.model)) throw new Error('Recursive subcircuits are not allowed.');
+        const children = models.get(device.model);
+        if (!children) throw new Error(`Subcircuit ${device.model} is not defined in this deck.`);
+        // Count the instance itself as well, so even empty subcircuits cannot
+        // create an unbounded expansion tree without consuming the budget.
+        count += 1 + expanded(children, [...stack, device.model]);
+      }
+      if (count > budget) throw new Error('Expanded subcircuits exceed the 2048-device preview limit.');
+    }
+    return count;
+  }
+  expanded(top, []);
 }
 
 export function validateSimulatorProbes(value: unknown) {
@@ -81,8 +142,10 @@ function validateAnalysis(line: string) {
     const stop = positiveNumber(tokens[2], "transient stop time");
     const start = tokens[3] ? nonNegativeNumber(tokens[3], "transient start time") : 0;
     if (start >= stop) throw new Error("Transient start time must be below stop time.");
-    enforcePointLimit(Math.ceil((stop - start) / step) + 1);
-    if (tokens[4]) positiveNumber(tokens[4], "maximum transient step");
+    const maximumStep = tokens[4] ? positiveNumber(tokens[4], "maximum transient step") : step;
+    // A tiny explicit maximum step can force a much denser solver record.
+    const intervals = (stop - start) / Math.min(step, maximumStep);
+    enforcePointLimit(Math.ceil(intervals - 1e-9 * Math.max(1, intervals)) + 1);
     return;
   }
   if (directive === ".ac") {
@@ -94,7 +157,7 @@ function validateAnalysis(line: string) {
     const stop = positiveNumber(tokens[4], "AC stop frequency");
     if (stop <= start) throw new Error("AC stop frequency must exceed the start frequency.");
     const intervals = mode === "lin" ? 1 : mode === "dec" ? Math.log10(stop / start) : Math.log2(stop / start);
-    enforcePointLimit(Math.ceil(points * intervals) + 1);
+    enforcePointLimit(mode === "lin" ? points : Math.ceil(points * intervals) + 1);
     return;
   }
   if (directive === ".dc") {

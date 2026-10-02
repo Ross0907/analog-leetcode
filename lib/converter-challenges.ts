@@ -32,6 +32,7 @@ const defaults = { acceptance: null, attempts: 0, available: true, judge: null, 
 export const converterChallenges: Challenge[] = [
   {
     ...defaults, id: 25, slug: "r2r-dac-code", title: "Three bits, two resistor values", difficulty: "Intermediate", domain: "Digital", xp: 170,
+    reusableBlock: { name: 'R2R3', ports: ['b2','b1','b0','dac'], description: 'Select the six ladder resistors, ground and four external labels; leave all three bit sources outside your selection. Reuse the saved ladder in the timed DAC and SAR exercises.' },
     summary: "Turn binary 101 into a voltage with a three-bit R–2R ladder.",
     objective: "With a 5 V reference, the MSB and LSB are high and the middle bit is low. Find the unloaded DAC output and explain why full scale is below the reference.",
     analysis: "Operating point", topics: ["R–2R DAC", "Binary weights", "Reference loading"],
@@ -64,6 +65,7 @@ export const converterChallenges: Challenge[] = [
   },
   {
     ...defaults, id: 28, slug: "adc-comparator-polarity", title: "Which side of the threshold?", difficulty: "Foundation", domain: "Op-amps", xp: 120,
+    reusableBlock: { name: 'Comparator5V', ports: ['vin','ref','out'], description: 'Select the comparator, its wires and three labels, leaving both test sources outside. Reuse the 0–5 V decision block in SAR and flash exercises.' },
     summary: "Read comparator polarity before interpreting an ADC decision.",
     objective: "Apply 2.6 V to the non-inverting input and a 2.5 V reference to the inverting input. Find the output of an ideal comparator with 0 V and 5 V output levels.",
     analysis: "Operating point", topics: ["Comparator", "Input polarity", "Decision threshold"],
@@ -111,6 +113,7 @@ export const wiringChallenges: Challenge[] = [
   },
   {
     id: 32, slug: "wire-antialias-filter", title: "Wire the ADC input filter", difficulty: "Foundation", domain: "AC", xp: 180,
+    reusableBlock: { name: 'AntiAliasRC', ports: ['vin','vout'], description: 'After wiring and checking the filter, add a vin label and save only the resistor, capacitor, ground and two labels. Leave the test source outside.' },
     summary: "Connect an unconnected source, resistor, and capacitor into a 1 kHz input filter.",
     objective: "Wire a passive low-pass filter with a corner near 1 kHz. The output must be the junction of the series resistor and the capacitor to ground. Probe it before checking your design.",
     analysis: "AC sweep", acceptance: null, attempts: 0, topics: ["Anti-alias filter", "Connectivity", "Probe placement"],

@@ -65,6 +65,7 @@ export function startCircuitJsAcquisition(api: CircuitJsApi, probes: CircuitJsPr
   const interval = duration / (buffer.capacity - 1);
   const previousHook = api.ontimestep;
   const previousMaxStep = api.getMaxTimeStep();
+  const revision = api.getCircuitRevision?.();
   const acquisitionStep = Math.min(previousMaxStep > 0 ? previousMaxStep : interval, interval);
   const started = performance.now();
   const readings = new Float64Array(active.length);
@@ -80,12 +81,13 @@ export function startCircuitJsAcquisition(api: CircuitJsApi, probes: CircuitJsPr
     // Acquiring and freezing a view never pause the running circuit.
   }
   function hook(current: CircuitJsApi) {
-    previousHook?.(current);
     if (stopped) return;
     try {
+      previousHook?.(current);
+      if (revision !== undefined && current.getCircuitRevision?.() !== revision) throw new Error('Circuit changed. Start acquisition again to use the edited circuit.');
       const time = current.getTime();
       if (time < lastTime) { buffer.clear(); lastTime = -Infinity; resets++; }
-      if (time - lastTime < interval * (1 - 1e-9)) return;
+      // Keep every actual accepted step, including adaptive convergence steps.
       for (let index = 0; index < active.length; index++) readings[index] = readCircuitJsProbe(active[index]!);
       if (buffer.append(time, readings)) lastTime = time;
     } catch (cause) {

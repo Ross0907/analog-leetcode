@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -10,10 +11,14 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import { Activity, Eye, EyeOff, RotateCcw, SlidersHorizontal, Zap } from "lucide-react";
 import { crossings, interpolateWaveform, measureWaveform } from "../../lib/waveform-analysis";
 import { probeColor } from "../../lib/probe-colors";
+import { rectangleView, nearestPlotTrace, instrumentTraceColor, type PlotPoint } from "../../lib/instrument-interactions";
+import { useInstrumentTheme, useTraceAppearance } from "./instrument-state";
+import { TraceContextMenu } from "./trace-context-menu";
 
 export type OscilloscopeDomain = "time" | "frequency" | "sweep";
 export type OscilloscopeCoupling = "DC" | "AC";
@@ -28,6 +33,7 @@ export interface OscilloscopeTrace {
   values: ArrayLike<number>;
   /** Hex color. Invalid values fall back to the channel palette. */
   color?: string;
+  lineWidth?: number;
   unit?: string;
   initiallyVisible?: boolean;
   initialCoupling?: OscilloscopeCoupling;
@@ -77,6 +83,7 @@ type PreparedTrace = {
   name: string;
   unit: string;
   color: string;
+  lineWidth: number;
   coupling: OscilloscopeCoupling;
   points: Point[];
   measurements: TraceMeasurements;
@@ -127,6 +134,13 @@ export function BrowserOscilloscope({
   onCursorsChange,
 }: BrowserOscilloscopeProps) {
   const controlId = useId();
+  const theme = useInstrumentTheme();
+  const [appearances, setAppearances] = useTraceAppearance();
+  const [traceMenu, setTraceMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const closeTraceMenu = useCallback(() => setTraceMenu(null), []);
+  const [selection, setSelection] = useState<{ start: PlotPoint; end: PlotPoint } | null>(null);
+  const selectionRef = useRef<{ start: PlotPoint; end: PlotPoint; xView: { minimum: number; maximum: number }; yBounds: { minimum: number; maximum: number } } | null>(null);
+  const [yCenter, setYCenter] = useState<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const plotRectRef = useRef<PlotRect | null>(null);
@@ -160,7 +174,7 @@ export function BrowserOscilloscope({
   const channelLimit = clamp(Math.trunc(maxChannels), 1, 32);
   const sampleLimit = clamp(Math.trunc(maxSamples), 1_000, 1_000_000);
   const boundedHeight = clamp(height, 260, 720);
-  const activeTraces = useMemo(() => traces.length > channelLimit ? [] : traces.filter((trace) => !removed.has(trace.id)).map((trace) => ({ ...trace, name: names[trace.id] ?? trace.name })), [channelLimit, traces, removed, names]);
+  const activeTraces = useMemo(() => traces.length > channelLimit ? [] : traces.filter((trace) => !removed.has(trace.id)).map((trace) => ({ ...trace, name: names[trace.id] ?? trace.name, color: instrumentTraceColor(safeColor(appearances[trace.id]?.color ?? trace.color, probeColor(trace.id)), theme), lineWidth: appearances[trace.id]?.width ?? trace.lineWidth ?? 1.7 })), [channelLimit, traces, removed, names, appearances, theme]);
   const resolvedVisibility = useMemo(
     () => Object.fromEntries(activeTraces.map((trace) => [trace.id, visibility[trace.id] ?? trace.initiallyVisible !== false])),
     [activeTraces, visibility],
@@ -207,13 +221,13 @@ export function BrowserOscilloscope({
     if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) return { minimum: -1, maximum: 1 };
     const rawSpan = Math.max(maximum - minimum, Math.max(Math.abs(minimum), Math.abs(maximum), 1) * 1e-9);
     if (yPerDivision !== null) {
-      const center = (minimum + maximum) / 2;
+      const center = yCenter ?? (minimum + maximum) / 2;
       const span = yPerDivision * VERTICAL_DIVISIONS;
       return { minimum: center - span / 2, maximum: center + span / 2 };
     }
     const padding = rawSpan * 0.1;
     return { minimum: minimum - padding, maximum: maximum + padding };
-  }, [preparedTraces, yPerDivision]);
+  }, [preparedTraces, yPerDivision, yCenter]);
 
   const effectiveTriggerChannel = activeTraces.some((trace) => trace.id === triggerChannel)
     ? triggerChannel
@@ -240,13 +254,13 @@ export function BrowserOscilloscope({
   }, [cursorA, cursorB, domain, effectiveXScale, xView.maximum, xView.minimum]);
 
   const xScaleOptions = useMemo(
-    () => buildScaleOptions(fullTransformedSpan / HORIZONTAL_DIVISIONS),
-    [fullTransformedSpan],
+    () => [...new Set([...buildScaleOptions(fullTransformedSpan / HORIZONTAL_DIVISIONS), ...(xPerDivision ? [xPerDivision] : [])])].sort((a, b) => a - b),
+    [fullTransformedSpan, xPerDivision],
   );
   const automaticYPerDivision = (yBounds.maximum - yBounds.minimum) / VERTICAL_DIVISIONS;
   const yScaleOptions = useMemo(
-    () => buildScaleOptions(automaticYPerDivision),
-    [automaticYPerDivision],
+    () => [...new Set([...buildScaleOptions(automaticYPerDivision), ...(yPerDivision ? [yPerDivision] : [])])].sort((a, b) => a - b),
+    [automaticYPerDivision, yPerDivision],
   );
 
   useLayoutEffect(() => {
@@ -308,9 +322,11 @@ export function BrowserOscilloscope({
       triggerLevel: effectiveTriggerLevel,
       triggerColor: safeColor(triggerColor, CHANNEL_COLORS[0]),
       triggerEdge,
+      theme,
+      showTrigger: domain === "time",
     });
     context.save();
-    context.strokeStyle = "#9aa7b7";
+    context.strokeStyle = theme === "dark" ? "#9aa7b7" : "#718096";
     context.setLineDash([2, 6]);
     for (const position of [yCursorA, yCursorB]) {
       const y = plot.top + (1 - position) * plot.height;
@@ -319,6 +335,8 @@ export function BrowserOscilloscope({
     context.restore();
   }, [
     boundedHeight,
+    theme,
+    domain,
     cursorA,
     cursorB,
     effectiveTriggerLevel,
@@ -352,6 +370,8 @@ export function BrowserOscilloscope({
     setXPerDivision(null);
     setXCenter(null);
     setYPerDivision(null);
+    setYCenter(null);
+    setSelection(null); selectionRef.current = null;
     setTriggerLevel(null);
     setCursorA(0.25);
     setCursorB(0.75);
@@ -370,39 +390,72 @@ export function BrowserOscilloscope({
     else setCursorB(normalized);
   }
 
+  function canvasPoint(event: { clientX: number; clientY: number }) {
+    const bounds = canvasRef.current!.getBoundingClientRect();
+    return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+  }
+
   function handlePointerDown(event: ReactPointerEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    const plot = plotRectRef.current;
-    if (!canvas || !plot) return;
+    const canvas = canvasRef.current, plot = plotRectRef.current;
+    if (!canvas || !plot || event.button === 2) return;
+    const point = canvasPoint(event);
+    if (point.x < plot.left || point.x > plot.left + plot.width || point.y < plot.top || point.y > plot.top + plot.height) return;
+    event.preventDefault(); closeTraceMenu(); canvas.setPointerCapture(event.pointerId);
     if (event.button === 1 || event.shiftKey) {
-      event.preventDefault();
       panningRef.current = { clientX: event.clientX, center: (xView.minimum + xView.maximum) / 2 };
-      canvas.setPointerCapture(event.pointerId);
-      return;
+    } else if (event.altKey) {
+      const normalized = (point.x - plot.left) / plot.width;
+      const cursor = Math.abs(normalized - cursorA) <= Math.abs(normalized - cursorB) ? "a" : "b";
+      draggingCursorRef.current = cursor; updateCursorFromPointer(event, cursor);
+    } else {
+      selectionRef.current = { start: point, end: point, xView, yBounds };
+      setSelection({ start: point, end: point });
     }
-    const bounds = canvas.getBoundingClientRect();
-    const normalized = clamp((event.clientX - bounds.left - plot.left) / plot.width, 0, 1);
-    const cursor = Math.abs(normalized - cursorA) <= Math.abs(normalized - cursorB) ? "a" : "b";
-    draggingCursorRef.current = cursor;
-    canvas.setPointerCapture(event.pointerId);
-    updateCursorFromPointer(event, cursor);
   }
 
   function handlePointerMove(event: ReactPointerEvent<HTMLCanvasElement>) {
     if (panningRef.current && plotRectRef.current) {
       setXCenter(panningRef.current.center - (event.clientX - panningRef.current.clientX) / plotRectRef.current.width * (xView.maximum - xView.minimum));
-      return;
+    } else if (draggingCursorRef.current) updateCursorFromPointer(event, draggingCursorRef.current);
+    else if (selectionRef.current && plotRectRef.current) {
+      const point = canvasPoint(event), plot = plotRectRef.current;
+      const end = { x: clamp(point.x, plot.left, plot.left + plot.width), y: clamp(point.y, plot.top, plot.top + plot.height) };
+      selectionRef.current.end = end; setSelection({ start: selectionRef.current.start, end });
     }
-    if (draggingCursorRef.current) updateCursorFromPointer(event, draggingCursorRef.current);
   }
 
   function stopDragging(event: ReactPointerEvent<HTMLCanvasElement>) {
-    panningRef.current = null;
-    draggingCursorRef.current = null;
+    const selected = selectionRef.current;
+    if (selected && plotRectRef.current && event.type !== 'pointercancel') {
+      const view = rectangleView(selected.start, selected.end, plotRectRef.current, selected.xView, selected.yBounds);
+      if (view) {
+        setXCenter((view.x.minimum + view.x.maximum) / 2); setXPerDivision((view.x.maximum - view.x.minimum) / HORIZONTAL_DIVISIONS);
+        setYCenter((view.y.minimum + view.y.maximum) / 2); setYPerDivision((view.y.maximum - view.y.minimum) / VERTICAL_DIVISIONS);
+      } else if (Math.hypot(selected.end.x - selected.start.x, selected.end.y - selected.start.y) < 6) {
+        const normalized = (selected.start.x - plotRectRef.current.left) / plotRectRef.current.width;
+        updateCursorFromPointer(event, Math.abs(normalized - cursorA) <= Math.abs(normalized - cursorB) ? 'a' : 'b');
+      }
+    }
+    selectionRef.current = null; setSelection(null);
+    panningRef.current = null; draggingCursorRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
+  function openTraceMenu(event: ReactMouseEvent<HTMLCanvasElement>) {
+    event.preventDefault();
+    const plot = plotRectRef.current; if (!plot) return;
+    const point = canvasPoint(event);
+    if (point.x < plot.left || point.x > plot.left + plot.width || point.y < plot.top || point.y > plot.top + plot.height) { closeTraceMenu(); return; }
+    const lines = preparedTraces.map((trace) => ({ id: trace.id, points: decimateMinMax(trace.points, Math.max(160, Math.floor(plot.width * 2))).map((sample) => ({
+      x: plot.left + (sample.transformedX - xView.minimum) / (xView.maximum - xView.minimum) * plot.width, y: mapY(sample.y, plot, yBounds),
+    })) }));
+    const target = nearestPlotTrace(lines, point, 9);
+    setTraceMenu(target ? { id: target, x: event.clientX, y: event.clientY } : null);
+  }
+
   function handleCanvasKeyDown(event: ReactKeyboardEvent<HTMLCanvasElement>) {
+    if (event.key === "Escape") { selectionRef.current = null; setSelection(null); closeTraceMenu(); return; }
+    if (event.key.toLowerCase() === "r") { resetView(); return; }
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const amount = event.shiftKey ? 0.01 : 0.002;
@@ -411,12 +464,13 @@ export function BrowserOscilloscope({
     else setCursorA((current) => clamp(current + direction * amount, 0, 1));
   }
 
+  const menuTrace = activeTraces.find((trace) => trace.id === traceMenu?.id);
   const visibleCount = preparedTraces.length;
   const totalSamples = Math.min(x.length, sampleLimit);
   const scopeSummary = `${title}. ${yLabel} against ${effectiveXLabel}. ${visibleCount} visible ${visibleCount === 1 ? "channel" : "channels"}; ${totalSamples.toLocaleString()} samples. Cursor delta ${formatQuantity(cursorReadout.deltaX, effectiveXUnit)}.`;
 
   return (
-    <section className={["anacode-scope", className].filter(Boolean).join(" ")} style={styles.scope} aria-label={title}>
+    <section className={["anacode-scope", className].filter(Boolean).join(" ")} style={styles.scope} aria-label={title} data-theme={theme} data-x-min={inverseTransformX(xView.minimum, effectiveXScale)} data-x-max={inverseTransformX(xView.maximum, effectiveXScale)} data-y-min={yBounds.minimum} data-y-max={yBounds.maximum}>
       <header className="anacode-scope__toolbar" style={styles.toolbar}>
         <div style={styles.titleGroup}>
           <span style={styles.titleIcon} aria-hidden="true"><Activity size={17} /></span>
@@ -428,6 +482,60 @@ export function BrowserOscilloscope({
         <div className="anacode-scope__controls" style={styles.controls}>
           <button type="button" style={styles.iconButton} onClick={() => setXPerDivision((xView.maximum - xView.minimum) / 20)} aria-label="Zoom in waveform">Zoom +</button>
           <button type="button" style={styles.iconButton} onClick={() => setXPerDivision((xView.maximum - xView.minimum) / 5)} aria-label="Zoom out waveform">Zoom −</button>
+          <button type="button" onClick={resetView} style={styles.iconButton} aria-label="Reset oscilloscope view">
+            <RotateCcw size={15} /> Reset
+          </button>
+        </div>
+      </header>
+
+      <div className="anacode-scope__channel-rack" style={styles.channelRack} aria-label="Oscilloscope channels">
+        {activeTraces.map((trace) => {
+          const isVisible = resolvedVisibility[trace.id] ?? true;
+          const color = safeColor(trace.color, probeColor(trace.id));
+          return (
+            <div className="anacode-scope__channel" style={{ ...styles.channel, borderColor: `${color}80` }} key={trace.id}>
+              <button
+                type="button"
+                aria-pressed={isVisible}
+                aria-label={`${isVisible ? "Hide" : "Show"} ${trace.name}`}
+                onClick={() => setVisibility((current) => ({ ...current, [trace.id]: !isVisible }))}
+                onContextMenu={(event) => { event.preventDefault(); const bounds = event.currentTarget.getBoundingClientRect(); setTraceMenu({ id: trace.id, x: event.clientX || bounds.left, y: event.clientY || bounds.bottom }); }}
+                onKeyDown={(event) => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) { event.preventDefault(); const bounds = event.currentTarget.getBoundingClientRect(); setTraceMenu({ id: trace.id, x: bounds.left, y: bounds.bottom }); } }}
+                title="Right-click or Shift+F10 for trace settings"
+                style={{ ...styles.channelButton, color }}
+              >
+                {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+                <span>{trace.name}</span>
+              </button>
+
+            </div>
+          );
+        })}
+        {removed.size > 0 && <button type="button" style={styles.iconButton} onClick={() => setRemoved(new Set())}>Restore removed traces</button>}
+        {traces.length > channelLimit && <span role="alert" style={styles.limitNote}>This capture exceeds {channelLimit} channels. Remove probes and capture again.</span>}
+      </div>
+
+      <div className="anacode-scope__viewport" ref={viewportRef} style={{ ...styles.viewport, height: boundedHeight }}>
+        <canvas
+          ref={canvasRef}
+          className="anacode-scope__canvas"
+          style={styles.canvas}
+          role="img"
+          aria-label={scopeSummary}
+          tabIndex={0}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={stopDragging}
+          onPointerCancel={stopDragging}
+          onContextMenu={openTraceMenu}
+          onDoubleClick={resetView}
+          onKeyDown={handleCanvasKeyDown}
+        />
+        {selection && <div aria-hidden="true" style={{ position: 'absolute', pointerEvents: 'none', left: Math.min(selection.start.x, selection.end.x), top: Math.min(selection.start.y, selection.end.y), width: Math.abs(selection.end.x - selection.start.x), height: Math.abs(selection.end.y - selection.start.y), border: '1px solid var(--blue)', background: 'color-mix(in srgb, var(--blue) 12%, transparent)' }}/>}
+      </div>
+      <p style={styles.interactionHint}>Drag a rectangle to zoom · Shift-drag to pan · Alt-drag cursors · Right-click a trace to style · Double-click to reset</p>
+      <details className="anacode-scope__details"><summary style={styles.detailsSummary}>Measurements, cursors{domain === 'time' ? ' & trigger' : ''}</summary>
+      <div style={{ ...styles.controls, padding: "10px 12px" }}>
           <label style={styles.compactLabel} htmlFor={`${controlId}-x-scale`}>
             <span>{effectiveXScale === "log" ? "Decades/div" : `${effectiveXLabel}/div`}</span>
             <select
@@ -449,62 +557,14 @@ export function BrowserOscilloscope({
             <select
               id={`${controlId}-y-scale`}
               value={yPerDivision ?? "auto"}
-              onChange={(event) => setYPerDivision(readScale(event.currentTarget.value))}
+              onChange={(event) => { setYPerDivision(readScale(event.currentTarget.value)); setYCenter(null); }}
               style={styles.select}
             >
               <option value="auto">Auto</option>
               {yScaleOptions.map((value) => <option value={value} key={value}>{formatQuantity(value, yUnit)}</option>)}
             </select>
           </label>
-          <button type="button" onClick={resetView} style={styles.iconButton} aria-label="Reset oscilloscope view">
-            <RotateCcw size={15} /> Reset
-          </button>
-        </div>
-      </header>
-
-      <div className="anacode-scope__channel-rack" style={styles.channelRack} aria-label="Oscilloscope channels">
-        {activeTraces.map((trace) => {
-          const isVisible = resolvedVisibility[trace.id] ?? true;
-          const color = safeColor(trace.color, probeColor(trace.id));
-          const coupling = resolvedCouplings[trace.id] ?? "DC";
-          return (
-            <div className="anacode-scope__channel" style={{ ...styles.channel, borderColor: `${color}80` }} key={trace.id}>
-              <button
-                type="button"
-                aria-pressed={isVisible}
-                aria-label={`${isVisible ? "Hide" : "Show"} ${trace.name}`}
-                onClick={() => setVisibility((current) => ({ ...current, [trace.id]: !isVisible }))}
-                style={{ ...styles.channelButton, color }}
-              >
-                {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
-                <span>{trace.name}</span>
-              </button>
-              <input aria-label={`Rename ${trace.name}`} value={trace.name} maxLength={48} style={{ ...styles.numberInput, width: 110 }} onChange={(event) => { const value = event.currentTarget.value; setNames((current) => ({ ...current, [trace.id]: value })); }} />
-              <button type="button" style={styles.iconButton} aria-label={`Remove ${trace.name}`} onClick={() => setRemoved((current) => new Set([...current, trace.id]))}>×</button>
-              {domain === "time" && <>
-                <label style={styles.srOnly} htmlFor={`${controlId}-${trace.id}-coupling`}>{trace.name} input coupling</label>
-                <select
-                  id={`${controlId}-${trace.id}-coupling`}
-                  aria-label={`${trace.name} input coupling`}
-                  value={coupling}
-                  onChange={(event) => { const value = event.currentTarget.value as OscilloscopeCoupling; setCouplings((current) => ({
-                    ...current,
-                    [trace.id]: value,
-                  })); }}
-                  title="AC presentation removes the captured DC mean; DC preserves the full waveform."
-                  style={styles.couplingSelect}
-                >
-                  <option value="DC">DC</option>
-                  <option value="AC">AC</option>
-                </select>
-              </>}
-            </div>
-          );
-        })}
-        {removed.size > 0 && <button type="button" style={styles.iconButton} onClick={() => setRemoved(new Set())}>Restore removed traces</button>}
-        {traces.length > channelLimit && <span role="alert" style={styles.limitNote}>This capture exceeds {channelLimit} channels. Remove probes and capture again.</span>}
       </div>
-
       {domain === "time" && <div className="anacode-scope__trigger" style={styles.triggerBar}>
         <span style={styles.triggerHeading}><Zap size={14} aria-hidden="true" /> Trigger</span>
         <label style={styles.inlineLabel} htmlFor={`${controlId}-trigger-channel`}>
@@ -560,24 +620,9 @@ export function BrowserOscilloscope({
 
       <label style={{ ...styles.inlineLabel, padding: "8px 12px" }}>Horizontal position
         <input aria-label="Waveform horizontal position" type="range" min="0" max="1000" value={Math.round((((xView.minimum + xView.maximum) / 2) - xBounds.transformedMin) / fullTransformedSpan * 1000)} onChange={(event) => setXCenter(xBounds.transformedMin + Number(event.currentTarget.value) / 1000 * fullTransformedSpan)} style={styles.range} />
-        <small>Shift-drag to pan · drag to move cursors</small>
+        <small>Shift-drag to pan · Alt-drag to move cursors</small>
       </label>
 
-      <div className="anacode-scope__viewport" ref={viewportRef} style={{ ...styles.viewport, height: boundedHeight }}>
-        <canvas
-          ref={canvasRef}
-          className="anacode-scope__canvas"
-          style={styles.canvas}
-          role="img"
-          aria-label={scopeSummary}
-          tabIndex={0}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={stopDragging}
-          onPointerCancel={stopDragging}
-          onKeyDown={handleCanvasKeyDown}
-        />
-      </div>
 
       <div className="anacode-scope__cursor-panel" style={styles.cursorPanel}>
         <div style={styles.cursorHeading}><SlidersHorizontal size={15} aria-hidden="true" /><strong>{domain === "time" ? "Time" : domain === "frequency" ? "Frequency" : "Sweep"} cursors</strong></div>
@@ -628,8 +673,7 @@ export function BrowserOscilloscope({
             <tr>
               <th scope="col" style={styles.tableHeading}>Channel</th>
               <th scope="col" style={styles.tableHeading}>{domain === "time" ? "Peak–peak" : "Span"}</th>
-              <th scope="col" style={styles.tableHeading}>RMS</th>
-              <th scope="col" style={styles.tableHeading}>Mean</th>
+              {domain === "time" && <><th scope="col" style={styles.tableHeading}>RMS</th><th scope="col" style={styles.tableHeading}>Mean</th></>}
               <th scope="col" style={styles.tableHeading}>Min</th>
               <th scope="col" style={styles.tableHeading}>Max</th>
               <th scope="col" style={styles.tableHeading}>B − A</th>
@@ -642,11 +686,10 @@ export function BrowserOscilloscope({
               <tr key={trace.id}>
                 <th scope="row" style={styles.rowHeading}>
                   <i style={{ ...styles.channelSwatch, background: trace.color }} />
-                  {trace.name} <small style={styles.couplingText}>{trace.coupling}</small>
+                  {trace.name} {domain === "time" && <small style={styles.couplingText}>{trace.coupling}</small>}
                 </th>
                 <MeasurementCell value={trace.measurements.peakToPeak} unit={trace.unit} />
-                <MeasurementCell value={domain === "frequency" ? null : trace.measurements.rms} unit={trace.unit} />
-                <MeasurementCell value={domain === "frequency" ? null : trace.measurements.mean} unit={trace.unit} />
+                {domain === "time" && <><MeasurementCell value={trace.measurements.rms} unit={trace.unit} /><MeasurementCell value={trace.measurements.mean} unit={trace.unit} /></>}
                 <MeasurementCell value={trace.measurements.minimum} unit={trace.unit} />
                 <MeasurementCell value={trace.measurements.maximum} unit={trace.unit} />
                 <MeasurementCell value={(() => { const a = interpolateWaveform(trace.points, cursorReadout.cursorA); const b = interpolateWaveform(trace.points, cursorReadout.cursorB); return a === null || b === null ? null : b - a; })()} unit={trace.unit} />
@@ -663,6 +706,13 @@ export function BrowserOscilloscope({
           </tbody>
         </table>
       </div>
+      </details>
+      {traceMenu && menuTrace && <TraceContextMenu name={menuTrace.name} x={traceMenu.x} y={traceMenu.y} color={safeColor(appearances[menuTrace.id]?.color ?? traces.find((trace) => trace.id === menuTrace.id)?.color, probeColor(menuTrace.id))} width={menuTrace.lineWidth ?? 1.7} onClose={closeTraceMenu}
+        onChange={(appearance) => setAppearances((current) => ({ ...current, [menuTrace.id]: { ...current[menuTrace.id], ...appearance } }))}>
+        <label>Trace name<input aria-label={'Rename ' + menuTrace.name} value={menuTrace.name} maxLength={48} onChange={(event) => { const name = event.currentTarget.value; setNames((current) => ({ ...current, [menuTrace.id]: name })); }}/></label>
+        {domain === 'time' && <label>Coupling<select aria-label={menuTrace.name + ' input coupling'} value={resolvedCouplings[menuTrace.id] ?? 'DC'} onChange={(event) => { const coupling = event.target.value as OscilloscopeCoupling; setCouplings((current) => ({ ...current, [menuTrace.id]: coupling })); }}><option value="DC">DC</option><option value="AC">AC</option></select></label>}
+        <button type="button" aria-label={'Remove ' + menuTrace.name} onClick={() => { setRemoved((current) => new Set([...current, menuTrace.id])); closeTraceMenu(); }}>Remove trace</button>
+      </TraceContextMenu>}
       <p style={styles.srOnly} aria-live="polite">{scopeSummary}</p>
     </section>
   );
@@ -729,6 +779,7 @@ function prepareTraces({
       name: trace.name,
       unit: trace.unit ?? fallbackUnit,
       color: safeColor(trace.color, probeColor(trace.id)),
+      lineWidth: clamp(trace.lineWidth ?? 1.7, 1, 5),
       coupling,
       points,
       measurements,
@@ -810,6 +861,8 @@ function drawOscilloscope({
   triggerLevel,
   triggerColor,
   triggerEdge,
+  theme,
+  showTrigger,
 }: {
   context: CanvasRenderingContext2D;
   width: number;
@@ -826,46 +879,48 @@ function drawOscilloscope({
   triggerLevel: number;
   triggerColor: string;
   triggerEdge: OscilloscopeTriggerEdge;
+  theme: "light" | "dark";
+  showTrigger: boolean;
 }) {
   context.clearRect(0, 0, width, height);
-  context.fillStyle = "#0a0b0c";
+  context.fillStyle = theme === "dark" ? "#101419" : "#f7f9fc";
   context.fillRect(0, 0, width, height);
-  context.fillStyle = "#050706";
+  context.fillStyle = theme === "dark" ? "#090d12" : "#ffffff";
   context.fillRect(plot.left, plot.top, plot.width, plot.height);
 
-  drawGrid(context, plot);
-  drawAxes(context, plot, xView, yBounds, xScale, xUnit, yUnit);
-  drawZeroReference(context, plot, yBounds);
+  drawGrid(context, plot, theme);
+  drawAxes(context, plot, xView, yBounds, xScale, xUnit, yUnit, theme);
+  drawZeroReference(context, plot, yBounds, theme);
 
   context.save();
   context.beginPath();
   context.rect(plot.left, plot.top, plot.width, plot.height);
   context.clip();
   for (const trace of traces) drawTrace(context, trace, plot, xView, yBounds);
-  drawTrigger(context, plot, yBounds, triggerLevel, triggerColor, triggerEdge);
-  drawCursor(context, plot, cursorA, "A", "#e4e4e7");
-  drawCursor(context, plot, cursorB, "B", "#22c7df");
+  if (showTrigger) drawTrigger(context, plot, yBounds, triggerLevel, triggerColor, triggerEdge);
+  drawCursor(context, plot, cursorA, "A", theme === "dark" ? "#e4e4e7" : "#475569", theme);
+  drawCursor(context, plot, cursorB, "B", theme === "dark" ? "#22c7df" : "#0369a1", theme);
   context.restore();
 
-  context.strokeStyle = "rgba(142, 155, 147, 0.42)";
+  context.strokeStyle = theme === "dark" ? "#435163" : "#bdc9d8";
   context.lineWidth = 1;
   context.strokeRect(plot.left + 0.5, plot.top + 0.5, plot.width - 1, plot.height - 1);
 }
 
-function drawGrid(context: CanvasRenderingContext2D, plot: PlotRect) {
+function drawGrid(context: CanvasRenderingContext2D, plot: PlotRect, theme: "light" | "dark") {
   context.save();
   for (let division = 0; division <= HORIZONTAL_DIVISIONS; division += 1) {
     const x = plot.left + (division / HORIZONTAL_DIVISIONS) * plot.width;
     for (let minor = 1; minor < 5 && division < HORIZONTAL_DIVISIONS; minor += 1) {
       const minorX = x + (minor / 5) * (plot.width / HORIZONTAL_DIVISIONS);
-      context.strokeStyle = "rgba(127, 155, 139, 0.05)";
+      context.strokeStyle = theme === "dark" ? "#121b24" : "#f0f3f7";
       context.lineWidth = 1;
       context.beginPath();
       context.moveTo(minorX, plot.top);
       context.lineTo(minorX, plot.top + plot.height);
       context.stroke();
     }
-    context.strokeStyle = division === HORIZONTAL_DIVISIONS / 2 ? "rgba(127, 155, 139, 0.28)" : "rgba(127, 155, 139, 0.15)";
+    context.strokeStyle = theme === "dark" ? (division === HORIZONTAL_DIVISIONS / 2 ? "#344452" : "#26333f") : (division === HORIZONTAL_DIVISIONS / 2 ? "#c5cfdc" : "#e0e6ee");
     context.beginPath();
     context.moveTo(x, plot.top);
     context.lineTo(x, plot.top + plot.height);
@@ -875,13 +930,13 @@ function drawGrid(context: CanvasRenderingContext2D, plot: PlotRect) {
     const y = plot.top + (division / VERTICAL_DIVISIONS) * plot.height;
     for (let minor = 1; minor < 5 && division < VERTICAL_DIVISIONS; minor += 1) {
       const minorY = y + (minor / 5) * (plot.height / VERTICAL_DIVISIONS);
-      context.strokeStyle = "rgba(127, 155, 139, 0.05)";
+      context.strokeStyle = theme === "dark" ? "#121b24" : "#f0f3f7";
       context.beginPath();
       context.moveTo(plot.left, minorY);
       context.lineTo(plot.left + plot.width, minorY);
       context.stroke();
     }
-    context.strokeStyle = division === VERTICAL_DIVISIONS / 2 ? "rgba(127, 155, 139, 0.28)" : "rgba(127, 155, 139, 0.15)";
+    context.strokeStyle = theme === "dark" ? (division === VERTICAL_DIVISIONS / 2 ? "#344452" : "#26333f") : (division === VERTICAL_DIVISIONS / 2 ? "#c5cfdc" : "#e0e6ee");
     context.beginPath();
     context.moveTo(plot.left, y);
     context.lineTo(plot.left + plot.width, y);
@@ -898,9 +953,10 @@ function drawAxes(
   xScale: "linear" | "log",
   xUnit: string,
   yUnit: string,
+  theme: "light" | "dark",
 ) {
   context.save();
-  context.fillStyle = "#929b96";
+  context.fillStyle = theme === "dark" ? "#a8b7c8" : "#526175";
   context.font = "11px ui-monospace, SFMono-Regular, Consolas, monospace";
   context.textBaseline = "middle";
   for (let division = 0; division <= VERTICAL_DIVISIONS; division += 2) {
@@ -921,11 +977,11 @@ function drawAxes(
   context.restore();
 }
 
-function drawZeroReference(context: CanvasRenderingContext2D, plot: PlotRect, yBounds: { minimum: number; maximum: number }) {
+function drawZeroReference(context: CanvasRenderingContext2D, plot: PlotRect, yBounds: { minimum: number; maximum: number }, theme: "light" | "dark") {
   if (0 < yBounds.minimum || 0 > yBounds.maximum) return;
   const y = mapY(0, plot, yBounds);
   context.save();
-  context.strokeStyle = "rgba(190, 201, 195, 0.26)";
+  context.strokeStyle = theme === "dark" ? "#5b6c7d" : "#91a1b5";
   context.lineWidth = 1;
   context.setLineDash([2, 5]);
   context.beginPath();
@@ -946,7 +1002,7 @@ function drawTrace(
   const points = decimateMinMax(trace.points, Math.max(160, Math.floor(plot.width * 2)));
   context.save();
   context.strokeStyle = trace.color;
-  context.lineWidth = 1.7;
+  context.lineWidth = trace.lineWidth;
   context.lineJoin = "round";
   context.lineCap = "round";
   context.shadowBlur = 0;
@@ -994,7 +1050,7 @@ function drawTrigger(
   context.restore();
 }
 
-function drawCursor(context: CanvasRenderingContext2D, plot: PlotRect, position: number, label: string, color: string) {
+function drawCursor(context: CanvasRenderingContext2D, plot: PlotRect, position: number, label: string, color: string, theme: 'light' | 'dark') {
   const x = plot.left + position * plot.width;
   context.save();
   context.strokeStyle = color;
@@ -1012,7 +1068,7 @@ function drawCursor(context: CanvasRenderingContext2D, plot: PlotRect, position:
   context.lineTo(x, plot.top + 8);
   context.closePath();
   context.fill();
-  context.fillStyle = "#070908";
+  context.fillStyle = theme === 'light' ? '#ffffff' : '#070908';
   context.font = "bold 9px ui-monospace, monospace";
   context.textAlign = "center";
   context.textBaseline = "top";
@@ -1124,61 +1180,64 @@ function clamp(value: number, minimum: number, maximum: number) {
 const styles: Record<string, CSSProperties> = {
   scope: {
     overflow: "hidden",
-    border: "1px solid #303338",
+    colorScheme: "inherit",
+    border: "1px solid var(--line-strong)",
     borderRadius: 7,
-    background: "#0b0c0e",
-    color: "#e4e4e7",
-    boxShadow: "0 4px 14px rgba(0, 0, 0, 0.22)",
+    background: "var(--surface)",
+    color: "var(--ink)",
+    boxShadow: "var(--shadow-sm)",
     fontFamily: "var(--font-sans, Inter, ui-sans-serif, system-ui, sans-serif)",
   },
   toolbar: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 14,
+    gap: 8,
     flexWrap: "wrap",
-    padding: "10px 12px",
-    borderBottom: "1px solid #2b2e32",
-    background: "#131517",
+    padding: "8px",
+    borderBottom: "1px solid var(--line)",
+    background: "var(--surface-soft)",
   },
-  titleGroup: { display: "flex", alignItems: "center", gap: 10 },
-  titleIcon: { display: "grid", placeItems: "center", width: 30, height: 30, color: "#ffd33d", border: "1px solid #35383d", borderRadius: 5, background: "#0b0c0e" },
-  title: { display: "block", fontSize: 13, lineHeight: 1.2, letterSpacing: "0.01em" },
-  subtitle: { display: "block", marginTop: 2, color: "#8d939b", fontSize: 10 },
-  controls: { display: "flex", alignItems: "end", gap: 8, flexWrap: "wrap" },
-  compactLabel: { display: "grid", gap: 3, color: "#9b9fa6", fontSize: 9, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" },
-  select: { minHeight: 30, padding: "4px 25px 4px 8px", color: "#e4e4e7", border: "1px solid #3a3d42", borderRadius: 4, background: "#0b0c0e", font: "inherit", fontSize: 11 },
-  iconButton: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 30, padding: "5px 9px", color: "#d4d4d8", border: "1px solid #3a3d42", borderRadius: 4, background: "#181a1d", cursor: "pointer", font: "inherit", fontSize: 11 },
-  channelRack: { display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", padding: "8px 12px", borderBottom: "1px solid #282b2f", background: "#101214" },
-  channel: { display: "inline-flex", alignItems: "center", gap: 2, minHeight: 29, border: "1px solid", borderRadius: 4, background: "#090a0c" },
-  channelButton: { display: "inline-flex", alignItems: "center", gap: 6, minHeight: 29, padding: "4px 7px", border: 0, background: "transparent", cursor: "pointer", font: "inherit", fontSize: 12, fontWeight: 750 },
-  couplingSelect: { minHeight: 23, marginRight: 3, padding: "2px 3px", color: "#c9cbd0", border: "1px solid #34373b", borderRadius: 3, background: "#17191c", font: "inherit", fontSize: 9, fontWeight: 750 },
-  limitNote: { color: "#8a8e95", fontSize: 10 },
-  triggerBar: { display: "flex", alignItems: "center", gap: 11, flexWrap: "wrap", minHeight: 40, padding: "6px 12px", borderBottom: "1px solid #282b2f", background: "#0d0f11", color: "#b1b3b8", fontSize: 10 },
-  triggerHeading: { display: "inline-flex", alignItems: "center", gap: 5, color: "#ffd33d", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em" },
+  titleGroup: { display: "flex", alignItems: "center", gap: 7 },
+  titleIcon: { display: "grid", placeItems: "center", width: 24, height: 24, color: "var(--amber-dark)", border: "1px solid var(--line-strong)", borderRadius: 5, background: "var(--surface)" },
+  title: { display: "block", fontSize: 12, lineHeight: 1.2, letterSpacing: "0.01em" },
+  subtitle: { display: "block", marginTop: 2, color: "var(--muted)", fontSize: 9 },
+  controls: { display: "flex", alignItems: "end", gap: 6, flexWrap: "wrap" },
+  compactLabel: { display: "grid", gap: 3, color: "var(--muted)", fontSize: 9, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" },
+  select: { minHeight: 30, padding: "4px 25px 4px 8px", color: "var(--ink)", border: "1px solid var(--line-strong)", borderRadius: 4, background: "var(--surface)", font: "inherit", fontSize: 11 },
+  iconButton: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 27, padding: "4px 7px", color: "var(--ink-soft)", border: "1px solid var(--line-strong)", borderRadius: 4, background: "var(--surface-soft)", cursor: "pointer", font: "inherit", fontSize: 11 },
+  channelRack: { display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", padding: "6px 8px", borderBottom: "1px solid var(--line)", background: "var(--surface)" },
+  channel: { display: "inline-flex", alignItems: "center", gap: 2, minHeight: 25, border: "1px solid", borderRadius: 4, background: "var(--surface)" },
+  channelButton: { display: "inline-flex", alignItems: "center", gap: 5, minHeight: 25, padding: "3px 6px", border: 0, background: "transparent", cursor: "pointer", font: "inherit", fontSize: 11, fontWeight: 750 },
+  couplingSelect: { minHeight: 23, marginRight: 3, padding: "2px 3px", color: "var(--ink-soft)", border: "1px solid var(--line-strong)", borderRadius: 3, background: "var(--surface-soft)", font: "inherit", fontSize: 9, fontWeight: 750 },
+  limitNote: { color: "var(--muted)", fontSize: 10 },
+  triggerBar: { display: "flex", alignItems: "center", gap: 11, flexWrap: "wrap", minHeight: 40, padding: "6px 12px", borderBottom: "1px solid var(--line)", background: "var(--surface-soft)", color: "var(--ink-soft)", fontSize: 10 },
+  triggerHeading: { display: "inline-flex", alignItems: "center", gap: 5, color: "var(--amber-dark)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em" },
   inlineLabel: { display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 650 },
-  numberInput: { width: 82, minHeight: 28, padding: "4px 7px", color: "#e4e4e7", border: "1px solid #3a3d42", borderRadius: 4, background: "#0b0c0e", font: "11px ui-monospace, monospace" },
-  edgeButton: { display: "inline-flex", alignItems: "center", gap: 5, minHeight: 28, padding: "4px 8px", color: "#d4d4d8", border: "1px solid #3a3d42", borderRadius: 4, background: "#181a1d", cursor: "pointer", font: "inherit", fontSize: 10, textTransform: "capitalize" },
-  triggerStatus: { display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto", color: "#8d9198" },
+  numberInput: { width: 82, minHeight: 28, padding: "4px 7px", color: "var(--ink)", border: "1px solid var(--line-strong)", borderRadius: 4, background: "var(--surface)", font: "11px ui-monospace, monospace" },
+  edgeButton: { display: "inline-flex", alignItems: "center", gap: 5, minHeight: 28, padding: "4px 8px", color: "var(--ink-soft)", border: "1px solid var(--line-strong)", borderRadius: 4, background: "var(--surface-soft)", cursor: "pointer", font: "inherit", fontSize: 10, textTransform: "capitalize" },
+  triggerStatus: { display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto", color: "var(--muted)" },
   statusDot: { display: "inline-block", width: 7, height: 7, borderRadius: "50%" },
-  viewport: { position: "relative", width: "100%", minWidth: 0, background: "#08090a", touchAction: "none" },
-  canvas: { display: "block", width: "100%", maxWidth: "100%", cursor: "col-resize", outlineOffset: -3 },
-  cursorPanel: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", alignItems: "center", gap: 10, padding: "9px 12px", borderTop: "1px solid #2b2e32", borderBottom: "1px solid #2b2e32", background: "#131517" },
-  cursorHeading: { display: "inline-flex", alignItems: "center", gap: 6, color: "#b1b3b8", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" },
+  viewport: { position: "relative", width: "100%", minWidth: 0, background: "var(--surface)", touchAction: "none" },
+  canvas: { display: "block", width: "100%", maxWidth: "100%", cursor: "crosshair", outlineOffset: -3 },
+  cursorPanel: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", alignItems: "center", gap: 10, padding: "9px 12px", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", background: "var(--surface-soft)" },
+  cursorHeading: { display: "inline-flex", alignItems: "center", gap: 6, color: "var(--ink-soft)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" },
   cursorControl: { display: "grid", gridTemplateColumns: "22px minmax(80px, 1fr) 82px", alignItems: "center", gap: 7, minWidth: 0 },
   cursorBadge: { display: "grid", placeItems: "center", width: 20, height: 20, borderRadius: 4, font: "bold 10px ui-monospace, monospace" },
   range: { width: "100%", accentColor: "#22c7df" },
-  cursorOutput: { color: "#dedee1", font: "11px ui-monospace, monospace", textAlign: "right", whiteSpace: "nowrap" },
-  deltaReadout: { display: "grid", gridTemplateColumns: "auto auto", alignItems: "baseline", columnGap: 7, minWidth: 135, padding: "6px 9px", border: "1px solid #383b40", borderRadius: 4, background: "#090a0c", fontSize: 10 },
-  measurementWrap: { overflowX: "auto", background: "#101214" },
+  cursorOutput: { color: "var(--ink)", font: "11px ui-monospace, monospace", textAlign: "right", whiteSpace: "nowrap" },
+  deltaReadout: { display: "grid", gridTemplateColumns: "auto auto", alignItems: "baseline", columnGap: 7, minWidth: 135, padding: "6px 9px", border: "1px solid var(--line-strong)", borderRadius: 4, background: "var(--surface)", fontSize: 10 },
+  measurementWrap: { overflowX: "auto", background: "var(--surface)" },
   table: { width: "100%", borderCollapse: "collapse", fontSize: 12 },
-  caption: { padding: "9px 12px 4px", color: "#898d94", textAlign: "left", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 750 },
-  tableHeading: { padding: "7px 12px", color: "#969aa1", borderBottom: "1px solid #2b2e32", textAlign: "right", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em" },
-  rowHeading: { padding: "8px 12px", color: "#e4e4e7", borderBottom: "1px solid #25272b", textAlign: "left", fontWeight: 700, whiteSpace: "nowrap" },
-  tableCell: { padding: "8px 12px", color: "#c9cbd0", borderBottom: "1px solid #25272b", textAlign: "right", font: "11px ui-monospace, monospace", whiteSpace: "nowrap" },
+  caption: { padding: "9px 12px 4px", color: "var(--muted)", textAlign: "left", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 750 },
+  tableHeading: { padding: "7px 12px", color: "var(--muted)", borderBottom: "1px solid var(--line)", textAlign: "right", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em" },
+  rowHeading: { padding: "8px 12px", color: "var(--ink)", borderBottom: "1px solid var(--line)", textAlign: "left", fontWeight: 700, whiteSpace: "nowrap" },
+  tableCell: { padding: "8px 12px", color: "var(--ink-soft)", borderBottom: "1px solid var(--line)", textAlign: "right", font: "11px ui-monospace, monospace", whiteSpace: "nowrap" },
   channelSwatch: { display: "inline-block", width: 8, height: 8, marginRight: 7, borderRadius: "50%" },
-  couplingText: { marginLeft: 5, color: "#858990", fontSize: 9 },
-  emptyCell: { padding: 18, color: "#8d9198", textAlign: "center" },
-  couplingTextInfo: { color: "#858990" },
+  couplingText: { marginLeft: 5, color: "var(--muted)", fontSize: 9 },
+  emptyCell: { padding: 18, color: "var(--muted)", textAlign: "center" },
+  couplingTextInfo: { color: "var(--muted)" },
+  interactionHint: { margin: 0, padding: "7px 12px", color: "var(--muted)", fontSize: 10, lineHeight: 1.5 },
+  detailsSummary: { padding: "9px 12px", cursor: "pointer", color: "var(--ink-soft)", borderTop: "1px solid var(--line)", background: "var(--surface-soft)", fontSize: 11, fontWeight: 650 },
   srOnly: { position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", border: 0 },
 };

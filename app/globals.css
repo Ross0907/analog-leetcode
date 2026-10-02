@@ -357,7 +357,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .challenge-nav-buttons { display: flex; gap: 4px; }
 .challenge-nav-buttons a, .challenge-nav-buttons > span { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); background: var(--surface-soft); }
 .challenge-nav-buttons a:hover { color: var(--ink); background: var(--surface); }
-.challenge-workspace { --problem-pane-percent: 32%; min-height: 0; flex: 1; margin: 6px; display: grid; grid-template-columns: minmax(280px, var(--problem-pane-percent)) 7px minmax(0, 1fr); overflow: hidden; border: 1px solid #cfd3d9; border-radius: 7px; background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.challenge-workspace { --problem-pane-percent: 25%; min-height: 0; flex: 1; margin: 0; display: grid; grid-template-columns: minmax(210px, var(--problem-pane-percent)) 7px minmax(0, 1fr); overflow: hidden; border: 0; border-radius: 0; background: var(--surface); }
 .problem-pane-controls { display: flex; gap: 6px; align-items: center; padding: 6px 10px 0; flex-wrap: wrap; color: var(--muted); font-size: 11px; }
 .practice-answer form label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 .practice-answer form > div { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -373,7 +373,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .problem-pane-container > .brief-pane { height: 100%; }
 .challenge-workspace[data-problem-mode="collapsed"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; }
 .challenge-workspace[data-problem-mode="collapsed"] > [hidden] { display: none; }
-.challenge-workspace[data-problem-mode="compact"] { grid-template-columns: 250px 7px minmax(0, 1fr); }
+.challenge-workspace[data-problem-mode="compact"] { grid-template-columns: minmax(190px, var(--problem-pane-percent)) 7px minmax(0, 1fr); }
 .challenge-workspace[data-problem-mode="compact"] .brief-scroll { padding: 16px; }
 .challenge-workspace[data-problem-mode="compact"] .brief-scroll h1 { font-size: 20px; }
 .challenge-workspace[data-problem-mode="compact"] .problem-summary,
@@ -405,6 +405,22 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .judge-note strong { display: block; color: #6f4a0e; font-size: 11px; }.judge-note p { margin: 4px 0 0; color: #846a3d; font-size: 10px; line-height: 1.5; }
 .simulator-pane { min-width: 0; min-height: 0; overflow: hidden; background: var(--surface); }
 .sim-console { min-height: 100%; display: flex; flex-direction: column; color: var(--ink); background: var(--surface); }
+.analysis-controls { border-bottom: 1px solid var(--line); font-size: 12px; }
+.analysis-controls > summary { cursor: pointer; padding: 11px 12px; font-weight: 600; }
+.sim-console-compact { min-height: 0; border-top: 1px solid var(--line); }
+.sim-console-compact .sim-toolbar { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
+.sim-console-compact .sim-mode { font-size: 11px; }
+.sim-console-compact .sim-mode small { display: none; }
+.sim-console-compact .sim-actions { flex-wrap: wrap; gap: 5px; }
+.sim-console-compact .sim-output { display: block; min-height: 0; flex: none; }
+.sim-console-compact .scope-results-pane { min-height: 0; }
+.sim-console-compact .simulation-message { min-height: 0; padding: 12px; gap: 7px; font-size: 12px; }
+.sim-console-compact .result-footer { padding: 7px 12px; }
+.sim-console-compact .pane-heading { display: none; }
+.sim-console-compact .advanced-netlist { margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+.sim-console-compact .advanced-netlist > summary { padding: 10px 12px; }
+.sim-console-compact .advanced-netlist-title small, .sim-console-compact .advanced-netlist-size { display: none; }
+.sim-console-compact .grade-card { margin: 8px; padding: 10px; gap: 8px; flex-wrap: wrap; }
 .sim-toolbar { height: 54px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--line); background: var(--surface-soft); }
 .sim-mode { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 11px; font-weight: 650; }.sim-mode small { color: var(--muted); font-weight: 500; }
 .sim-actions { display: flex; align-items: center; gap: 8px; }
@@ -481,10 +497,10 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 
 /* Circuit lab */
 .lab-page { padding-bottom: 80px; }
-.lab-hero { padding: 46px 0 24px; display: flex; justify-content: space-between; align-items: end; gap: 40px; }
-.lab-hero h1 { margin: 11px 0 8px; font-size: clamp(36px, 5vw, 52px); line-height: 1.05; letter-spacing: -2.3px; }.lab-hero p { max-width: 760px; margin: 0; color: var(--muted); line-height: 1.6; }
+.lab-hero { padding: 20px 0 14px; display: flex; justify-content: space-between; align-items: end; gap: 24px; }
+.lab-hero h1 { margin: 7px 0; font-size: clamp(24px, 3vw, 32px); line-height: 1.1; letter-spacing: -1px; }.lab-hero p { max-width: 760px; margin: 0; color: var(--muted); line-height: 1.5; font-size: 13px; }
 .lab-trust { display: flex; gap: 13px; padding-bottom: 5px; }
-.visual-lab { overflow: hidden; border: 1px solid #ccd3dc; border-radius: 12px; background: #fff; box-shadow: var(--shadow-lg); }
+.visual-lab { overflow: hidden; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); box-shadow: none; }
 .lab-modebar { height: 58px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); background: #f6f8fa; }
 .segmented-control { padding: 4px; display: flex; gap: 3px; border: 1px solid #dbe0e7; border-radius: 9px; background: #ebeff3; }
 .segmented-control button { height: 34px; padding: 0 13px; display: flex; align-items: center; gap: 7px; border: 0; border-radius: 6px; color: #6b7587; background: transparent; font-size: 11px; font-weight: 650; cursor: pointer; }.segmented-control button.active { color: #243044; background: #fff; box-shadow: 0 1px 4px rgba(20,31,49,.1); }
@@ -864,7 +880,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 :root[data-theme="dark"] .button-quiet { border-color: var(--line); color: #ddd; background: var(--surface); }
 
 @media (max-width: 1100px) {
-  .challenge-workspace { grid-template-columns: minmax(260px, var(--problem-pane-percent)) 7px minmax(0, 1fr); }
+  .challenge-workspace { grid-template-columns: minmax(210px, var(--problem-pane-percent)) 7px minmax(0, 1fr); }
   .professional-schematic .editor-body { grid-template-columns: 150px minmax(0, 1fr) 180px; }
 }
 

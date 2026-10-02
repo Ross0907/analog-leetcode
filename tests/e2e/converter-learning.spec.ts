@@ -10,6 +10,7 @@ test("parts-only practice cannot simulate or submit an unwired reference solutio
     await workspace.getByText("Wiring guide", { exact: true }).click();
     await expect(workspace.getByText(/ground symbols|source −/).first()).toBeVisible();
     await workspace.getByRole("button", { name: "SPICE & grading", exact: true }).click();
+    await expect(workspace.getByRole("button", { name: "Oscilloscope & FFT", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("combobox", { name: "SPICE analysis source", exact: true })).toBeDisabled();
     await page.getByRole("button", { name: "Run simulation", exact: true }).click();
     await expect(page.locator(".simulation-message.error")).toContainText(/wire|not connected|output junction/i);
@@ -32,6 +33,7 @@ test("converter lesson connects its block explanation to named comparator probes
   await expect(blocks.getByText("Encoder", { exact: true })).toBeVisible();
   await expect(blocks.getByRole("list", { name: "Signal connections" }).getByRole("listitem")).toHaveCount(3);
   await workspace.getByRole("button", { name: "Oscilloscope & FFT", exact: true }).click();
+  await workspace.locator("details > summary").filter({ hasText: "Probes & capture settings" }).click();
   for (const label of ["V(vin)", "V(t1)", "V(t2)", "V(t3)"]) await expect(workspace.getByRole("checkbox", { name: `Enable ${label}`, exact: true })).toBeChecked();
   await page.setViewportSize({ width: 600, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(601);

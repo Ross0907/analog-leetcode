@@ -45,12 +45,13 @@ test('plain wheel over the native canvas scrolls the workbench and modified whee
   const originalScale = await scale();
   const components = () => frame.evaluate(() => (window as unknown as { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().filter((element) => element.getType() === 'ResistorElm').map((element) => element.exportElement()));
   const originalComponents = await components();
+  const scrollAvailable = await panel.evaluate(element => element.scrollHeight - element.clientHeight);
   const canvas = frame.locator('canvas');
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error('Native canvas is not visible.');
   await page.mouse.move(bounds.x + bounds.width / 2, Math.min(bounds.y + bounds.height / 2, 750));
   await page.mouse.wheel(0, 300);
-  await expect.poll(() => panel.evaluate((element) => element.scrollTop)).toBeGreaterThan(100);
+  await expect.poll(() => panel.evaluate((element) => element.scrollTop)).toBeCloseTo(Math.min(300, scrollAvailable), 0);
   expect(await scale()).toBe(originalScale);
   expect(await components()).toEqual(originalComponents);
   await panel.evaluate((element) => { element.scrollTop = 0; });

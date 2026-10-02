@@ -24,6 +24,12 @@ export interface CircuitJsApi {
   cancelDrawing(): void;
   setTheme(theme: 'light' | 'dark'): void;
   getTheme(): 'light' | 'dark';
+  dismissEditors?(): void;
+  /** Advance the existing native solver, yielding after this many steps or milliseconds. */
+  stepSimulation?(maxSteps: number, budgetMs: number): number;
+  getCircuitRevision?(): number;
+  /** Starter initialization only: short native components joined by real WireElm leads. */
+  compactComponentLeads?(): number;
   getElements(): CircuitJsElement[];
   getHoveredElement(): CircuitJsElement | null;
   getTime(): number;
@@ -115,31 +121,47 @@ export function neutralCircuitJsPresentation(text: string) {
 }
 
 /** Captures actual accepted solver timesteps through CircuitJS's documented timestep callback. */
-export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], duration: number, requestedSamples: number) {
+export type CircuitJsCaptureProgress = { samples: number; target: number; time: number; elapsedMs: number };
+export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], duration: number, requestedSamples: number, options: {
+  onProgress?: (progress: CircuitJsCaptureProgress) => void;
+} = {}) {
   if (!(duration >= 1e-9 && duration <= 10) || !Number.isFinite(duration)) throw new Error('Capture duration must be between 1 ns and 10 seconds.');
   if (!Number.isInteger(requestedSamples) || requestedSamples < 128 || requestedSamples > 131072) throw new Error('Choose between 128 and 131,072 samples.');
   const active = probes.filter((probe) => probe.enabled);
   if (!active.length || active.length > MAX_CIRCUITJS_PROBES) throw new Error('Enable between 1 and 32 probes before capturing.');
   const elements = api.getElements();
-  if (active.some((probe) => !elements.includes(probe.element) || probe.post >= probe.element.getPostCount())) throw new Error('A probed component was removed. Refresh the probe selection.');
+  if (active.some((probe) => !elements.includes(probe.element) || probe.post < 0 || probe.post >= probe.element.getPostCount())) throw new Error('A probed component was removed. Refresh the probe selection.');
+  const revision = api.getCircuitRevision?.();
   const started = performance.now();
   const initialTime = api.getTime();
   const x: number[] = [];
   const values = active.map(() => [] as number[]);
   const maxPoints = Math.min(131072, Math.floor(2097152 / (active.length + 1)), requestedSamples * 2);
   const previousMaxStep = api.getMaxTimeStep();
+  // The first reading is the first accepted step, not a synthesized t=0 point.
+  const captureStep = duration / requestedSamples;
+  let pumpTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastProgress = -Infinity;
   let finished = false;
   let resolve!: (payload: SimulationPayload) => void;
   let reject!: (error: Error) => void;
   const previousHook = api.ontimestep;
   const result = new Promise<SimulationPayload>((yes, no) => { resolve = yes; reject = no; });
-  const timeout = setTimeout(() => fail('Capture timed out. Reduce the duration or simplify the circuit.'), 20_000);
+  const timeout = setTimeout(() => fail(`Capture stopped after 60 seconds (${x.length.toLocaleString()} actual samples). Check the circuit for convergence problems or reduce its record depth.`), 60_000);
+  function progress(force = false) {
+    const elapsedMs = performance.now() - started;
+    if (!force && elapsedMs - lastProgress < 100) return;
+    lastProgress = elapsedMs;
+    options.onProgress?.({ samples: x.length, target: requestedSamples, time: x.at(-1) ?? 0, elapsedMs });
+  }
   function cleanup() {
     finished = true;
     clearTimeout(timeout);
-    api.ontimestep = previousHook;
-    api.setMaxTimeStep(previousMaxStep);
+    clearTimeout(pumpTimer);
+    if (api.ontimestep === hook) api.ontimestep = previousHook;
+    if (api.getMaxTimeStep() === captureStep) api.setMaxTimeStep(previousMaxStep);
     api.setSimRunning(false);
+    progress(true);
   }
   function fail(message: string) {
     if (finished) return;
@@ -155,20 +177,39 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
       warnings: capped ? ['Capture reached its adaptive-sample limit before the requested duration. Increase the sample interval.'] : [], runtimeMs: performance.now() - started });
   }
   api.setSimRunning(false);
-  api.setMaxTimeStep(duration / (requestedSamples - 1));
-  api.ontimestep = (current) => {
-    previousHook?.(current);
+  api.setMaxTimeStep(captureStep);
+  function hook(current: CircuitJsApi) {
     if (finished) return;
-    const time = current.getTime() - initialTime;
-    if (time < 0) return fail('Circuit was reset during capture. Start a new capture.');
-    if (x.length && time <= x[x.length - 1]) return;
-    const sample = active.map(readCircuitJsProbe);
-    if (sample.some((value) => !Number.isFinite(value))) return fail('The solver returned a non-finite voltage or current. Check the circuit.');
-    x.push(time);
-    sample.forEach((value, index) => values[index].push(value));
-    if (time >= duration) complete();
-    else if (x.length >= maxPoints) complete(true);
-  };
+    try {
+      previousHook?.(current);
+      if (revision !== undefined && current.getCircuitRevision?.() !== revision) return fail('Circuit changed during capture. Start a new capture of the edited circuit.');
+      const time = current.getTime() - initialTime;
+      if (time < 0) return fail('Circuit was reset during capture. Start a new capture.');
+      if (x.length && time <= x[x.length - 1]) return;
+      for (let index = 0; index < active.length; index++) {
+        const value = readCircuitJsProbe(active[index]);
+        if (!Number.isFinite(value)) return fail('The solver returned a non-finite voltage or current. Check the circuit.');
+        values[index].push(value);
+      }
+      x.push(time);
+      if (time >= duration * (1 - 1e-10)) complete();
+      else if (x.length >= maxPoints) complete(true);
+    } catch (cause) { fail(cause instanceof Error ? cause.message : 'Capture failed.'); }
+  }
+  function pump() {
+    if (finished) return;
+    try {
+      const stop = api.getStopMessage();
+      if (stop) return fail(`Simulation stopped: ${stop}`);
+      const currentElements = api.getElements();
+      if ((revision !== undefined && api.getCircuitRevision?.() !== revision) || active.some((probe) => !currentElements.includes(probe.element))) return fail('Circuit changed during capture. Start a new capture of the edited circuit.');
+      api.stepSimulation?.(2048, 8);
+      progress();
+    } catch (cause) { return fail(cause instanceof Error ? cause.message : 'Capture failed.'); }
+    if (!finished) pumpTimer = setTimeout(pump, api.stepSimulation ? 0 : 100);
+  }
+  api.ontimestep = hook;
   api.setSimRunning(true);
+  pumpTimer = setTimeout(pump, 0);
   return { result, cancel: (message = 'Capture cancelled.') => fail(message) };
 }
