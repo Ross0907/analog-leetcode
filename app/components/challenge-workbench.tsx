@@ -15,6 +15,7 @@ export function ChallengeWorkbench({ challengeSlug, starterNetlist, probe, judge
     <div className="challenge-workbench-panel challenge-schematic-panel">
       {initialCircuit ? <CircuitJsWorkbench key={challengeSlug} initialCircuit={initialCircuit} storageKey={challengeSlug}
         analysis={analysis} recommendedProbes={challenge?.recommendedProbes} wiringInstructions={challenge?.wiringInstructions}
+        analysisDefaults={challenge?.analysisDefaults} preferredInstrument={challenge?.preferredInstrument} designChecks={challenge?.designChecks}
         modelNote={challenge?.blocks || ['cmos-inverter-trip-point', 'bjt-bias-across-beta', 'transimpedance-stability', 'mosfet-gate-drive'].includes(challengeSlug) ? 'Use SPICE analysis for the challenge’s specified transistor models, edge timing, and frequency response.' : undefined}/>
         : <SimulationConsole {...analysis}/>}
     </div>

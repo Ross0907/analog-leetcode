@@ -38,7 +38,7 @@ Get-ChildItem -LiteralPath "$circuitSource/war" | Where-Object { $_.Name -notin 
 Copy-Item -LiteralPath "$circuitSource/COPYING.txt" -Destination "$circuitOutput/COPYING.txt"
 Copy-Item -LiteralPath "$circuitSdk/COPYING" -Destination "$circuitOutput/GWT-COPYING.txt"
 Copy-Item -LiteralPath "$circuitBuild/source.zip" -Destination "$circuitOutput/upstream-source.zip"
-Copy-Item -LiteralPath 'scripts/patch-circuitjs-api.mjs','scripts/build-circuitjs.ps1' -Destination $circuitOutput
+Copy-Item -LiteralPath 'scripts/patch-circuitjs-api.mjs','scripts/patch-circuitjs-stimulus.mjs','scripts/build-circuitjs.ps1' -Destination $circuitOutput
 $circuitHtml = Get-Content -LiteralPath "$circuitOutput/circuitjs.html" -Raw
 $circuitHtml = $circuitHtml.Replace('<link rel="manifest" href="/circuit/manifest.json">','').Replace('<title></title>','<title>CircuitJS1 · AnaCode schematic editor</title>')
 $circuitHtml = $circuitHtml.Replace('</head>', '<link rel="stylesheet" href="/kicad/editor-theme.css"><script type="module" src="/kicad/renderer.js"></script></head>')

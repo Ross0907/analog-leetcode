@@ -1,0 +1,2637 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/cascode-ai/analog-canvas",
+  "revision": "85e6be67420a2395d5094325123b6debc1eb0286",
+  "license": "AGPL-3.0-only",
+  "sourceSha256": "8a2aaf499ae19d33e28667951e633d36a3b765cf20974e465bce610c21985f49",
+  "licenseSha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
+  "symbols": {
+    "resistor": {
+      "schemaVersion": 1,
+      "id": "resistor",
+      "name": "Resistor",
+      "viewBox": {
+        "x": -10,
+        "y": -24,
+        "width": 20,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "1",
+          "role": "passive",
+          "at": {
+            "x": 0,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "2",
+          "role": "passive",
+          "at": {
+            "x": 0,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "path",
+          "data": "M 0 -20 L 0 -8.72093 L 5.372093 -6.395349 L -4.604651 -4.069767 L 5.372093 -1.162791 L -4.988372 1.744186 L 5.372093 4.651163 L -4.604651 7.55814 L 0 8.72093 L 0 20",
+          "bounds": {
+            "x": -4.988372,
+            "y": -20,
+            "width": 10.360465,
+            "height": 40
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter",
+            "miterLimit": 12
+          }
+        }
+      ],
+      "variants": []
+    },
+    "capacitor": {
+      "schemaVersion": 1,
+      "id": "capacitor",
+      "name": "Capacitor",
+      "viewBox": {
+        "x": -12,
+        "y": -24,
+        "width": 24,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "1",
+          "role": "passive",
+          "at": {
+            "x": 0,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "2",
+          "role": "passive",
+          "at": {
+            "x": 0,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "line",
+          "from": {
+            "x": 8.05064,
+            "y": -3.233605
+          },
+          "to": {
+            "x": -8.05064,
+            "y": -3.233605
+          },
+          "style": {
+            "strokeRole": "emphasis",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 8.05064,
+            "y": 3.233605
+          },
+          "to": {
+            "x": -8.05064,
+            "y": 3.233605
+          },
+          "style": {
+            "strokeRole": "emphasis",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": -3.233605
+          },
+          "to": {
+            "x": 0,
+            "y": -20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": 3.233605
+          },
+          "to": {
+            "x": 0,
+            "y": 20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        }
+      ],
+      "variants": []
+    },
+    "inductor": {
+      "schemaVersion": 1,
+      "id": "inductor",
+      "name": "Large Inductor",
+      "viewBox": {
+        "x": -15,
+        "y": -32,
+        "width": 30,
+        "height": 64
+      },
+      "pins": [
+        {
+          "name": "1",
+          "role": "passive",
+          "at": {
+            "x": 0,
+            "y": -30
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "2",
+          "role": "passive",
+          "at": {
+            "x": 0,
+            "y": 30
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "path",
+          "data": "M 0 -30 L 0 -29.243 C 0 -29.243 0 -29.243 0 -27.3261 C 0 -25.4114 0 -21.5777 0 -19.663 C 0 -17.7462 0 -17.7462 0 -17.7462 C 0 -17.7462 0 -17.7462 1.86778 -17.3623 C 3.73333 -16.9785 7.46443 -16.2131 9.28089 -14.6801 C 11.0974 -13.147 10.9969 -10.8485 7.26583 -9.31325 C 3.5325 -7.78019 -3.83152 -7.01478 -7.51353 -8.16402 C -11.1955 -9.31325 -11.1955 -12.3816 -7.46443 -13.0801 C -3.7311 -13.7808 3.73333 -12.1138 7.53138 -9.58103 C 11.3317 -7.04826 11.4633 -3.64965 7.73222 -1.4159 C 3.99888 0.815621 -3.59944 1.88229 -7.39749 0.882566 C -11.1955 -0.117155 -11.1955 -3.18326 -7.39749 -3.94868 C -3.59944 -4.71632 3.99888 -3.18326 7.69874 -0.683961 C 11.3986 1.81534 11.1978 5.28089 7.39749 7.58159 C 3.59944 9.88006 -3.79805 11.0137 -7.49791 10.0474 C -11.1955 9.08117 -11.1955 6.01506 -7.49791 5.06443 C -3.79805 4.11604 3.59944 5.28089 7.33277 7.19777 C 11.0639 9.11464 11.1308 11.7813 9.29875 13.4974 C 7.46443 15.2134 3.73333 15.9788 1.86778 16.3626 C 0 16.7464 0 16.7464 0 16.7464 C 0 16.7464 0 16.7464 0 18.8285 C 0 20.9105 0 25.0767 0 27.1609 C 0 29.243 0 29.243 0 29.243 L 0 30",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "round"
+          }
+        }
+      ],
+      "variants": []
+    },
+    "diode": {
+      "schemaVersion": 1,
+      "id": "diode",
+      "name": "Diode",
+      "viewBox": {
+        "x": -24,
+        "y": -10,
+        "width": 48,
+        "height": 20
+      },
+      "pins": [
+        {
+          "name": "A",
+          "role": "anode",
+          "at": {
+            "x": -20,
+            "y": 0
+          },
+          "direction": "west",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "K",
+          "role": "cathode",
+          "at": {
+            "x": 20,
+            "y": 0
+          },
+          "direction": "east",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "line",
+          "from": {
+            "x": -20,
+            "y": 0
+          },
+          "to": {
+            "x": -8.333334,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": -8.333334,
+              "y": -6.75
+            },
+            {
+              "x": -8.333334,
+              "y": 6.75
+            },
+            {
+              "x": 5.833334,
+              "y": 0
+            }
+          ],
+          "fill": "none",
+          "stroke": "foreground",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 6.666666,
+            "y": -7.333334
+          },
+          "to": {
+            "x": 6.666666,
+            "y": 7.333334
+          },
+          "style": {
+            "strokeRole": "emphasis",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 6.666666,
+            "y": 0
+          },
+          "to": {
+            "x": 20,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        }
+      ],
+      "variants": []
+    },
+    "zener-diode": {
+      "schemaVersion": 1,
+      "id": "zener-diode",
+      "name": "Zener Diode",
+      "viewBox": {
+        "x": -24,
+        "y": -10,
+        "width": 48,
+        "height": 20
+      },
+      "pins": [
+        {
+          "name": "A",
+          "role": "anode",
+          "at": {
+            "x": -20,
+            "y": 0
+          },
+          "direction": "west",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "K",
+          "role": "cathode",
+          "at": {
+            "x": 20,
+            "y": 0
+          },
+          "direction": "east",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "line",
+          "from": {
+            "x": -20,
+            "y": 0
+          },
+          "to": {
+            "x": -7.802511,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": -7.802511,
+              "y": -6.404463
+            },
+            {
+              "x": -7.802511,
+              "y": 6.404463
+            },
+            {
+              "x": 6.606415,
+              "y": 0
+            }
+          ],
+          "fill": "none",
+          "stroke": "foreground",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polyline",
+          "points": [
+            {
+              "x": -0.639331,
+              "y": -8.506555
+            },
+            {
+              "x": 6.666666,
+              "y": -8.406137
+            },
+            {
+              "x": 6.666666,
+              "y": 8.2053
+            },
+            {
+              "x": 13.870013,
+              "y": 8.2053
+            }
+          ],
+          "style": {
+            "strokeRole": "emphasis",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 6.666666,
+            "y": 0
+          },
+          "to": {
+            "x": 20,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        }
+      ],
+      "variants": []
+    },
+    "battery": {
+      "schemaVersion": 1,
+      "id": "battery",
+      "name": "Battery",
+      "viewBox": {
+        "x": -24,
+        "y": -24,
+        "width": 48,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "+",
+          "role": "positive",
+          "at": {
+            "x": 0,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 17
+          }
+        },
+        {
+          "name": "-",
+          "role": "negative",
+          "at": {
+            "x": 0,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 17
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": -20
+          },
+          "to": {
+            "x": 0,
+            "y": -3.361068
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": 3.361068
+          },
+          "to": {
+            "x": 0,
+            "y": 20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": -15.341072,
+              "y": -4.959888
+            },
+            {
+              "x": 15.366866,
+              "y": -4.959888
+            },
+            {
+              "x": 15.366866,
+              "y": -1.762248
+            },
+            {
+              "x": -15.341072,
+              "y": -1.762248
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none"
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": -7.987992,
+              "y": 1.762248
+            },
+            {
+              "x": 8.005849,
+              "y": 1.762248
+            },
+            {
+              "x": 8.005849,
+              "y": 4.959888
+            },
+            {
+              "x": -7.987992,
+              "y": 4.959888
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none"
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 7.918549,
+            "y": -13.416494
+          },
+          "to": {
+            "x": 15.985905,
+            "y": -13.416494
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 11.952227,
+            "y": -17.450172
+          },
+          "to": {
+            "x": 11.952227,
+            "y": -9.3848
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 7.918549,
+            "y": 13.472049
+          },
+          "to": {
+            "x": 15.985905,
+            "y": 13.472049
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        }
+      ],
+      "variants": []
+    },
+    "voltage-source": {
+      "schemaVersion": 1,
+      "id": "voltage-source",
+      "name": "Independent Voltage Source",
+      "viewBox": {
+        "x": -24,
+        "y": -24,
+        "width": 39,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "+",
+          "role": "positive",
+          "at": {
+            "x": 0,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "-",
+          "role": "negative",
+          "at": {
+            "x": 0,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "circle",
+          "center": {
+            "x": 0,
+            "y": 0
+          },
+          "radius": 10.755814,
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -20.058139,
+            "y": -14.534884
+          },
+          "to": {
+            "x": -11.918605,
+            "y": -14.534884
+          },
+          "part": "upright-polarity-positive-horizontal",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -15.988372,
+            "y": -18.604651
+          },
+          "to": {
+            "x": -15.988372,
+            "y": -10.465117
+          },
+          "part": "upright-polarity-positive-vertical",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -20.058139,
+            "y": 13.372093
+          },
+          "to": {
+            "x": -11.918605,
+            "y": 13.372093
+          },
+          "part": "upright-polarity-negative",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": -10.755814
+          },
+          "to": {
+            "x": 0,
+            "y": -20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": 10.755814
+          },
+          "to": {
+            "x": 0,
+            "y": 20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        }
+      ],
+      "variants": []
+    },
+    "pulse-voltage-source": {
+      "schemaVersion": 1,
+      "id": "pulse-voltage-source",
+      "name": "Digital Clock",
+      "viewBox": {
+        "x": -24,
+        "y": -24,
+        "width": 39,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "+",
+          "role": "positive",
+          "at": {
+            "x": 0,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "-",
+          "role": "negative",
+          "at": {
+            "x": 0,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "circle",
+          "center": {
+            "x": 0,
+            "y": 0
+          },
+          "radius": 10.755814,
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polyline",
+          "points": [
+            {
+              "x": 4,
+              "y": 7
+            },
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": -4,
+              "y": 4
+            },
+            {
+              "x": -4,
+              "y": -4
+            },
+            {
+              "x": 4,
+              "y": -4
+            },
+            {
+              "x": 4,
+              "y": -7
+            }
+          ],
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": -10.755814
+          },
+          "to": {
+            "x": 0,
+            "y": -20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": 10.755814
+          },
+          "to": {
+            "x": 0,
+            "y": 20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        }
+      ],
+      "variants": []
+    },
+    "current-source": {
+      "schemaVersion": 1,
+      "id": "current-source",
+      "name": "Independent Current Source",
+      "viewBox": {
+        "x": -15,
+        "y": -24,
+        "width": 30,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "+",
+          "role": "positive",
+          "at": {
+            "x": 0,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "-",
+          "role": "negative",
+          "at": {
+            "x": 0,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "circle",
+          "center": {
+            "x": 0,
+            "y": 0
+          },
+          "radius": 10.755814,
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": -6.976744
+          },
+          "to": {
+            "x": 0,
+            "y": -2.325581
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": 0,
+              "y": 6.976744
+            },
+            {
+              "x": -4.651163,
+              "y": -2.325581
+            },
+            {
+              "x": 4.651163,
+              "y": -2.325581
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none"
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": -10.755814
+          },
+          "to": {
+            "x": 0,
+            "y": -20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": 10.755814
+          },
+          "to": {
+            "x": 0,
+            "y": 20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        }
+      ],
+      "variants": []
+    },
+    "ground": {
+      "schemaVersion": 1,
+      "id": "ground",
+      "name": "Ground",
+      "viewBox": {
+        "x": -12,
+        "y": -14,
+        "width": 24,
+        "height": 31
+      },
+      "pins": [
+        {
+          "name": "0",
+          "role": "ground",
+          "at": {
+            "x": 0,
+            "y": -10
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "line",
+          "from": {
+            "x": 0,
+            "y": -10
+          },
+          "to": {
+            "x": 0,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -6.395349,
+            "y": 0
+          },
+          "to": {
+            "x": 6.395349,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "ground",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -4.069767,
+            "y": 5.813953
+          },
+          "to": {
+            "x": 4.069767,
+            "y": 5.813953
+          },
+          "style": {
+            "strokeRole": "ground",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -2.325581,
+            "y": 11.046512
+          },
+          "to": {
+            "x": 2.325581,
+            "y": 11.046512
+          },
+          "style": {
+            "strokeRole": "ground",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        }
+      ],
+      "variants": [],
+      "labelVisibility": "hidden"
+    },
+    "npn": {
+      "schemaVersion": 1,
+      "id": "npn",
+      "name": "NPN Bipolar Transistor",
+      "viewBox": {
+        "x": -34,
+        "y": -24,
+        "width": 42,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "C",
+          "role": "collector",
+          "at": {
+            "x": 0,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "B",
+          "role": "base",
+          "at": {
+            "x": -30,
+            "y": 0
+          },
+          "direction": "west",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "E",
+          "role": "emitter",
+          "at": {
+            "x": 0,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "line",
+          "from": {
+            "x": -30,
+            "y": 0
+          },
+          "to": {
+            "x": -16.868887,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -16.868887,
+            "y": -13.345607
+          },
+          "to": {
+            "x": -16.868887,
+            "y": 13.32954
+          },
+          "style": {
+            "strokeRole": "emphasis",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polyline",
+          "points": [
+            {
+              "x": -16.868887,
+              "y": -6.401526
+            },
+            {
+              "x": 0,
+              "y": -13.379732
+            },
+            {
+              "x": 0,
+              "y": -20
+            }
+          ],
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -16.868887,
+            "y": 6.403673
+          },
+          "to": {
+            "x": -7.30071,
+            "y": 10.358712
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polyline",
+          "points": [
+            {
+              "x": -0.936056,
+              "y": 12.990761
+            },
+            {
+              "x": 0,
+              "y": 13.377859
+            },
+            {
+              "x": 0,
+              "y": 20
+            }
+          ],
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": -6.635095,
+              "y": 6.792086
+            },
+            {
+              "x": -9.952643,
+              "y": 13.377859
+            },
+            {
+              "x": 0,
+              "y": 13.377859
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none"
+        }
+      ],
+      "variants": []
+    },
+    "pnp": {
+      "schemaVersion": 1,
+      "id": "pnp",
+      "name": "PNP Bipolar Transistor",
+      "viewBox": {
+        "x": -34,
+        "y": -24,
+        "width": 42,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "C",
+          "role": "collector",
+          "at": {
+            "x": 0,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "B",
+          "role": "base",
+          "at": {
+            "x": -30,
+            "y": 0
+          },
+          "direction": "west",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "E",
+          "role": "emitter",
+          "at": {
+            "x": 0,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "line",
+          "from": {
+            "x": -30,
+            "y": 0
+          },
+          "to": {
+            "x": -16.868887,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -16.868887,
+            "y": -13.333557
+          },
+          "to": {
+            "x": -16.868887,
+            "y": 13.34159
+          },
+          "style": {
+            "strokeRole": "emphasis",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polyline",
+          "points": [
+            {
+              "x": -8.575018,
+              "y": -9.694413
+            },
+            {
+              "x": 0,
+              "y": -13.379732
+            },
+            {
+              "x": 0,
+              "y": -20
+            }
+          ],
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polyline",
+          "points": [
+            {
+              "x": -16.868887,
+              "y": 6.401526
+            },
+            {
+              "x": 0,
+              "y": 13.377859
+            },
+            {
+              "x": 0,
+              "y": 20
+            }
+          ],
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": -10.233792,
+              "y": -12.987299
+            },
+            {
+              "x": -6.916244,
+              "y": -6.401526
+            },
+            {
+              "x": -16.868887,
+              "y": -6.401526
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none"
+        }
+      ],
+      "variants": []
+    },
+    "nmos": {
+      "schemaVersion": 1,
+      "id": "nmos",
+      "name": "NMOS",
+      "viewBox": {
+        "x": -24,
+        "y": -24,
+        "width": 48,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "D",
+          "role": "drain",
+          "at": {
+            "x": 10,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "G",
+          "role": "gate",
+          "at": {
+            "x": -20,
+            "y": 0
+          },
+          "direction": "west",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "S",
+          "role": "source",
+          "at": {
+            "x": 10,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "B",
+          "role": "bulk",
+          "at": {
+            "x": 20,
+            "y": 0
+          },
+          "direction": "east",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "polyline",
+          "points": [
+            {
+              "x": -4.244186,
+              "y": -6.976744
+            },
+            {
+              "x": 10,
+              "y": -6.976744
+            },
+            {
+              "x": 10,
+              "y": -20
+            }
+          ],
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polyline",
+          "points": [
+            {
+              "x": -4.244186,
+              "y": 6.976744
+            },
+            {
+              "x": 10,
+              "y": 6.976744
+            },
+            {
+              "x": 10,
+              "y": 20
+            }
+          ],
+          "part": "source-arrow-host",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": -11.802326,
+              "y": -9.593023
+            },
+            {
+              "x": -11.802326,
+              "y": 9.593023
+            },
+            {
+              "x": -8.895349,
+              "y": 9.593023
+            },
+            {
+              "x": -8.895349,
+              "y": -9.593023
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none",
+          "part": "gate-bar"
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": -6.569767,
+              "y": -12.5
+            },
+            {
+              "x": -6.569767,
+              "y": 12.5
+            },
+            {
+              "x": -3.662791,
+              "y": 12.5
+            },
+            {
+              "x": -3.662791,
+              "y": -12.5
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none",
+          "part": "gate-bar"
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -8.895349,
+            "y": 0
+          },
+          "to": {
+            "x": -20,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -3.662791,
+            "y": 0
+          },
+          "to": {
+            "x": 10,
+            "y": 0
+          },
+          "part": "bulk-lead",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 16.395349,
+            "y": 0
+          },
+          "to": {
+            "x": 20,
+            "y": 0
+          },
+          "part": "bulk-lead",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": 10,
+              "y": 0
+            },
+            {
+              "x": 16.395349,
+              "y": -3.488372
+            },
+            {
+              "x": 16.395349,
+              "y": 3.488372
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none",
+          "part": "bulk-lead"
+        }
+      ],
+      "variants": [
+        {
+          "id": "textbook-3terminal",
+          "hiddenPinNames": [
+            "B"
+          ],
+          "auxiliaryPins": [
+            {
+              "name": "B",
+              "at": {
+                "x": -4,
+                "y": 0
+              },
+              "direction": "east",
+              "routing": {
+                "escape": "outward",
+                "preferredLanding": {
+                  "x": 0,
+                  "y": 0
+                }
+              }
+            }
+          ],
+          "hiddenPrimitiveParts": [
+            "bulk-lead",
+            "source-arrow-host"
+          ],
+          "additionalPrimitives": [
+            {
+              "kind": "polyline",
+              "points": [
+                {
+                  "x": -3.662791,
+                  "y": 6.976744
+                },
+                {
+                  "x": 10,
+                  "y": 6.976744
+                },
+                {
+                  "x": 10,
+                  "y": 20
+                }
+              ],
+              "part": "source-arrow",
+              "style": {
+                "strokeRole": "normal",
+                "lineCap": "butt",
+                "lineJoin": "miter"
+              }
+            },
+            {
+              "kind": "polygon",
+              "points": [
+                {
+                  "x": 10.581395,
+                  "y": 6.976744
+                },
+                {
+                  "x": 1.27907,
+                  "y": 2.906977
+                },
+                {
+                  "x": 1.27907,
+                  "y": 11.046512
+                }
+              ],
+              "fill": "foreground",
+              "stroke": "none",
+              "part": "source-arrow"
+            }
+          ]
+        }
+      ],
+      "defaultVariantId": "textbook-3terminal"
+    },
+    "pmos": {
+      "schemaVersion": 1,
+      "id": "pmos",
+      "name": "PMOS",
+      "viewBox": {
+        "x": -24,
+        "y": -24,
+        "width": 48,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "D",
+          "role": "drain",
+          "at": {
+            "x": 10,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "G",
+          "role": "gate",
+          "at": {
+            "x": -20,
+            "y": 0
+          },
+          "direction": "west",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "S",
+          "role": "source",
+          "at": {
+            "x": 10,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "B",
+          "role": "bulk",
+          "at": {
+            "x": 20,
+            "y": 0
+          },
+          "direction": "east",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "polyline",
+          "points": [
+            {
+              "x": -4.244186,
+              "y": 6.976744
+            },
+            {
+              "x": 10,
+              "y": 6.976744
+            },
+            {
+              "x": 10,
+              "y": 20
+            }
+          ],
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polyline",
+          "points": [
+            {
+              "x": -4.244186,
+              "y": -6.976744
+            },
+            {
+              "x": 10,
+              "y": -6.976744
+            },
+            {
+              "x": 10,
+              "y": -20
+            }
+          ],
+          "part": "source-arrow-host",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": -11.802326,
+              "y": -9.593023
+            },
+            {
+              "x": -11.802326,
+              "y": 9.593023
+            },
+            {
+              "x": -8.895349,
+              "y": 9.593023
+            },
+            {
+              "x": -8.895349,
+              "y": -9.593023
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none",
+          "part": "gate-bar"
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": -6.569767,
+              "y": -12.5
+            },
+            {
+              "x": -6.569767,
+              "y": 12.5
+            },
+            {
+              "x": -3.662791,
+              "y": 12.5
+            },
+            {
+              "x": -3.662791,
+              "y": -12.5
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none",
+          "part": "gate-bar"
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -8.895349,
+            "y": 0
+          },
+          "to": {
+            "x": -20,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -3.662791,
+            "y": 0
+          },
+          "to": {
+            "x": 13.604651,
+            "y": 0
+          },
+          "part": "bulk-lead",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "polygon",
+          "points": [
+            {
+              "x": 20,
+              "y": 0
+            },
+            {
+              "x": 13.604651,
+              "y": -3.77907
+            },
+            {
+              "x": 13.604651,
+              "y": 3.77907
+            }
+          ],
+          "fill": "foreground",
+          "stroke": "none",
+          "part": "bulk-lead"
+        }
+      ],
+      "variants": [
+        {
+          "id": "textbook-3terminal",
+          "hiddenPinNames": [
+            "B"
+          ],
+          "auxiliaryPins": [
+            {
+              "name": "B",
+              "at": {
+                "x": -4,
+                "y": 0
+              },
+              "direction": "east",
+              "routing": {
+                "escape": "outward",
+                "preferredLanding": {
+                  "x": 0,
+                  "y": 0
+                }
+              }
+            }
+          ],
+          "hiddenPrimitiveParts": [
+            "bulk-lead",
+            "source-arrow-host"
+          ],
+          "additionalPrimitives": [
+            {
+              "kind": "polyline",
+              "points": [
+                {
+                  "x": 5.639535,
+                  "y": -7.122093
+                },
+                {
+                  "x": 10,
+                  "y": -7.122093
+                },
+                {
+                  "x": 10,
+                  "y": -20
+                }
+              ],
+              "part": "source-arrow",
+              "style": {
+                "strokeRole": "normal",
+                "lineCap": "butt",
+                "lineJoin": "miter"
+              }
+            },
+            {
+              "kind": "polygon",
+              "points": [
+                {
+                  "x": -3.662791,
+                  "y": -7.122093
+                },
+                {
+                  "x": 5.639535,
+                  "y": -11.19186
+                },
+                {
+                  "x": 5.639535,
+                  "y": -3.052326
+                }
+              ],
+              "fill": "foreground",
+              "stroke": "none",
+              "part": "source-arrow"
+            }
+          ]
+        }
+      ],
+      "defaultVariantId": "textbook-3terminal"
+    },
+    "opamp": {
+      "schemaVersion": 1,
+      "id": "opamp",
+      "name": "Operational Amplifier",
+      "viewBox": {
+        "x": -44,
+        "y": -34,
+        "width": 88,
+        "height": 68
+      },
+      "pins": [
+        {
+          "name": "IN+",
+          "role": "non-inverting-input",
+          "at": {
+            "x": -40,
+            "y": 10
+          },
+          "direction": "west",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "IN-",
+          "role": "inverting-input",
+          "at": {
+            "x": -40,
+            "y": -10
+          },
+          "direction": "west",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "OUT",
+          "role": "output",
+          "at": {
+            "x": 30,
+            "y": 0
+          },
+          "direction": "east",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "line",
+          "from": {
+            "x": -40,
+            "y": -10
+          },
+          "to": {
+            "x": -30,
+            "y": -10
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -40,
+            "y": 10
+          },
+          "to": {
+            "x": -30,
+            "y": 10
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 21.961524,
+            "y": 0
+          },
+          "to": {
+            "x": 30,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "path",
+          "data": "M -30 -30 L -30 30 L 21.961524 0 Z",
+          "bounds": {
+            "x": -30,
+            "y": -30,
+            "width": 51.961524,
+            "height": 60
+          },
+          "style": {
+            "strokeRole": "emphasis",
+            "lineCap": "butt",
+            "lineJoin": "miter",
+            "miterLimit": 4
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -23.75,
+            "y": 11
+          },
+          "to": {
+            "x": -23.75,
+            "y": 17
+          },
+          "part": "input-polarity",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "round",
+            "lineJoin": "round"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -26.75,
+            "y": 14
+          },
+          "to": {
+            "x": -20.75,
+            "y": 14
+          },
+          "part": "input-polarity",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "round",
+            "lineJoin": "round"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -26.75,
+            "y": -14
+          },
+          "to": {
+            "x": -20.75,
+            "y": -14
+          },
+          "part": "upright-input-polarity-negative",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "round",
+            "lineJoin": "round"
+          }
+        }
+      ],
+      "variants": []
+    }
+  },
+  "provenance": [
+    {
+      "symbolId": "battery",
+      "name": "Battery",
+      "category": "source",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "+",
+        "-"
+      ],
+      "palette": true,
+      "automaticMappings": [],
+      "manualOnlyReason": "SPICE V cards do not distinguish battery plate artwork from a circular voltage source, so ordinary V imports keep the circular symbol.",
+      "assetPath": "battery.json",
+      "assetHash": "ac5a89ba8b959ffd557ab8335ac2c86caf8a5ac0105b2cdc5c2bbd9a62166b3a",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/battery-vector-source.json",
+          "fixtures/visual-reference/razavi-reference-v1/battery-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/battery-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-pdf-vector-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/battery-vector-source.json",
+        "converterPath": "scripts/generate-razavi-battery-asset.mjs",
+        "converterVersion": 1
+      }
+    },
+    {
+      "symbolId": "capacitor",
+      "name": "Capacitor",
+      "category": "passive",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "1",
+        "2"
+      ],
+      "palette": true,
+      "automaticMappings": [
+        "spice:C"
+      ],
+      "assetPath": "capacitor.json",
+      "assetHash": "6ccdd4cdcbbd95bd10c0a59f83edd58c1b7ace5fca39a7a485b45e7dca3fe6b2",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/capacitor-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/capacitor-geometry.json"
+      }
+    },
+    {
+      "symbolId": "current-source",
+      "name": "Independent Current Source",
+      "category": "source",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "+",
+        "-"
+      ],
+      "palette": true,
+      "automaticMappings": [
+        "spice:I"
+      ],
+      "assetPath": "current-source.json",
+      "assetHash": "fa00a8c4aac387e2d5531d560dabf0897df079fdbcb3cef9823f67d6a564e796",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/current-port-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/current-port-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-raster-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+        "converterPath": "scripts/generate-razavi-peripheral-assets.mjs",
+        "converterVersion": 1
+      }
+    },
+    {
+      "symbolId": "diode",
+      "name": "Diode",
+      "category": "passive",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "A",
+        "K"
+      ],
+      "palette": true,
+      "automaticMappings": [
+        "spice:D"
+      ],
+      "assetPath": "diode.json",
+      "assetHash": "9f7b396145d285f43d3a88ff74ab75ebf9177b0bb32223dd3c9f03e353167899",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/diode-vector-source.json",
+          "fixtures/visual-reference/razavi-reference-v1/diode-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-pdf-vector-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/diode-vector-source.json",
+        "converterPath": "scripts/generate-razavi-common-assets.mjs",
+        "converterVersion": 1
+      }
+    },
+    {
+      "symbolId": "ground",
+      "name": "Ground",
+      "category": "power",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "0"
+      ],
+      "palette": true,
+      "automaticMappings": [],
+      "assetPath": "ground.json",
+      "assetHash": "b2ca65ec6b08eb1395070f3442dac5374d62472ae02789121466767bd09d6a1a",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/peripheral-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-raster-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+        "converterPath": "scripts/generate-razavi-peripheral-assets.mjs",
+        "converterVersion": 1
+      }
+    },
+    {
+      "symbolId": "inductor",
+      "name": "Large Inductor",
+      "category": "passive",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "1",
+        "2"
+      ],
+      "palette": true,
+      "automaticMappings": [],
+      "assetPath": "inductor.json",
+      "assetHash": "11c01f2890b89fbe505252f2622e62838cd047885ad544fd862c3ae2d5821369",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/inductor-vector-source.json",
+          "fixtures/visual-reference/razavi-reference-v1/inductor-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/inductor-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-pdf-vector-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/inductor-vector-source.json",
+        "converterPath": "scripts/generate-razavi-inductor-asset.mjs",
+        "converterVersion": 2
+      },
+      "manualOnlyReason": "Evidence-exact textbook proportions; imported L elements take the scale-reconciled inductor-compact symbol."
+    },
+    {
+      "symbolId": "nmos",
+      "name": "NMOS",
+      "category": "transistor",
+      "reviewStatus": "reviewed",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/mos-geometry.json"
+      },
+      "pinOrder": [
+        "D",
+        "G",
+        "S",
+        "B"
+      ],
+      "palette": true,
+      "automaticMappings": [
+        "spice:M:nmos",
+        "pdk:model-type:nmos"
+      ],
+      "assetPath": "nmos.json",
+      "assetHash": "7bfa080f6bc6166a4ae7e0e91f8f6c058e6f6a4cc22a208818c6283fe8650953"
+    },
+    {
+      "symbolId": "npn",
+      "name": "NPN Bipolar Transistor",
+      "category": "transistor",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "C",
+        "B",
+        "E"
+      ],
+      "palette": true,
+      "automaticMappings": [
+        "spice:Q:npn",
+        "pdk:model-type:npn"
+      ],
+      "assetPath": "npn.json",
+      "assetHash": "675e01c4efdb7f068b9748b365908ef272dea956e1de5d70f066f249a6c6e66e",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/npn-vector-source.json",
+          "fixtures/visual-reference/razavi-reference-v1/npn-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-pdf-vector-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/npn-vector-source.json",
+        "converterPath": "scripts/generate-razavi-common-assets.mjs",
+        "converterVersion": 1
+      }
+    },
+    {
+      "symbolId": "opamp",
+      "name": "Operational Amplifier",
+      "category": "analog-block",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "IN+",
+        "IN-",
+        "OUT"
+      ],
+      "palette": true,
+      "automaticMappings": [],
+      "manualOnlyReason": "Three-terminal textbook op-amp; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+      "assetPath": "opamp.json",
+      "assetHash": "162bb0b53fa197d07896f44f4cd77ecc5a41f0ca6bafa246aea01df29c340638",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+          "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-pdf-vector-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+        "converterPath": "scripts/generate-razavi-opamp-asset.mjs",
+        "converterVersion": 6,
+        "bodyNormalization": "equilateral-triangle"
+      }
+    },
+    {
+      "symbolId": "pmos",
+      "name": "PMOS",
+      "category": "transistor",
+      "reviewStatus": "reviewed",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/mos-geometry.json"
+      },
+      "pinOrder": [
+        "D",
+        "G",
+        "S",
+        "B"
+      ],
+      "palette": true,
+      "automaticMappings": [
+        "spice:M:pmos",
+        "pdk:model-type:pmos"
+      ],
+      "assetPath": "pmos.json",
+      "assetHash": "daaa6cbb9dcd9de154a9b3e4796b2e8e5b24b39161661935c91f2e078fe1af74"
+    },
+    {
+      "symbolId": "pnp",
+      "name": "PNP Bipolar Transistor",
+      "category": "transistor",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "C",
+        "B",
+        "E"
+      ],
+      "palette": true,
+      "automaticMappings": [
+        "spice:Q:pnp",
+        "pdk:model-type:pnp"
+      ],
+      "assetPath": "pnp.json",
+      "assetHash": "148684128ffc893ebdbc559880d7f428d40eda7843d66ff006cf7e3deecef03a",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/pnp-vector-source.json",
+          "fixtures/visual-reference/razavi-reference-v1/pnp-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-pdf-vector-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/pnp-vector-source.json",
+        "converterPath": "scripts/generate-razavi-common-assets.mjs",
+        "converterVersion": 1
+      }
+    },
+    {
+      "symbolId": "resistor",
+      "name": "Resistor",
+      "category": "passive",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "1",
+        "2"
+      ],
+      "palette": true,
+      "automaticMappings": [
+        "spice:R"
+      ],
+      "assetPath": "resistor.json",
+      "assetHash": "90ade2be2a9733fdc90c38518d6bf6be7afe8a9c4212266bc82e34c25c63adab",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/passive-geometry.json"
+      }
+    },
+    {
+      "symbolId": "pulse-voltage-source",
+      "name": "Pulse Voltage Source",
+      "category": "source",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "+",
+        "-"
+      ],
+      "palette": true,
+      "automaticMappings": [],
+      "manualOnlyReason": "Pulse semantics require authored timing parameters and must not replace imported DC voltage sources automatically.",
+      "assetPath": "pulse-voltage-source.json",
+      "assetHash": "ed85c05f409cd66ff2d969bc84c4803a8352b5d022dcd26c7fc998715924717f",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+          "fixtures/visual-reference/razavi-reference-v1/data-converters-clock-pulse-vector-source.json",
+          "fixtures/visual-reference/razavi-reference-v1/data-converters-clock-pulse-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/peripheral-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-pdf-vector-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/data-converters-clock-pulse-vector-source.json",
+        "converterPath": "scripts/generate-razavi-peripheral-assets.mjs",
+        "converterVersion": 4
+      }
+    },
+    {
+      "symbolId": "voltage-source",
+      "name": "Independent Voltage Source",
+      "category": "source",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "+",
+        "-"
+      ],
+      "palette": true,
+      "automaticMappings": [
+        "spice:V"
+      ],
+      "assetPath": "voltage-source.json",
+      "assetHash": "2feeef8f7e425cc38ba9de64ed9b81333ec4c53c3c553a030264c22a919e5402",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/peripheral-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-raster-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+        "converterPath": "scripts/generate-razavi-peripheral-assets.mjs",
+        "converterVersion": 2
+      }
+    },
+    {
+      "symbolId": "zener-diode",
+      "name": "Zener Diode",
+      "category": "passive",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "A",
+        "K"
+      ],
+      "palette": true,
+      "automaticMappings": [],
+      "manualOnlyReason": "SPICE D syntax does not distinguish a Zener presentation from an ordinary diode; select this reviewed symbol manually or through an explicit PDK mapping.",
+      "assetPath": "zener-diode.json",
+      "assetHash": "01261cd11d9a03e7e457d5b0d7ab261b69ff4c28c022a087883ab6614f295772",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/zener-diode-vector-source.json",
+          "fixtures/visual-reference/razavi-reference-v1/zener-diode-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/zener-diode-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-pdf-vector-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/zener-diode-vector-source.json",
+        "converterPath": "scripts/generate-razavi-zener-asset.mjs",
+        "converterVersion": 1
+      }
+    }
+  ]
+}

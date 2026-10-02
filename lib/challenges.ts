@@ -1,5 +1,8 @@
 import { practiceChallenges, type PracticeSolution } from "./practice-challenges";
 import { converterChallenges, wiringChallenges } from "./converter-challenges";
+import type { NativeAnalysisSettings } from "./circuitjs-analysis";
+import type { DesignCheck } from "./design-checks";
+import { expertChallenges } from "./expert-challenges";
 
 export type Difficulty = "Foundation" | "Intermediate" | "Advanced" | "Expert";
 export type Domain = "DC" | "AC" | "Semiconductors" | "Op-amps" | "Digital";
@@ -28,6 +31,12 @@ export type Challenge = {
   starterMode?: "connected" | "parts-only";
   recommendedProbes?: string[];
   wiringInstructions?: string[];
+  prerequisites?: string[];
+  reusableBlock?: { name: string; ports: string[]; description: string };
+  recommendedBlocks?: string[];
+  analysisDefaults?: Partial<NativeAnalysisSettings>;
+  preferredInstrument?: 'scope' | 'logic';
+  designChecks?: DesignCheck[];
   blocks?: {
     title: string;
     stages: { name: string; detail: string }[];
@@ -209,7 +218,7 @@ export const challenges: Challenge[] = [
   },
 ];
 
-challenges.push(...practiceChallenges, ...converterChallenges, ...wiringChallenges);
+challenges.push(...practiceChallenges, ...converterChallenges, ...wiringChallenges, ...expertChallenges);
 
 export function getChallenge(slug: string) {
   return challenges.find((challenge) => challenge.slug === slug);

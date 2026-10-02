@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ResultType } from "eecircuit-engine";
 import { chooseProbes, normalizeNgspiceResult } from "../lib/simulator-results";
-import { prepareSimulatorDeck } from "../lib/simulator-netlist-policy";
+import { prepareSimulatorDeck, SIMULATOR_NETLIST_LIMITS } from "../lib/simulator-netlist-policy";
 
 const real = (data: Array<{ name: string; type: string; values: number[] }>, numPoints = 3) => ({ dataType: "real", numPoints, data }) as ResultType;
 const traceData = real([
@@ -42,6 +42,16 @@ test("invalid sample dimensions, nonfinite values and backwards time are rejecte
   assert.throws(() => normalizeNgspiceResult(real([{ name: "time", type: "time", values: [0, 1, Infinity] }]), ".tran 1 2", [], [], 0), /non-finite/);
   assert.throws(() => normalizeNgspiceResult(real([{ name: "time", type: "time", values: [0, 2, 1] }]), ".tran 1 2", [], [], 0), /increase/);
   assert.throws(() => normalizeNgspiceResult(traceData, ".dc V1 0 2 1", [], [], 0), /no sweep axis/);
+});
+
+test("adaptive records and all raw vector values share explicit memory bounds", () => {
+  assert.throws(() => normalizeNgspiceResult(real([], SIMULATOR_NETLIST_LIMITS.adaptiveOutputPoints + 1), ".tran 1u 1m", [], [], 0), /adaptive record limit/);
+  // Shared sparse fixtures verify accounting without allocating a huge result.
+  const values = new Array<number>(SIMULATOR_NETLIST_LIMITS.adaptiveOutputPoints);
+  const overBudget = real(Array.from({ length: 33 }, (_, i) => ({ name: `v(n${i})`, type: "voltage", values })), values.length);
+  assert.throws(() => normalizeNgspiceResult(overBudget, ".tran 1u 1m", ["n0"], [], 0), /value memory budget/);
+  const complex = { dataType: "complex", numPoints: values.length, data: Array.from({ length: 17 }, (_, i) => ({ name: `v(n${i})`, type: "voltage", values })) } as unknown as ResultType;
+  assert.throws(() => normalizeNgspiceResult(complex, ".ac lin 10 1 10", ["n0"], [], 0), /value memory budget/);
 });
 
 test("DC sweep reads its named axis and excludes the axis from voltage traces", () => {

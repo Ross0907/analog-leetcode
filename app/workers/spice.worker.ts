@@ -1,6 +1,5 @@
 /// <reference lib="webworker" />
 
-import { parse } from "@spice-ts/core";
 import { Simulation } from "eecircuit-engine";
 import {
   validateSimulatorNetlist,
@@ -30,11 +29,6 @@ self.onmessage = async (event: MessageEvent<SimulatorWorkerRequest>) => {
     const probes = validateSimulatorProbes(event.data.probes);
     const analysisLine = validateSimulatorNetlist(netlist);
     const started = performance.now();
-    const structuralNetlist = netlist.replace(/^\s*\.include\s+modelcard\.CMOS90\s*$/gim, "");
-    const circuit = parse(structuralNetlist);
-    const componentCount = circuit.toIR().components.length;
-    if (componentCount > 80) throw new Error("This preview is limited to 80 components.");
-
     simulator.setNetList(prepareSimulatorDeck(netlist));
     const result = await simulator.runSim();
     const warnings = simulator.getError().slice(0, 8).map((warning) => safeLabel(warning, 160));

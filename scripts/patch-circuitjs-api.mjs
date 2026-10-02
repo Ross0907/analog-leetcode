@@ -3,6 +3,7 @@
 // CircuitJS retains its solver, terminals, routing and electrical connectivity.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { patchCircuitJsStimulus } from './patch-circuitjs-stimulus.mjs';
 
 const root = process.argv[2];
 if (!root) throw new Error('Pass the extracted CircuitJS1 source directory.');
@@ -454,4 +455,96 @@ replace('JSInterface.java', '\t$wnd.CircuitJS1 = {', `\t$wnd.CircuitJS1 = {
             cancelDrawing: $entry(function() { that.@com.lushprojects.circuitjs1.client.JSInterface::addElement(Ljava/lang/String;)("Select"); }),
             setTheme: $entry(function(theme) { that.@com.lushprojects.circuitjs1.client.JSInterface::setTheme(Ljava/lang/String;)(theme); }),
             getTheme: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::getTheme()(); }),`);
-console.log('Applied CircuitJS measurement, native editing, inline values, theme and KiCad presentation integration.');
+// Fast acquisition bypasses animation pacing only. The upstream accepted-step,
+// adaptive convergence, stamping and measurement paths remain the solver.
+replace('CirSim.java', '    void needAnalyze() {', '    int anacodeCircuitRevision;\n    void needAnalyze() {\n        anacodeCircuitRevision++;');
+replace('JSInterface.java', '    void setMaxTimeStep(double ts) { app.sim.maxTimeStep = app.sim.timeStep = ts; }', `    void setMaxTimeStep(double ts) {
+        if (!(ts > 0) || Double.isNaN(ts) || Double.isInfinite(ts)) return;
+        if (app.sim.maxTimeStep != ts) app.sim.needsStamp = true;
+        app.sim.maxTimeStep = app.sim.timeStep = ts;
+    }`);
+replace('SimulationManager.java', '    void runCircuit(boolean didAnalyze) {', `    boolean anacodeBatch;
+    int anacodeBatchLimit, anacodeBatchSteps;
+    long anacodeBatchDeadline;
+    int anacodeStepSimulation(int maxSteps, int budgetMs) {
+        if (!app.simRunning || anacodeBatch) return 0;
+        anacodeBatch = true;
+        anacodeBatchSteps = 0;
+        anacodeBatchLimit = Math.max(1, Math.min(4096, maxSteps));
+        anacodeBatchDeadline = System.currentTimeMillis() + Math.max(1, Math.min(16, budgetMs));
+        try {
+            boolean didAnalyze = app.analyzeFlag;
+            if (app.analyzeFlag || app.dcAnalysisFlag) { analyzeCircuit(); app.analyzeFlag = false; }
+            if (needsStamp) preStampAndStampCircuit();
+            if (app.stopMessage == null) runCircuit(didAnalyze);
+            return anacodeBatchSteps;
+        } finally { anacodeBatch = false; }
+    }
+    void runCircuit(boolean didAnalyze) {`);
+replace('SimulationManager.java', 'if (lit == 0) {', 'if (lit == 0 && !anacodeBatch) {');
+replace('SimulationManager.java', 'if (1000 >= steprate*(tm-lastIterTime) && !didAnalyze)', 'if (!anacodeBatch && 1000 >= steprate*(tm-lastIterTime) && !didAnalyze)');
+replace('SimulationManager.java', 'boolean delayWireProcessing = app.scopeManager.canDelayWireProcessing();', 'boolean delayWireProcessing = !anacodeBatch && app.scopeManager.canDelayWireProcessing();');
+replace('SimulationManager.java', '\t    app.onTimeStep();', '\t    anacodeBatchSteps++;\n\t    app.onTimeStep();');
+replace('SimulationManager.java', 'if ((timeStepCount-timeStepCountAtFrameStart)*1000 >= steprate*(tm-lastIterTime) || (tm-app.ui.lastFrameTime > frameTimeLimit))', 'if (anacodeBatch ? (anacodeBatchSteps >= anacodeBatchLimit || tm >= anacodeBatchDeadline) : ((timeStepCount-timeStepCountAtFrameStart)*1000 >= steprate*(tm-lastIterTime) || (tm-app.ui.lastFrameTime > frameTimeLimit)))');
+replace('JSInterface.java', '    String getTheme()', `    int stepSimulation(int steps, int milliseconds) { return app.sim.anacodeStepSimulation(steps, milliseconds); }
+    int getCircuitRevision() { return app.anacodeCircuitRevision; }
+    int compactComponentLeads() {
+        int changed = 0;
+        java.util.Vector<CircuitElm> originals = new java.util.Vector<CircuitElm>(app.elmList);
+        for (CircuitElm element : originals) {
+            if (element.getPostCount() != 2 || !(element instanceof ResistorElm || element instanceof CapacitorElm || element instanceof InductorElm || element instanceof VoltageElm || element instanceof CurrentElm || element instanceof BatteryElm)) continue;
+            int x1 = element.getPost(0).x, y1 = element.getPost(0).y, x2 = element.getPost(1).x, y2 = element.getPost(1).y;
+            if ((x1 != x2 && y1 != y2) || Math.abs(x2-x1) + Math.abs(y2-y1) <= 64) continue;
+            int cx = app.snapGrid((x1+x2)/2), cy = app.snapGrid((y1+y2)/2);
+            int dx = x2 > x1 ? 32 : x2 < x1 ? -32 : 0, dy = y2 > y1 ? 32 : y2 < y1 ? -32 : 0;
+            element.x = cx-dx; element.y = cy-dy; element.x2 = cx+dx; element.y2 = cy+dy;
+            element.setPoints();
+            for (int post = 0; post < 2; post++) {
+                Point endpoint = element.getPost(post);
+                WireElm lead = new WireElm(post == 0 ? x1 : x2, post == 0 ? y1 : y2);
+                lead.x2 = endpoint.x; lead.y2 = endpoint.y; lead.setPoints();
+                if (lead.x != lead.x2 || lead.y != lead.y2) app.elmList.add(lead);
+            }
+            changed++;
+        }
+        if (changed > 0) app.needAnalyze();
+        return changed;
+    }
+    void dismissEditors() {
+        dismissInlineEditor();
+        if (CirSim.editDialog != null) CirSim.editDialog.closeDialog();
+    }
+    native void dismissInlineEditor() /*-{
+        if ($wnd.AnaCodeDismissInlineEditor) $wnd.AnaCodeDismissInlineEditor();
+    }-*/;
+    String getTheme()`);
+replace('JSInterface.java', '\t$wnd.CircuitJS1 = {', `\t$wnd.CircuitJS1 = {
+            stepSimulation: $entry(function(steps, milliseconds) { return that.@com.lushprojects.circuitjs1.client.JSInterface::stepSimulation(II)(steps, milliseconds); }),
+            getCircuitRevision: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::getCircuitRevision()(); }),
+            compactComponentLeads: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::compactComponentLeads()(); }),
+            dismissEditors: $entry(function() { that.@com.lushprojects.circuitjs1.client.JSInterface::dismissEditors()(); }),`);
+// Native properties close through their own lifecycle so no stale modal state
+// survives dismissal. Auto-hide is limited to property editors, not file dialogs.
+replace('EditDialog.java', 'super(); // Do we need this?', `super();
+        setAutoHideEnabled(true);
+        addCloseHandler(event -> { if (event.isAutoClosed()) closeDialog(); });`);
+replace('MouseManager.java', "var previous = $doc.querySelector('.anacode-inline-value'); if (previous) previous.remove();", 'if ($wnd.AnaCodeDismissInlineEditor) $wnd.AnaCodeDismissInlineEditor();');
+replace('MouseManager.java', 'function close() { closing = true; box.remove(); cv.focus(); }', `function close() { closing = true; box.remove(); $doc.removeEventListener('pointerdown', outside, true); if ($wnd.AnaCodeDismissInlineEditor === dismiss) $wnd.AnaCodeDismissInlineEditor = null; }
+        function dismiss() { if (closing) return; ce.setEditableValue(input.value); close(); }
+        function outside(event) { if (!box.contains(event.target)) dismiss(); }
+        $wnd.AnaCodeDismissInlineEditor = dismiss;
+        $doc.addEventListener('pointerdown', outside, true);`);
+replace('MouseManager.java', "input.addEventListener('blur', function() { if (!closing && box.isConnected) apply(); });", "input.addEventListener('blur', function() { if (!closing && box.isConnected) dismiss(); });");
+replace('VoltageElm.java', 'inds="*";', 'inds="";');
+// Actual junctions are computed by upstream post counting. Selection retains
+// native hit-testing but no longer paints filled bubbles over device terminals.
+replace('SimulationManager.java', 'if (entry.getValue() != 2)', 'if (entry.getValue() >= 3)');
+replaceSection('CircuitElm.java', '    void drawPosts(Graphics g) {', '    void drawScopeTerminalLabels(Graphics g) {', `    void drawPosts(Graphics g) {
+        if (isCreating() || needsHighlight()) drawScopeTerminalLabels(g);
+    }
+
+`);
+replace('CircuitElm.java', 'g.fillOval(pt.x-3, pt.y-3, 7, 7);', 'g.fillOval(pt.x-2, pt.y-2, 4, 4);');
+replace('UIManager.java', 'CircuitElm.lightGrayColor = new Color(anacodeLight ? "#56616e" : "#aab2bf");', 'CircuitElm.lightGrayColor = CircuitElm.whiteColor;');
+patchCircuitJsStimulus(client);
+console.log('Applied CircuitJS native editing, bounded solver acquisition and attributed symbol presentation.');

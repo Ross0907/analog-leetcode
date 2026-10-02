@@ -21,7 +21,7 @@ if (process.argv.includes('--record')) {
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   assert.deepEqual(files, manifest.files, 'CircuitJS assets changed: rebuild/review and record their manifest.');
   assert.equal(files.find((file) => file.path === 'upstream-source.zip')?.sha256, manifest.sourceArchiveSha256);
-  for (const script of ['patch-circuitjs-api.mjs', 'build-circuitjs.ps1']) {
+  for (const script of ['patch-circuitjs-api.mjs', 'patch-circuitjs-stimulus.mjs', 'build-circuitjs.ps1']) {
     assert.equal(readFileSync(join(root, script), 'utf8'), readFileSync(resolve('scripts', script), 'utf8'), `Distributed ${script} differs from the reviewed build input.`);
   }
   for (const required of ['COPYING.txt','GWT-COPYING.txt','NOTICE.html','patch-circuitjs-api.mjs','build-circuitjs.ps1','circuitjs1/circuitjs1.nocache.js']) assert.ok(files.some((file) => file.path === required), `Missing ${required}`);

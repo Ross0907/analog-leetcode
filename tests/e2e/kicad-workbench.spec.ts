@@ -14,13 +14,13 @@ async function nativeKiCadEditor(page: Page): Promise<Frame> {
   await expect.poll(() => frame.evaluate(() => {
     const native = window as unknown as KiCadWindow;
     return { ready: native.AnaCodeKiCad?.ready ?? false, source: native.AnaCodeKiCad?.source, error: native.AnaCodeKiCadError ?? null };
-  }), { message: 'The real KiCad SVG library must load in the native editor', timeout: 30_000 }).toEqual({
-    ready: true, source: 'KiCad official symbol library', error: null,
+  }), { message: 'The attributed symbol library must load in the native editor', timeout: 30_000 }).toEqual({
+    ready: true, source: 'Analog Canvas textbook symbols; KiCad fallback symbols', error: null,
   });
   return frame;
 }
 
-test('the KiCad resistor palette creates a real editable native component', async ({ page }) => {
+test('the textbook resistor palette creates a real editable native component', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/problems/precision-voltage-divider');
@@ -116,7 +116,7 @@ test('connected DC, CMOS and op-amp projects use official symbols while the nati
         const source = native.CircuitJS1.getElements().find((element) => element.getType() === 'VoltageElm')!;
         return native.AnaCodeKiCad!.canDraw(source);
       });
-      expect(acSourceDrawable, 'The AC source must retain its native waveform symbol instead of a DC mark').toBe(false);
+      expect(acSourceDrawable, 'The AC source uses the upstream voltage-source circle, while DC uses the battery definition').toBe(true);
     }
   }
   expect(errors).toEqual([]);

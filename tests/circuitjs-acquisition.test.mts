@@ -69,3 +69,18 @@ test('reset clears stale history, invalid readings stop acquisition, explicit ti
   assert.equal(native.step(), 0.0001);
   assert.deepEqual(native.runningCalls, [true]);
 });
+
+test('live capture retains adaptive accepted steps and rejects edits even when element identity stays the same', () => {
+  const native = fixture(), errors: string[] = [];
+  let revision = 1;
+  native.api.getCircuitRevision = () => revision;
+  const session = startCircuitJsAcquisition(native.api, native.probes, {duration:1, samples:128, onError:(message) => errors.push(message)});
+  native.tick(0, 0); native.tick(1e-8, 1); native.tick(2e-8, 2);
+  assert.deepEqual(session.snapshot()!.x, [0,1e-8,2e-8]);
+  assert.deepEqual(session.snapshot()!.traces[0].values, [0,1,2]);
+  revision++;
+  native.tick(3e-8, 3);
+  assert.equal(session.stopped, true);
+  assert.equal(session.totalSamples, 3);
+  assert.match(errors[0], /Circuit changed/);
+});

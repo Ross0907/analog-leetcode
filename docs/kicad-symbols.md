@@ -1,5 +1,10 @@
 # Official KiCad symbol presentation
 
+Common textbook symbols now come from the pinned [Analog Canvas catalog](analog-canvas-symbols.md).
+This KiCad collection remains an audited fallback and retains its original
+exports and source attribution. The older presentation details below describe
+that fallback collection, not the default common-symbol artwork.
+
 AnaCode's symbol artwork is exported by the official **KiCad 9.0.9** CLI from
 the KiCad community's symbol library **9.0.9**, revision
 [`ad36cd14bcd1b1cd0484f629ccdd3481366f74f3`](https://gitlab.com/kicad/libraries/kicad-symbols/-/tree/ad36cd14bcd1b1cd0484f629ccdd3481366f74f3).

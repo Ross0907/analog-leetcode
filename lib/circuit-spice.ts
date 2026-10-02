@@ -5,6 +5,7 @@ import {
   type CircuitIR,
   type CircuitIRComponent,
 } from "./circuit-document";
+import { STANDARD_SPICE_MODELS } from "./spice-model-library";
 
 /**
  * Trusted adapter from the bounded schematic contract to simulator input.
@@ -14,6 +15,7 @@ import {
  */
 
 const MODEL_DECKS = Object.freeze({
+  ...STANDARD_SPICE_MODELS,
   "generic-silicon": {
     name: "AC_DIODE_GENERIC",
     line: ".model AC_DIODE_GENERIC D(IS=1e-14 N=1.05 RS=0.2 CJO=2e-12 TT=4e-9)",
@@ -115,6 +117,7 @@ function waveformText(
   if (waveform.type === "sine") {
     return ` SIN(${spiceNumber(waveform.offset)} ${spiceNumber(waveform.amplitude)} ${spiceNumber(waveform.frequencyHz)} ${spiceNumber(waveform.delayS)} ${spiceNumber(waveform.dampingPerS)} ${spiceNumber(waveform.phaseDeg)})`;
   }
+  if (waveform.type === "pwl") return ` PWL(${waveform.points.map(point => `${spiceNumber(point.timeS)} ${spiceNumber(point.value)}`).join(" ")})`;
   return ` PULSE(${spiceNumber(waveform.low)} ${spiceNumber(waveform.high)} ${spiceNumber(waveform.delayS)} ${spiceNumber(waveform.riseS)} ${spiceNumber(waveform.fallS)} ${spiceNumber(waveform.widthS)} ${spiceNumber(waveform.periodS)})`;
 }
 
@@ -126,6 +129,8 @@ function sourceAcText(ac: { magnitude: number; phaseDeg: number } | undefined) {
 
 function deviceName(component: CircuitIRComponent): string | null {
   if (component.kind === "ground") return null;
+  if (component.kind === "op-amp-model") return `X_${component.reference}`;
+  if (component.kind === "op-amp-ideal" && component.parameters.outputMinV !== undefined) return `B_${component.reference}`;
   return component.kind === "op-amp-ideal"
     ? `E_${component.reference}`
     : component.reference;
@@ -171,14 +176,32 @@ function renderComponent(
     }
     case "mosfet-nmos":
     case "mosfet-pmos": {
+      if (component.parameters.model === "native-nmos" || component.parameters.model === "native-pmos") {
+        const { thresholdV, beta } = component.parameters;
+        if (thresholdV === undefined || beta === undefined) throw new Error('Native MOSFET analysis requires its threshold and beta parameters.');
+        const model = `AC_NATIVE_${component.reference}`;
+        return `${component.reference} ${node(component, "drain")} ${node(component, "gate")} ${node(component, "source")} ${node(component, "body")} ${model} W=1u L=1u\n.model ${model} ${component.kind === 'mosfet-nmos' ? 'NMOS' : 'PMOS'} (LEVEL=1 VTO=${spiceNumber(thresholdV)} KP=${spiceNumber(beta)})`;
+      }
       models.add(component.parameters.model);
       const model = MODEL_DECKS[component.parameters.model].name;
+      if (component.parameters.model === "irfp240" || component.parameters.model === "irfp9240") {
+        if (node(component, 'body') !== node(component, 'source')) throw new Error('This discrete power MOSFET model requires its body tied to its source.');
+        return `${component.reference} ${node(component, "drain")} ${node(component, "gate")} ${node(component, "source")} ${model}`;
+      }
       return `${component.reference} ${node(component, "drain")} ${node(component, "gate")} ${node(component, "source")} ${node(component, "body")} ${model} W=${spiceNumber(component.parameters.widthM)} L=${spiceNumber(component.parameters.lengthM)} M=${spiceNumber(component.parameters.multiplier)}`;
     }
     case "vcvs":
       return `${component.reference} ${node(component, "outputPositive")} ${node(component, "outputNegative")} ${node(component, "controlPositive")} ${node(component, "controlNegative")} ${spiceNumber(component.parameters.gain)}`;
     case "op-amp-ideal":
+      if (component.parameters.outputMinV !== undefined && component.parameters.outputMaxV !== undefined) {
+        const { outputMinV, outputMaxV, openLoopGain } = component.parameters;
+        if (outputMinV >= outputMaxV) throw new Error('Op-amp lower output limit must be below the upper limit.');
+        return `B_${component.reference} ${node(component, "output")} 0 V=max(${spiceNumber(outputMinV)},min(${spiceNumber(outputMaxV)},${spiceNumber(openLoopGain)}*(V(${node(component, "nonInverting")})-V(${node(component, "inverting")}))))`;
+      }
       return `E_${component.reference} ${node(component, "output")} 0 ${node(component, "nonInverting")} ${node(component, "inverting")} ${spiceNumber(component.parameters.openLoopGain)}`;
+    case "op-amp-model":
+      models.add(component.parameters.model);
+      return `X_${component.reference} ${node(component, 'nonInverting')} ${node(component, 'inverting')} ${node(component, 'positiveSupply')} ${node(component, 'negativeSupply')} ${node(component, 'output')} ${MODEL_DECKS[component.parameters.model].name}`;
   }
 }
 

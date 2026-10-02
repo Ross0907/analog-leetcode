@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Presentation adapter for CircuitJS. Symbol geometry is exported by KiCad;
 // CircuitJS alone owns terminals, hit testing, editing, connectivity and solving.
+import { createAnalogCanvasRenderer } from '../analog-canvas/renderer.js';
 const definitions = {
   ResistorElm: { source: 'Device:R_US', pins: ['1', '2'], scale: 5 },
   CapacitorElm: { source: 'Device:C', pins: ['1', '2'], scale: 5 },
@@ -167,6 +168,7 @@ async function loadImage(svg) {
 }
 
 export async function createKiCadRenderer() {
+  const analog = await createAnalogCanvasRenderer();
   const response = await fetch('/kicad/symbols.json');
   if (!response.ok) throw new Error('The official KiCad symbol library is unavailable.');
   const manifest = await response.json();
@@ -193,13 +195,14 @@ export async function createKiCadRenderer() {
   };
   return {
     ready: true,
-    source: 'KiCad official symbol library',
-    setTheme(value) { theme = value === 'dark' ? 'dark' : 'light'; },
+    source: 'Analog Canvas textbook symbols; KiCad fallback symbols',
+    setTheme(value) { theme = value === 'dark' ? 'dark' : 'light'; analog.setTheme(theme); },
     canDraw(element) {
-      try { return Boolean(select(element)); }
+      try { return analog.canDraw(element) || Boolean(select(element)); }
       catch { return false; }
     },
     draw(context, element, selected) {
+      if (analog.canDraw(element)) return analog.draw(context, element, selected);
       let entry;
       try { entry = select(element); }
       catch { return false; }

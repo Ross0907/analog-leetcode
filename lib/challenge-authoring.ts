@@ -124,6 +124,7 @@ const EDITABLE_PARAMETERS_BY_KIND: Readonly<Record<ComponentKind, readonly Edita
   "mosfet-pmos": ["widthM", "lengthM", "multiplier"],
   vcvs: ["gain"],
   "op-amp-ideal": ["openLoopGain"],
+  "op-amp-model": [],
 };
 
 const authoredProbeSchema = z
