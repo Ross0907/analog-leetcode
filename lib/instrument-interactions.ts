@@ -1,6 +1,28 @@
 export type PlotPoint = { x: number; y: number };
 export type PlotBounds = { minimum: number; maximum: number };
 export type PlotRectangle = { left: number; top: number; width: number; height: number };
+export type TimeWindowMode = 'samples' | 'elapsed' | 'requested';
+
+/** Empty parts of a requested time window remain empty; this only chooses axis bounds. */
+export function fitTimeWindow(bounds: PlotBounds, mode: TimeWindowMode, requestedDuration?: number): PlotBounds {
+  if (mode === 'samples') return bounds;
+  const maximum = mode === 'requested' && Number.isFinite(requestedDuration) && requestedDuration! > 0 ? requestedDuration! : bounds.maximum;
+  return { minimum: Math.min(0, bounds.minimum), maximum: Math.max(maximum, Number.EPSILON) };
+}
+
+/** Display offsets separate channels; the source arrays and physical measurements never change. */
+export function stackedTraceOffsets(traces: readonly { id: string; minimum: number; maximum: number }[]): Record<string, number> {
+  const valid = traces.filter(trace => Number.isFinite(trace.minimum) && Number.isFinite(trace.maximum));
+  const span = Math.max(1e-12, ...valid.map(trace => Math.max(trace.maximum - trace.minimum, Math.max(Math.abs(trace.minimum), Math.abs(trace.maximum)) * 0.1)));
+  return Object.fromEntries(valid.map((trace, index) => [trace.id, ((valid.length - 1) / 2 - index) * span * 1.35 - (trace.minimum + trace.maximum) / 2]));
+}
+
+export function availableFftLength(time: readonly number[], maximum = 131072) {
+  let largestInterval = 0;
+  for (let index = 1; index < time.length; index++) largestInterval = Math.max(largestInterval, time[index]! - time[index - 1]!);
+  const count = largestInterval > 0 ? Math.floor(((time.at(-1) ?? 0) - (time[0] ?? 0)) / largestInterval + 1e-8) + 1 : 0;
+  return Math.max(64, 2 ** Math.floor(Math.log2(Math.max(1, Math.min(maximum, count)))));
+}
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value));
 

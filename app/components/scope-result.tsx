@@ -2,20 +2,28 @@
 
 import { memo, useState } from 'react';
 import type { SimulationPayload } from '../../lib/simulator-contract';
-import { formatEngineering } from '../../lib/engineering';
 import { BrowserOscilloscope, type OscilloscopeDomain } from './browser-oscilloscope';
 import { SpectrumAnalyzer } from './spectrum-analyzer';
 import { LogicAnalyzer } from './logic-analyzer';
-import { TraceAppearanceProvider } from './instrument-state';
+import { TraceAppearanceProvider, InstrumentPresentationProvider, useInstrumentPanel } from './instrument-state';
+import { DcReadout } from './dc-readout';
 import instrumentStyles from './instrument-workspace.module.css';
 
-export const ScopeResult = memo(function ScopeResult({ payload, preferredInstrument = 'scope' }: { payload: SimulationPayload; preferredInstrument?: 'scope' | 'logic' }) {
-  return <TraceAppearanceProvider><ResultViews key={preferredInstrument} payload={payload} preferredInstrument={preferredInstrument}/></TraceAppearanceProvider>;
+export type ScopeResultProps = {
+  payload: SimulationPayload;
+  preferredInstrument?: 'scope' | 'logic' | 'dc';
+  recordDuration?: number;
+  onMaximizedChange?: (maximized: boolean) => void;
+};
+
+export const ScopeResult = memo(function ScopeResult({ payload, preferredInstrument = 'scope', recordDuration, onMaximizedChange }: ScopeResultProps) {
+  return <TraceAppearanceProvider><InstrumentPresentationProvider key={payload.analysis + ':' + preferredInstrument} onMaximizedChange={onMaximizedChange}><ResultViews payload={payload} preferredInstrument={preferredInstrument} recordDuration={recordDuration}/></InstrumentPresentationProvider></TraceAppearanceProvider>;
 });
 
-function ResultViews({ payload, preferredInstrument }: { payload: SimulationPayload; preferredInstrument: 'scope' | 'logic' }) {
-  const [view, setView] = useState<'all' | 'scope' | 'spectrum' | 'logic'>(preferredInstrument);
-  if (payload.analysis === "dc") return <div className="op-grid">{payload.operatingPoint.map((point) => <div key={point.name}><span>{point.name}</span><strong>{formatEngineering(point.value, point.unit ?? "V")}</strong></div>)}</div>;
+function ResultViews({ payload, preferredInstrument, recordDuration }: { payload: SimulationPayload; preferredInstrument: 'scope' | 'logic' | 'dc'; recordDuration?: number }) {
+  const [view, setView] = useState<'all' | 'scope' | 'spectrum' | 'logic' | 'dc'>(preferredInstrument);
+  const panels = useInstrumentPanel('measurement-views');
+  if (payload.analysis === "dc") return <DcReadout values={payload.operatingPoint}/>;
   if (payload.analysis === "ac") {
     const magnitude = payload.traces.filter((trace) => trace.quantity === "magnitude");
     const phase = payload.traces.filter((trace) => trace.quantity === "phase");
@@ -23,6 +31,7 @@ function ResultViews({ payload, preferredInstrument }: { payload: SimulationPayl
       <div className="scope-host bode-analyzer-stack">
         <BrowserOscilloscope
           key={`magnitude:${magnitude.map((trace) => trace.id).join("|")}`}
+          instrumentId="bode-magnitude"
           x={payload.x}
           traces={magnitude}
           domain="frequency"
@@ -36,6 +45,7 @@ function ResultViews({ payload, preferredInstrument }: { payload: SimulationPayl
         />
         <BrowserOscilloscope
           key={`phase:${phase.map((trace) => trace.id).join("|")}`}
+          instrumentId="bode-phase"
           x={payload.x}
           traces={phase}
           domain="frequency"
@@ -56,10 +66,12 @@ function ResultViews({ payload, preferredInstrument }: { payload: SimulationPayl
   return (
     <div className="scope-host">
       {payload.analysis === "transient" && <div className={instrumentStyles.views} role="group" aria-label="Measurement view">
-        {(['all', 'scope', 'spectrum', 'logic'] as const).map((value) => <button type="button" key={value} aria-pressed={view === value} onClick={() => setView(value)}>{value === 'all' ? 'Scope + FFT' : value === 'scope' ? 'Oscilloscope' : value === 'spectrum' ? 'Spectrum' : 'Logic analyzer'}</button>)}
+        {(['scope', 'spectrum', 'logic', 'dc', 'all'] as const).map((value) => <button type="button" key={value} aria-pressed={view === value} onClick={() => { panels.restore(); setView(value); }}>{value === 'all' ? 'Scope + FFT' : value === 'scope' ? 'Oscilloscope' : value === 'spectrum' ? 'Spectrum' : value === 'logic' ? 'Logic analyzer' : 'DC readings'}</button>)}
       </div>}
       {(payload.analysis !== "transient" || view === 'all' || view === 'scope') && groups.map((group) => <BrowserOscilloscope
         key={`${payload.analysis}:${group.unit}:${group.traces.map((trace) => trace.id).join("|")}`}
+        instrumentId={`${payload.analysis}:${group.unit}`}
+        recordDuration={recordDuration}
         x={payload.x}
         traces={group.traces}
         domain={domain}
@@ -72,7 +84,8 @@ function ResultViews({ payload, preferredInstrument }: { payload: SimulationPayl
         height={360}
       />)}
       {payload.analysis === "transient" && (view === 'all' || view === 'spectrum') && <SpectrumAnalyzer time={payload.x} traces={payload.traces} />}
-      {payload.analysis === "transient" && view === 'logic' && <LogicAnalyzer payload={payload}/>}
+      {payload.analysis === "transient" && view === 'logic' && <LogicAnalyzer payload={payload} recordDuration={recordDuration}/>}
+      {payload.analysis === "transient" && view === 'dc' && <DcReadout sampleTime={payload.x.at(-1)} values={payload.traces.map(trace => ({ name: trace.name, value: trace.values.at(-1) ?? NaN, unit: trace.unit }))}/>}
     </div>
   );
 }

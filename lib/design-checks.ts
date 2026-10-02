@@ -1,7 +1,7 @@
 import type { SimulationPayload } from './simulator-contract';
 
 export type DesignCheck = {
-  id: string; label: string; node: string; analysis: 'dc' | 'transient' | 'ac';
+  id: string; label: string; node: string; analysis: 'dc' | 'transient' | 'ac' | 'dc-sweep';
   kind: 'sample' | 'mean' | 'peak-to-peak'; at?: number; from?: number; to?: number;
   min: number; max: number; unit: string; scale?: number;
 };
@@ -24,7 +24,10 @@ export function evaluateDesignChecks(checks: readonly DesignCheck[], result: Sim
         if (!trace || !result.x.length) throw Error(`Probe ${check.node} and run again.`);
         const values = trace.values.map(value => check.analysis === 'ac' && trace.unit === 'dB' ? 10 ** (value / 20) : value);
         const sample = (at: number) => {
-          if (at < result.x[0] || at > result.x[result.x.length - 1]) throw Error('Extend the analysis to cover the measurement interval.');
+          const last = result.x[result.x.length - 1];
+          const rounding = Math.max(Math.abs(result.x[0]), Math.abs(last), Number.MIN_VALUE) * 1e-12;
+          if (at < result.x[0] - rounding || at > last + rounding) throw Error('Extend the analysis to cover the measurement interval.');
+          if (at >= last - rounding) return values[values.length - 1];
           const next = result.x.findIndex(value => value >= at);
           if (next <= 0 || result.x[next] === at) return values[Math.max(next, 0)];
           const fraction = (at - result.x[next - 1]) / (result.x[next] - result.x[next - 1]);

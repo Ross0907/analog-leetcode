@@ -125,6 +125,7 @@ const EDITABLE_PARAMETERS_BY_KIND: Readonly<Record<ComponentKind, readonly Edita
   vcvs: ["gain"],
   "op-amp-ideal": ["openLoopGain"],
   "op-amp-model": [],
+  "voltage-controlled-switch": [],
 };
 
 const authoredProbeSchema = z
@@ -228,6 +229,15 @@ export const challengeAuthoringTemplateSchema = z
           .max(CHALLENGE_AUTHORING_LIMITS.allowedComponents),
         analysis: authoredAnalysisSchema,
         probes: z.array(authoredProbeSchema).min(1).max(CHALLENGE_AUTHORING_LIMITS.probes),
+        nativeView: z.object({
+          preferredInstrument: z.enum(['dc', 'scope', 'logic']),
+          acquisitionMode: z.enum(['live', 'restart-record']),
+          captureDurationS: z.number().finite().min(1e-9).max(10),
+          captureSamples: z.number().int().min(64).max(131072),
+          probeNodes: z.array(z.enum(['vin', 'vout', 'nsum'])).min(1).max(3),
+          sourceStyle: z.literal('vertical-with-ground-return'),
+          stimulus: z.literal('preserve-reviewed-preset'),
+        }).strict().optional(),
       })
       .strict(),
     grading: z
@@ -328,6 +338,12 @@ export function validateChallengeAuthoringTemplate(input: unknown): ChallengeTem
   }
 
   const partsOnly = template.workspace.starterSchematic.partsOnly;
+  if (template.workspace.nativeView) {
+    const allowedNodes = template.workspace.starterSchematic.presetSlug === 'inverting-gain-stage' ? ['vin', 'vout', 'nsum'] : ['vin', 'vout'];
+    if (template.workspace.nativeView.probeNodes.some(node => !allowedNodes.includes(node))) diagnostics.push({ path: '$.workspace.nativeView.probeNodes', message: 'Choose a node that exists in the selected native starter.' });
+    if (!template.workspace.nativeView.probeNodes.includes('vout')) diagnostics.push({ path: '$.workspace.nativeView.probeNodes', message: 'Keep vout among the default probes so the checked output is visible.' });
+    findDuplicates(template.workspace.nativeView.probeNodes, '$.workspace.nativeView.probeNodes', diagnostics);
+  }
   if (partsOnly && gradingBlueprint(partsOnly.nativePresetSlug) !== template.workspace.starterSchematic.presetSlug) {
     diagnostics.push({
       path: "$.workspace.starterSchematic.partsOnly.nativePresetSlug",
@@ -532,6 +548,7 @@ export const challengeAuthoringStarterTemplate: ChallengeAuthoringTemplate = par
     probes: [
       { probeId: "probe-vout", label: "V(out)", purpose: "Observe the divider output voltage.", role: "public-check" },
     ],
+    nativeView: { preferredInstrument: 'dc', acquisitionMode: 'live', captureDurationS: .001, captureSamples: 8192, probeNodes: ['vout'], sourceStyle: 'vertical-with-ground-return', stimulus: 'preserve-reviewed-preset' },
   },
   grading: {
     mode: "fixed-topology",

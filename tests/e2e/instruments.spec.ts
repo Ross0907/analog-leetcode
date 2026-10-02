@@ -71,7 +71,8 @@ async function expectPlotTheme(page: Page, scope: Locator, theme: 'light' | 'dar
 
 async function openSpice(page: Page) {
   await page.goto("/lab");
-  await expect(page.getByRole("region", { name: "CircuitJS schematic and simulation workspace", exact: true }).locator('p[role="status"]')).toContainText("Editor ready", { timeout: 45_000 });
+  await expect(page.getByRole("region", { name: "CircuitJS schematic and simulation workspace", exact: true }).locator('p[role="status"]')).toContainText(/Editor ready|Captured/, { timeout: 45_000 });
+  await expect(page.getByRole('button', { name: 'Capture all probes', exact: true })).toBeEnabled({ timeout: 45_000 });
   await openSettings(page, "Analysis, sources & models");
   await page.getByLabel("SPICE analysis source", { exact: true }).selectOption("deck");
   await page.locator(".advanced-netlist > summary").click();
@@ -164,6 +165,7 @@ test("real ngspice acquires more than four probes and the waveform/FFT controls 
 });
 
 test("AC Bode and DC operating point use the actual solver; missing probes fail visibly", async ({ page }) => {
+  test.setTimeout(120_000); // Four real solver runs, including the deliberate missing-probe failure.
   await openSpice(page);
   const editor = page.getByRole("textbox", { name: "Advanced SPICE source editor" });
   await editor.fill("* RC low pass\nV1 vin 0 DC 1 AC 1\nR1 vin out 1k\nC1 out 0 1u\n.ac dec 20 10 100k\n.end");
@@ -199,7 +201,8 @@ test("AC Bode and DC operating point use the actual solver; missing probes fail 
 test("the native CircuitJS editor captures node and component probes into shared instruments", async ({ page }) => {
   await page.goto("/lab");
   const workspace = page.getByRole("region", { name: "CircuitJS schematic and simulation workspace", exact: true });
-  await expect(workspace.locator('p[role="status"]')).toContainText("Editor ready", { timeout: 45_000 });
+  await expect(workspace.locator('p[role="status"]')).toContainText(/Editor ready|Captured/, { timeout: 45_000 });
+  await expect(workspace.getByRole('button', { name: 'Capture all probes', exact: true })).toBeEnabled({ timeout: 45_000 });
   await openSettings(page, "Probes & capture settings");
   await expect(workspace.getByLabel("Probe 1 name", { exact: true })).toBeVisible();
   await workspace.getByRole("combobox", { name: "Node voltage probe", exact: true }).selectOption("0");
@@ -230,7 +233,8 @@ test("live acquisition remains bounded, updates real samples and freezes without
   const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/lab');
   const workspace = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
-  await expect(workspace.locator('p[role="status"]')).toContainText('Editor ready', { timeout: 45000 });
+  await expect(workspace.locator('p[role="status"]')).toContainText(/Editor ready|Captured/, { timeout: 45000 });
+  await expect(workspace.getByRole('button', { name: 'Capture all probes', exact: true })).toBeEnabled({ timeout: 45_000 });
   const native = page.frameLocator('iframe[title="CircuitJS schematic editor"]');
   await openSettings(page, 'Probes & capture settings');
   const settings = workspace.getByLabel('Capture target samples', { exact: true });
@@ -239,6 +243,7 @@ test("live acquisition remains bounded, updates real samples and freezes without
   await expect(settings).toHaveValue('131072');
   await settings.selectOption('1024');
   await workspace.getByLabel('Probe 1 name', { exact: true }).fill('Input rail');
+  await workspace.getByLabel('Live acquisition mode', { exact: true }).selectOption('continuous');
   await workspace.getByRole('button', { name: 'Start live measurements', exact: true }).click();
   const status = workspace.getByLabel('Live acquisition status', { exact: true });
   const samples = async () => Number((await status.textContent())!.replace(/[^0-9]/g, ''));
@@ -294,7 +299,8 @@ test("live acquisition remains bounded, updates real samples and freezes without
 test("SPICE reads changed native component values and never silently substitutes an unsupported graph", async ({ page }) => {
   await page.goto('/lab');
   const workspace = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
-  await expect(workspace.locator('p[role="status"]')).toContainText('Editor ready', { timeout: 45000 });
+  await expect(workspace.locator('p[role="status"]')).toContainText(/Editor ready|Captured/, { timeout: 45000 });
+  await expect(workspace.getByRole('button', { name: 'Capture all probes', exact: true })).toBeEnabled({ timeout: 45_000 });
   const native = page.frameLocator('iframe[title="CircuitJS schematic editor"]');
   await native.locator('body').evaluate((_, text) => { const api = (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1; api.importCircuit(text, false); api.setSimRunning(true); }, CIRCUITJS_STARTERS['precision-voltage-divider']!);
   await openSettings(page, 'Probes & capture settings');

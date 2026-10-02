@@ -13,12 +13,13 @@ import {
   type PointerEvent as ReactPointerEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { Activity, Eye, EyeOff, RotateCcw, SlidersHorizontal, Zap } from "lucide-react";
+import { Activity, Download, Eye, EyeOff, Layers, Maximize2, Minimize2, RotateCcw, SlidersHorizontal, Zap } from "lucide-react";
 import { crossings, interpolateWaveform, measureWaveform } from "../../lib/waveform-analysis";
 import { probeColor } from "../../lib/probe-colors";
-import { rectangleView, nearestPlotTrace, instrumentTraceColor, type PlotPoint } from "../../lib/instrument-interactions";
-import { useInstrumentTheme, useTraceAppearance } from "./instrument-state";
+import { rectangleView, nearestPlotTrace, instrumentTraceColor, fitTimeWindow, stackedTraceOffsets, type PlotPoint, type TimeWindowMode } from "../../lib/instrument-interactions";
+import { useInstrumentTheme, useTraceAppearance, useInstrumentPanel } from "./instrument-state";
 import { TraceContextMenu } from "./trace-context-menu";
+import { exportInstrumentPng } from "./instrument-export";
 
 export type OscilloscopeDomain = "time" | "frequency" | "sweep";
 export type OscilloscopeCoupling = "DC" | "AC";
@@ -34,6 +35,7 @@ export interface OscilloscopeTrace {
   /** Hex color. Invalid values fall back to the channel palette. */
   color?: string;
   lineWidth?: number;
+  displayOffset?: number;
   unit?: string;
   initiallyVisible?: boolean;
   initialCoupling?: OscilloscopeCoupling;
@@ -72,6 +74,9 @@ export interface BrowserOscilloscopeProps {
   maxDevicePixelRatio?: number;
   maxChannels?: number;
   maxSamples?: number;
+  instrumentId?: string;
+  recordDuration?: number;
+  onAutoSet?: () => void;
   onTriggerChange?: (trigger: OscilloscopeTrigger) => void;
   onCursorsChange?: (cursors: OscilloscopeCursorReadout) => void;
 }
@@ -84,6 +89,7 @@ type PreparedTrace = {
   unit: string;
   color: string;
   lineWidth: number;
+  displayOffset: number;
   coupling: OscilloscopeCoupling;
   points: Point[];
   measurements: TraceMeasurements;
@@ -132,9 +138,15 @@ export function BrowserOscilloscope({
   maxSamples = 250_000,
   onTriggerChange,
   onCursorsChange,
+  instrumentId,
+  recordDuration,
+  onAutoSet,
 }: BrowserOscilloscopeProps) {
   const controlId = useId();
   const theme = useInstrumentTheme();
+  const panel = useInstrumentPanel(instrumentId ?? controlId);
+  const [timeWindow, setTimeWindow] = useState<TimeWindowMode>('elapsed');
+  const [exportError, setExportError] = useState<string | null>(null);
   const [appearances, setAppearances] = useTraceAppearance();
   const [traceMenu, setTraceMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const closeTraceMenu = useCallback(() => setTraceMenu(null), []);
@@ -173,8 +185,8 @@ export function BrowserOscilloscope({
   const effectiveXLabel = xLabel ?? (domain === "time" ? "Time" : domain === "frequency" ? "Frequency" : "Sweep");
   const channelLimit = clamp(Math.trunc(maxChannels), 1, 32);
   const sampleLimit = clamp(Math.trunc(maxSamples), 1_000, 1_000_000);
-  const boundedHeight = clamp(height, 260, 720);
-  const activeTraces = useMemo(() => traces.length > channelLimit ? [] : traces.filter((trace) => !removed.has(trace.id)).map((trace) => ({ ...trace, name: names[trace.id] ?? trace.name, color: instrumentTraceColor(safeColor(appearances[trace.id]?.color ?? trace.color, probeColor(trace.id)), theme), lineWidth: appearances[trace.id]?.width ?? trace.lineWidth ?? 1.7 })), [channelLimit, traces, removed, names, appearances, theme]);
+  const boundedHeight = clamp(panel.maximized ? 540 : height, 260, 720);
+  const activeTraces = useMemo(() => traces.length > channelLimit ? [] : traces.filter((trace) => !removed.has(trace.id)).map((trace) => ({ ...trace, name: names[trace.id] ?? trace.name, color: instrumentTraceColor(safeColor(appearances[trace.id]?.color ?? trace.color, probeColor(trace.id)), theme), lineWidth: appearances[trace.id]?.width ?? trace.lineWidth ?? 1.7, displayOffset: appearances[trace.id]?.offset ?? trace.displayOffset ?? 0 })), [channelLimit, traces, removed, names, appearances, theme]);
   const resolvedVisibility = useMemo(
     () => Object.fromEntries(activeTraces.map((trace) => [trace.id, visibility[trace.id] ?? trace.initiallyVisible !== false])),
     [activeTraces, visibility],
@@ -185,8 +197,13 @@ export function BrowserOscilloscope({
   );
 
   const xBounds = useMemo(
-    () => findDomainBounds(x, effectiveXScale, sampleLimit),
-    [x, effectiveXScale, sampleLimit],
+    () => {
+      const bounds = findDomainBounds(x, effectiveXScale, sampleLimit);
+      if (domain !== 'time' || effectiveXScale !== 'linear') return bounds;
+      const view = fitTimeWindow({ minimum: bounds.minimum, maximum: bounds.maximum }, timeWindow, recordDuration);
+      return { minimum: view.minimum, maximum: view.maximum, transformedMin: view.minimum, transformedMax: view.maximum };
+    },
+    [x, domain, effectiveXScale, sampleLimit, timeWindow, recordDuration],
   );
   const fullTransformedSpan = Math.max(xBounds.transformedMax - xBounds.transformedMin, Number.EPSILON);
   const xView = useMemo(() => {
@@ -215,8 +232,8 @@ export function BrowserOscilloscope({
     let minimum = Number.POSITIVE_INFINITY;
     let maximum = Number.NEGATIVE_INFINITY;
     for (const trace of preparedTraces) {
-      if (trace.measurements.minimum !== null) minimum = Math.min(minimum, trace.measurements.minimum);
-      if (trace.measurements.maximum !== null) maximum = Math.max(maximum, trace.measurements.maximum);
+      if (trace.measurements.minimum !== null) minimum = Math.min(minimum, trace.measurements.minimum + trace.displayOffset);
+      if (trace.measurements.maximum !== null) maximum = Math.max(maximum, trace.measurements.maximum + trace.displayOffset);
     }
     if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) return { minimum: -1, maximum: 1 };
     const rawSpan = Math.max(maximum - minimum, Math.max(Math.abs(minimum), Math.abs(maximum), 1) * 1e-9);
@@ -237,6 +254,7 @@ export function BrowserOscilloscope({
     return target?.measurements.mean ?? (yBounds.minimum + yBounds.maximum) / 2;
   }, [effectiveTriggerChannel, preparedTraces, yBounds.maximum, yBounds.minimum]);
   const effectiveTriggerLevel = triggerLevel ?? automaticTriggerLevel;
+  const triggerDisplayOffset = preparedTraces.find(trace => trace.id === effectiveTriggerChannel)?.displayOffset ?? 0;
   const triggerColor = preparedTraces.find((trace) => trace.id === effectiveTriggerChannel)?.color
     ?? activeTraces.find((trace) => trace.id === effectiveTriggerChannel)?.color
     ?? CHANNEL_COLORS[0];
@@ -319,7 +337,7 @@ export function BrowserOscilloscope({
       yUnit,
       cursorA,
       cursorB,
-      triggerLevel: effectiveTriggerLevel,
+      triggerLevel: effectiveTriggerLevel + triggerDisplayOffset,
       triggerColor: safeColor(triggerColor, CHANNEL_COLORS[0]),
       triggerEdge,
       theme,
@@ -340,6 +358,7 @@ export function BrowserOscilloscope({
     cursorA,
     cursorB,
     effectiveTriggerLevel,
+    triggerDisplayOffset,
     effectiveXScale,
     effectiveXUnit,
     maxDevicePixelRatio,
@@ -447,7 +466,7 @@ export function BrowserOscilloscope({
     const point = canvasPoint(event);
     if (point.x < plot.left || point.x > plot.left + plot.width || point.y < plot.top || point.y > plot.top + plot.height) { closeTraceMenu(); return; }
     const lines = preparedTraces.map((trace) => ({ id: trace.id, points: decimateMinMax(trace.points, Math.max(160, Math.floor(plot.width * 2))).map((sample) => ({
-      x: plot.left + (sample.transformedX - xView.minimum) / (xView.maximum - xView.minimum) * plot.width, y: mapY(sample.y, plot, yBounds),
+      x: plot.left + (sample.transformedX - xView.minimum) / (xView.maximum - xView.minimum) * plot.width, y: mapY(sample.y + trace.displayOffset, plot, yBounds),
     })) }));
     const target = nearestPlotTrace(lines, point, 9);
     setTraceMenu(target ? { id: target, x: event.clientX, y: event.clientY } : null);
@@ -464,13 +483,27 @@ export function BrowserOscilloscope({
     else setCursorA((current) => clamp(current + direction * amount, 0, 1));
   }
 
+  function stackTraces() {
+    const offsets = stackedTraceOffsets(preparedTraces.flatMap(trace => trace.measurements.minimum === null || trace.measurements.maximum === null ? [] : [{ id: trace.id, minimum: trace.measurements.minimum, maximum: trace.measurements.maximum }]));
+    setAppearances(current => ({ ...current, ...Object.fromEntries(Object.entries(offsets).map(([id, offset]) => [id, { ...current[id], offset }])) }));
+    setYPerDivision(null); setYCenter(null);
+  }
+  async function savePng() {
+    if (!canvasRef.current) return;
+    setExportError(null);
+    try { await exportInstrumentPng({ title, theme, plots: [{ element: canvasRef.current }],
+      legend: preparedTraces.map(trace => ({ name: trace.name, color: trace.color, detail: trace.displayOffset ? 'Display offset ' + formatQuantity(trace.displayOffset, trace.unit) + '; measurements unshifted' : undefined })),
+      notes: [effectiveXLabel + ' · ' + yLabel + ' · ' + totalSamples.toLocaleString() + (domain === 'time' ? ' measured samples' : ' plotted points')],
+    }); } catch (error) { setExportError(error instanceof Error ? error.message : 'PNG export failed.'); }
+  }
+  const hasOffsets = activeTraces.some(trace => trace.displayOffset !== 0);
   const menuTrace = activeTraces.find((trace) => trace.id === traceMenu?.id);
   const visibleCount = preparedTraces.length;
   const totalSamples = Math.min(x.length, sampleLimit);
   const scopeSummary = `${title}. ${yLabel} against ${effectiveXLabel}. ${visibleCount} visible ${visibleCount === 1 ? "channel" : "channels"}; ${totalSamples.toLocaleString()} samples. Cursor delta ${formatQuantity(cursorReadout.deltaX, effectiveXUnit)}.`;
 
   return (
-    <section className={["anacode-scope", className].filter(Boolean).join(" ")} style={styles.scope} aria-label={title} data-theme={theme} data-x-min={inverseTransformX(xView.minimum, effectiveXScale)} data-x-max={inverseTransformX(xView.maximum, effectiveXScale)} data-y-min={yBounds.minimum} data-y-max={yBounds.maximum}>
+    <section className={["anacode-scope", className].filter(Boolean).join(" ")} style={styles.scope} aria-label={title} hidden={panel.hidden} data-instrument-maximized={panel.maximized} data-display-offsets={hasOffsets} data-theme={theme} data-x-min={inverseTransformX(xView.minimum, effectiveXScale)} data-x-max={inverseTransformX(xView.maximum, effectiveXScale)} data-y-min={yBounds.minimum} data-y-max={yBounds.maximum}>
       <header className="anacode-scope__toolbar" style={styles.toolbar}>
         <div style={styles.titleGroup}>
           <span style={styles.titleIcon} aria-hidden="true"><Activity size={17} /></span>
@@ -480,11 +513,10 @@ export function BrowserOscilloscope({
           </div>
         </div>
         <div className="anacode-scope__controls" style={styles.controls}>
-          <button type="button" style={styles.iconButton} onClick={() => setXPerDivision((xView.maximum - xView.minimum) / 20)} aria-label="Zoom in waveform">Zoom +</button>
-          <button type="button" style={styles.iconButton} onClick={() => setXPerDivision((xView.maximum - xView.minimum) / 5)} aria-label="Zoom out waveform">Zoom −</button>
-          <button type="button" onClick={resetView} style={styles.iconButton} aria-label="Reset oscilloscope view">
-            <RotateCcw size={15} /> Reset
-          </button>
+          <button type="button" onClick={() => { resetView(); onAutoSet?.(); }} style={styles.iconButton}>Auto set</button>
+          {activeTraces.length > 1 && <button type="button" onClick={stackTraces} style={styles.iconButton} title="Separate traces with display offsets" aria-label="Stack traces"><Layers size={15}/></button>}
+          <button type="button" onClick={panel.toggleMaximized} style={styles.iconButton} title={panel.maximized ? 'Restore instrument' : 'Maximize instrument'} aria-label={panel.maximized ? 'Restore instrument' : 'Maximize instrument'}>{panel.maximized ? <Minimize2 size={15}/> : <Maximize2 size={15}/>}</button>
+          <button type="button" onClick={() => void savePng()} style={styles.iconButton} title="Save instrument PNG" aria-label="Save instrument PNG"><Download size={15}/></button>
         </div>
       </header>
 
@@ -505,7 +537,7 @@ export function BrowserOscilloscope({
                 style={{ ...styles.channelButton, color }}
               >
                 {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
-                <span>{trace.name}</span>
+                <span>{trace.name}{trace.displayOffset !== 0 && <small style={{ marginLeft: 5 }}>↕ {formatQuantity(trace.displayOffset ?? 0, trace.unit ?? yUnit)}</small>}</span>
               </button>
 
             </div>
@@ -533,9 +565,17 @@ export function BrowserOscilloscope({
         />
         {selection && <div aria-hidden="true" style={{ position: 'absolute', pointerEvents: 'none', left: Math.min(selection.start.x, selection.end.x), top: Math.min(selection.start.y, selection.end.y), width: Math.abs(selection.end.x - selection.start.x), height: Math.abs(selection.end.y - selection.start.y), border: '1px solid var(--blue)', background: 'color-mix(in srgb, var(--blue) 12%, transparent)' }}/>}
       </div>
+      {hasOffsets && <p style={styles.interactionHint}>Display offsets separate traces. The readout table uses actual values; axis cursors use display coordinates. <button type="button" style={styles.iconButton} onClick={() => { setAppearances(current => ({ ...current, ...Object.fromEntries(activeTraces.map(trace => [trace.id, { ...current[trace.id], offset: 0 }])) })); setYPerDivision(null); setYCenter(null); }}>Clear offsets</button></p>}
+      {exportError && <p role="alert" style={styles.interactionHint}>{exportError}</p>}
       <p style={styles.interactionHint}>Drag a rectangle to zoom · Shift-drag to pan · Alt-drag cursors · Right-click a trace to style · Double-click to reset</p>
       <details className="anacode-scope__details"><summary style={styles.detailsSummary}>Measurements, cursors{domain === 'time' ? ' & trigger' : ''}</summary>
       <div style={{ ...styles.controls, padding: "10px 12px" }}>
+          <button type="button" style={styles.iconButton} onClick={() => setXPerDivision((xView.maximum - xView.minimum) / 20)} aria-label="Zoom in waveform">Zoom +</button>
+          <button type="button" style={styles.iconButton} onClick={() => setXPerDivision((xView.maximum - xView.minimum) / 5)} aria-label="Zoom out waveform">Zoom −</button>
+          <button type="button" onClick={resetView} style={styles.iconButton} aria-label="Reset oscilloscope view">
+            <RotateCcw size={15} /> Reset
+          </button>
+          {domain === 'time' && <label style={styles.compactLabel}>Time window<select aria-label="Time window" style={styles.select} value={timeWindow} onChange={event => { setTimeWindow(event.target.value as TimeWindowMode); setXPerDivision(null); setXCenter(null); }}><option value="elapsed">0 → latest sample</option><option value="samples">Fit samples</option>{recordDuration !== undefined && recordDuration > 0 && <option value="requested">0 → requested duration</option>}</select></label>}
           <label style={styles.compactLabel} htmlFor={`${controlId}-x-scale`}>
             <span>{effectiveXScale === "log" ? "Decades/div" : `${effectiveXLabel}/div`}</span>
             <select
@@ -660,7 +700,7 @@ export function BrowserOscilloscope({
       </div>
 
       <div style={styles.cursorPanel}>
-        <strong style={styles.cursorHeading}>Amplitude cursors</strong>
+        <strong style={styles.cursorHeading}>{hasOffsets ? 'Display-axis cursors' : 'Amplitude cursors'}</strong>
         <label style={styles.cursorControl}>Y A<input aria-label="Amplitude cursor A" type="range" min="0" max="1000" value={Math.round(yCursorA * 1000)} onChange={(event) => setYCursorA(Number(event.currentTarget.value) / 1000)} style={styles.range} /><output style={styles.cursorOutput}>{formatQuantity(yBounds.minimum + yCursorA * (yBounds.maximum - yBounds.minimum), yUnit)}</output></label>
         <label style={styles.cursorControl}>Y B<input aria-label="Amplitude cursor B" type="range" min="0" max="1000" value={Math.round(yCursorB * 1000)} onChange={(event) => setYCursorB(Number(event.currentTarget.value) / 1000)} style={styles.range} /><output style={styles.cursorOutput}>{formatQuantity(yBounds.minimum + yCursorB * (yBounds.maximum - yBounds.minimum), yUnit)}</output></label>
         <output style={styles.deltaReadout}>Δ{yUnit}: {formatQuantity((yCursorB - yCursorA) * (yBounds.maximum - yBounds.minimum), yUnit)}</output>
@@ -710,6 +750,8 @@ export function BrowserOscilloscope({
       {traceMenu && menuTrace && <TraceContextMenu name={menuTrace.name} x={traceMenu.x} y={traceMenu.y} color={safeColor(appearances[menuTrace.id]?.color ?? traces.find((trace) => trace.id === menuTrace.id)?.color, probeColor(menuTrace.id))} width={menuTrace.lineWidth ?? 1.7} onClose={closeTraceMenu}
         onChange={(appearance) => setAppearances((current) => ({ ...current, [menuTrace.id]: { ...current[menuTrace.id], ...appearance } }))}>
         <label>Trace name<input aria-label={'Rename ' + menuTrace.name} value={menuTrace.name} maxLength={48} onChange={(event) => { const name = event.currentTarget.value; setNames((current) => ({ ...current, [menuTrace.id]: name })); }}/></label>
+        <label>Display offset ({menuTrace.unit ?? yUnit})<input aria-label="Trace display offset" type="number" step="any" value={menuTrace.displayOffset ?? 0} onChange={event => { const offset = Number(event.target.value); if (Number.isFinite(offset) && Math.abs(offset) <= 1e12) { setAppearances(current => ({ ...current, [menuTrace.id]: { ...current[menuTrace.id], offset } })); setYPerDivision(null); setYCenter(null); } }}/></label>
+        <small>Moves the displayed line only. Measurements keep their original values.</small>
         {domain === 'time' && <label>Coupling<select aria-label={menuTrace.name + ' input coupling'} value={resolvedCouplings[menuTrace.id] ?? 'DC'} onChange={(event) => { const coupling = event.target.value as OscilloscopeCoupling; setCouplings((current) => ({ ...current, [menuTrace.id]: coupling })); }}><option value="DC">DC</option><option value="AC">AC</option></select></label>}
         <button type="button" aria-label={'Remove ' + menuTrace.name} onClick={() => { setRemoved((current) => new Set([...current, menuTrace.id])); closeTraceMenu(); }}>Remove trace</button>
       </TraceContextMenu>}
@@ -780,6 +822,7 @@ function prepareTraces({
       unit: trace.unit ?? fallbackUnit,
       color: safeColor(trace.color, probeColor(trace.id)),
       lineWidth: clamp(trace.lineWidth ?? 1.7, 1, 5),
+      displayOffset: Number.isFinite(trace.displayOffset) ? trace.displayOffset! : 0,
       coupling,
       points,
       measurements,
@@ -1009,7 +1052,7 @@ function drawTrace(
   context.beginPath();
   points.forEach((point, index) => {
     const drawX = plot.left + ((point.transformedX - xView.minimum) / (xView.maximum - xView.minimum)) * plot.width;
-    const drawY = mapY(point.y, plot, yBounds);
+    const drawY = mapY(point.y + trace.displayOffset, plot, yBounds);
     if (index === 0) context.moveTo(drawX, drawY);
     else context.lineTo(drawX, drawY);
   });

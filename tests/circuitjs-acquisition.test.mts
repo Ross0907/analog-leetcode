@@ -70,17 +70,42 @@ test('reset clears stale history, invalid readings stop acquisition, explicit ti
   assert.deepEqual(native.runningCalls, [true]);
 });
 
-test('live capture retains adaptive accepted steps and rejects edits even when element identity stays the same', () => {
+test('live capture samples accepted states across the time window and rejects graph edits', () => {
   const native = fixture(), errors: string[] = [];
   let revision = 1;
   native.api.getCircuitRevision = () => revision;
   const session = startCircuitJsAcquisition(native.api, native.probes, {duration:1, samples:128, onError:(message) => errors.push(message)});
-  native.tick(0, 0); native.tick(1e-8, 1); native.tick(2e-8, 2);
-  assert.deepEqual(session.snapshot()!.x, [0,1e-8,2e-8]);
-  assert.deepEqual(session.snapshot()!.traces[0].values, [0,1,2]);
+  native.tick(0, 0); native.tick(1e-8, 1); native.tick(2e-8, 2); native.tick(.01, 3); native.tick(.02, 4);
+  assert.deepEqual(session.snapshot()!.x, [0,.01,.02]);
+  assert.deepEqual(session.snapshot()!.traces[0].values, [0,3,4]);
   revision++;
-  native.tick(3e-8, 3);
+  native.tick(.03, 5);
   assert.equal(session.stopped, true);
   assert.equal(session.totalSamples, 3);
   assert.match(errors[0], /Circuit changed/);
+});
+
+test('dense adaptive steps do not evict the requested live time span', () => {
+  const native = fixture();
+  const session = startCircuitJsAcquisition(native.api, native.probes, { duration: 1, samples: 128 });
+  for (let i = 0; i <= 10000; i++) native.tick(i / 10000, i / 10000);
+  const result = session.snapshot()!;
+  assert.equal(result.x[0], 0);
+  assert.ok(result.x.at(-1)! > .99);
+  assert.ok(result.x.length <= 128);
+  assert.deepEqual(result.traces[0].values, result.x);
+  session.stop();
+});
+
+test('one-record live acquisition pauses at its actual end and keeps the finite stimulus', () => {
+  const native = fixture(); let completed = 0;
+  const session = startCircuitJsAcquisition(native.api, native.probes, { duration: .1, samples: 128, record: true, onComplete: () => completed++ });
+  for (let i = 0; i <= 150; i++) native.tick(i / 1000, i >= 30 && i < 60 ? 5 : 0);
+  const result = session.snapshot()!;
+  assert.equal(session.stopped, true);
+  assert.equal(completed, 1);
+  assert.equal(result.x[0], 0);
+  assert.equal(result.x.at(-1), .1);
+  assert.ok(result.traces[0].values.includes(5));
+  assert.deepEqual(native.runningCalls, [true, false]);
 });

@@ -11,6 +11,8 @@ import { circuitPresets } from "../lib/circuit-presets";
 import { compileCircuitDocument, validateCircuitDocument } from "../lib/circuit-document";
 import { generateSpiceDeckFromCircuitDocument } from "../lib/circuit-spice";
 import { splitWireRoute } from "../lib/schematic-wire-geometry";
+import { validateSimulatorNetlist } from '../lib/simulator-netlist-policy';
+import { normalizeNgspiceResult } from '../lib/simulator-results';
 import {
   SIMULATOR_RUN_TIMEOUT_MS,
   SIMULATOR_WORKER_INITIALIZATION_TIMEOUT_MS,
@@ -45,11 +47,14 @@ function parseGeneratedDeck(deck: string, slug: string) {
 }
 
 async function runGeneratedDeck(deck: string, slug: string) {
+  const analysis = validateSimulatorNetlist(deck);
   const simulator = await getStartedSimulator();
   simulator.setNetList(deck);
   const result = await simulator.runSim();
   assert.ok(result.numPoints >= 1, `${slug}: ngspice returned no points`);
-  assert.ok(result.numPoints <= 5_000, `${slug}: ngspice result exceeded browser limit`);
+  // Use the production point/vector/finite-value policy, not the obsolete
+  // 5000-point cap that predates full-resolution capture records.
+  normalizeNgspiceResult(result, analysis, [], [], 0);
   assert.ok(result.data.length >= 1, `${slug}: ngspice returned no variables`);
 }
 

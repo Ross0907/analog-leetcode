@@ -3,14 +3,20 @@
 The workbench reads CircuitJS's actual electrical node identities and current
 component values. SPICE conversion supports resistors, capacitors, inductors,
 voltage/current sources, bounded ideal op-amps, explicitly selected amplifier IC
-models, diodes, bipolar transistors and MOSFETs. It never substitutes a challenge
+models, diodes, bipolar transistors, MOSFETs and native analog switches. Native
+capacitor ESR is retained as a series resistance. An analog switch uses its
+exported on/off resistances, threshold and control polarity in ngspice's SW model;
+the native pull-down variant is explicitly rejected because its leakage circuit
+differs. It never substitutes a challenge
 reference circuit when a native component is unsupported.
 
 The model selector includes TI's LM741 macro-model, the ngspice collection's
 1N4148, BC546B, BC556B, IRFP240 and IRFP9240 models, the bundled CMOS90 models,
 and clearly labeled educational models. MOS level-1 conversion reads the native
-threshold and beta; it does not recreate all native model extensions. Named
-SPICE model selection changes SPICE analysis, while CircuitJS keeps its native
+threshold and beta; it does not recreate all native model extensions. The
+educational BJT beta edits also reach SPICE; published manufacturer models keep
+their own beta and other parameters. SPICE model selection changes SPICE analysis,
+while CircuitJS keeps its native
 live model. A three-terminal op-amp uses its displayed output-limit settings as
 implicit LM741 power rails. Use the five-terminal native real op-amp to wire
 the power supplies explicitly.
@@ -66,7 +72,10 @@ The six additional expert exercises progress through a reusable pipeline residue
 stage, loaded DAC settling, timed SAR decisions, density-stream reconstruction,
 LM741 transimpedance compensation and flash-threshold calibration. Their
 starters intentionally miss at least one target. Tests run both the starter and
-an edited solution in actual ngspice and check the measured outputs. These are
+an edited native solution through CircuitJS, compile those actual node connections
+and values into ngspice, and check the measured outputs. The catalogue audit also
+covers all numerical questions, native capture windows and the newer pulse and
+two-pole filter designs. These are
 local practice checks; they do not claim authenticated server grading. The
 existing five topology-graded exercises retain their server contracts.
 

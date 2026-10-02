@@ -181,7 +181,7 @@ export const COMPONENT_DEFINITIONS = {
     pins: [
       { id: "nonInverting", label: "+", required: true },
       { id: "inverting", label: "−", required: true },
-      { id: "output", label: "OUT", required: true },
+      { id: "output", label: "OUT", required: false },
     ],
   },
   "op-amp-model": {
@@ -193,7 +193,18 @@ export const COMPONENT_DEFINITIONS = {
       { id: "inverting", label: "−", required: true },
       { id: "positiveSupply", label: "V+", required: true },
       { id: "negativeSupply", label: "V−", required: true },
-      { id: "output", label: "OUT", required: true },
+      { id: "output", label: "OUT", required: false },
+    ],
+  },
+  "voltage-controlled-switch": {
+    displayName: "Voltage-controlled analog switch",
+    category: "Semiconductors",
+    referencePrefix: "S",
+    pins: [
+      { id: "a", label: "A", required: true },
+      { id: "b", label: "B", required: true },
+      { id: "controlPositive", label: "CTRL+", required: true },
+      { id: "controlNegative", label: "CTRL−", required: true },
     ],
   },
 } as const satisfies Record<string, ComponentDefinition>;
@@ -361,6 +372,7 @@ const componentSchema = z.discriminatedUnion("kind", [
       parameters: z
         .object({
           model: z.enum(["generic-npn", "bc546b"]),
+          beta: positiveSchema.max(1e6).optional(),
           area: positiveSchema.max(1e6).default(1),
         })
         .strict(),
@@ -373,6 +385,7 @@ const componentSchema = z.discriminatedUnion("kind", [
       parameters: z
         .object({
           model: z.enum(["generic-pnp", "bc556b"]),
+          beta: positiveSchema.max(1e6).optional(),
           area: positiveSchema.max(1e6).default(1),
         })
         .strict(),
@@ -436,6 +449,16 @@ const componentSchema = z.discriminatedUnion("kind", [
     ...baseComponentShape,
     kind: z.literal("op-amp-model"),
     parameters: z.object({ model: z.enum(["lm741"]) }).strict(),
+  }).strict(),
+  z.object({
+    ...baseComponentShape,
+    kind: z.literal("voltage-controlled-switch"),
+    parameters: z.object({
+      onResistanceOhm: positiveSchema.min(1e-6).max(1e12),
+      offResistanceOhm: positiveSchema.min(1e-6).max(1e15),
+      thresholdV: finiteSchema.min(-1e6).max(1e6),
+      inverted: z.boolean().default(false),
+    }).strict().refine(parameters => parameters.offResistanceOhm >= parameters.onResistanceOhm, "Switch off resistance must be at least its on resistance."),
   }).strict(),
 ]);
 

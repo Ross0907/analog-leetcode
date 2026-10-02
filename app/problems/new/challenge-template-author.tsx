@@ -398,6 +398,24 @@ export function ChallengeTemplateAuthor() {
                   }))}
                 />
               </label>
+              <label>
+                <span>Default measurement</span>
+                <select aria-label="Default measurement" value={draft.workspace.nativeView?.preferredInstrument ?? 'dc'} onChange={(event) => setDraft(current => ({ ...current, workspace: { ...current.workspace, nativeView: { ...challengeAuthoringStarterTemplate.workspace.nativeView!, ...current.workspace.nativeView, preferredInstrument: event.target.value as 'dc' | 'scope' | 'logic' } } }))}>
+                  <option value="dc">DC voltage readouts</option><option value="scope">Oscilloscope</option><option value="logic">Logic analyzer</option>
+                </select>
+                <small>The divider starts with a steady DC readout at vout. Use an oscilloscope when teaching a changing signal.</small>
+              </label>
+              <label>
+                <span>Record duration (seconds)</span>
+                <input aria-label="Record duration (seconds)" type="number" min={1e-9} max={10} step="any" value={draft.workspace.nativeView?.captureDurationS ?? .001} onChange={(event) => setDraft(current => ({ ...current, workspace: { ...current.workspace, nativeView: { ...challengeAuthoringStarterTemplate.workspace.nativeView!, ...current.workspace.nativeView, captureDurationS: Number(event.target.value) } } }))}/>
+              </label>
+              <label>
+                <span>Capture start</span>
+                <select aria-label="Capture start" value={draft.workspace.nativeView?.acquisitionMode ?? 'live'} onChange={(event) => setDraft(current => ({ ...current, workspace: { ...current.workspace, nativeView: { ...challengeAuthoringStarterTemplate.workspace.nativeView!, ...current.workspace.nativeView, acquisitionMode: event.target.value as 'live' | 'restart-record' } } }))}>
+                  <option value="live">Continue from the running circuit</option><option value="restart-record">Restart time and record from zero</option>
+                </select>
+                <small>Use restart for a one-time pulse or charging event. Sources remain vertical with a ground return; the reviewed 5 V stimulus and vout probe are retained.</small>
+              </label>
             </div>
           </fieldset>
 

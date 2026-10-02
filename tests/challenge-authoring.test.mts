@@ -39,6 +39,22 @@ test("the strict contract rejects executable or simulator-authored fields", () =
   }
 });
 
+test('native presentation defaults preserve the reviewed source, use a real output probe, and bound records', () => {
+  const native = challengeAuthoringStarterTemplate.workspace.nativeView!;
+  assert.equal(native.preferredInstrument, 'dc');
+  assert.equal(native.stimulus, 'preserve-reviewed-preset');
+  assert.equal(native.sourceStyle, 'vertical-with-ground-return');
+  assert.deepEqual(native.probeNodes, ['vout']);
+  for (const patch of [{ captureSamples: 131073 }, { captureDurationS: 0 }, { probeNodes: ['nsum'] }, { stimulus: 'custom-code' }]) {
+    const invalid = structuredClone(challengeAuthoringStarterTemplate);
+    Object.assign(invalid.workspace.nativeView!, patch);
+    assert.equal(validateChallengeAuthoringTemplate(invalid).ok, false, JSON.stringify(patch));
+  }
+  const legacy = structuredClone(challengeAuthoringStarterTemplate);
+  delete legacy.workspace.nativeView;
+  assert.equal(validateChallengeAuthoringTemplate(legacy).ok, true, 'v1 templates remain readable');
+});
+
 test("parts-only authoring binds a disconnected native starter to its existing topology and output probe", () => {
   const draft = structuredClone(challengeAuthoringStarterTemplate);
   draft.workspace.starterSchematic.partsOnly = {

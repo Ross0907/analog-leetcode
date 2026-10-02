@@ -96,14 +96,14 @@
       "sha256": "37b6403fdc1cf6bdb84af3dc62e0f64e818586659d1e6dddca9143f0b46a475f"
     },
     {
-      "path": "circuitjs1/2070AB1924FFF62D8A6A0E205B8901AE.cache.js",
-      "bytes": 1011110,
-      "sha256": "29d514c360d9ef0e4156e6e7d2200efb44e291c668d0cb24695abf14ea543239"
+      "path": "circuitjs1/ABC5B144588B7A75CA29ABAFB5FC7B70.cache.js",
+      "bytes": 1015692,
+      "sha256": "1113cbe434f9f895ed79040e51b8805f44d7174e75906ba9d993716864b20f7f"
     },
     {
-      "path": "circuitjs1/9CA936BCC116192D1830BB80F178AB78.cache.js",
-      "bytes": 1010726,
-      "sha256": "31a48ec776cdb7737d91105d3b9037f91cab3cae20f982cfc507b2ff822107db"
+      "path": "circuitjs1/CEFC1252DD32EA403823E5653807F57B.cache.js",
+      "bytes": 1015308,
+      "sha256": "203c5ab3d2cebe88e299a160fbbbb6e3599cd47215a6444eceb6dc04ea4ba099"
     },
     {
       "path": "circuitjs1/circuitjs1.devmode.js",
@@ -113,7 +113,7 @@
     {
       "path": "circuitjs1/circuitjs1.nocache.js",
       "bytes": 7116,
-      "sha256": "01caa0b69a7231d4b64076735f1e96a20763a9fbe0d02794f65a5098b6ee63db"
+      "sha256": "80e5369401181d67eec918ee0ef6705b8c7d8652578cbcc7846965bc5090edd6"
     },
     {
       "path": "circuitjs1/circuits/3-cgand.txt",
@@ -1988,7 +1988,7 @@
     {
       "path": "circuitjs1/compilation-mappings.txt",
       "bytes": 142,
-      "sha256": "1a973044429477942f2ffe13ddcf7b807c7bf1ba5f9b0e4b7005b661e02ea145"
+      "sha256": "b2a1050966e42344377005d03d8cdc665626da7f59602d51736da1b3cd77805c"
     },
     {
       "path": "circuitjs1/gwt/clean/clean.css",
@@ -2317,13 +2317,13 @@
     },
     {
       "path": "patch-circuitjs-api.mjs",
-      "bytes": 36992,
-      "sha256": "2a3f070ec1d1c94e5a559adfd679a89c77ebd3107a19b3d3c005e4e20bb1d7ee"
+      "bytes": 48185,
+      "sha256": "2a71656345cb6bc70981b15a1905bcb3ba6a5af1d2dc7b0d2c7e39d9e5062572"
     },
     {
       "path": "patch-circuitjs-stimulus.mjs",
-      "bytes": 9084,
-      "sha256": "9ecdc8c7c51d9d0d6d45df8d9a19552831e868de8886edcacd7351102968ecae"
+      "bytes": 10542,
+      "sha256": "8f4f8c5937ec12ee919549734e0afc790184342500a237394e446ff736c7af41"
     },
     {
       "path": "subcircuits.html",

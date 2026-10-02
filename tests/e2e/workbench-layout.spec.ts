@@ -27,17 +27,18 @@ test('compact description, schematic width/height and probe drawer remain adjust
   await expect(height).toHaveAttribute('aria-valuenow', '670');
 });
 
-test('capture stays beside the schematic and probe artwork scales with the native viewport', async ({ page }) => {
+test('capture stays beside the schematic and probe artwork stays compact through native zoom', async ({ page }) => {
   await page.goto('/problems/rc-cutoff-1khz');
   await expect(page.getByRole('button', { name: 'Capture all probes', exact: true })).toBeEnabled();
   const editor = page.frameLocator('iframe[title="CircuitJS schematic editor"]');
   const frame = page.frames().find(frame => frame.url().includes('/circuitjs/circuitjs.html'))!;
-  const overlay = page.locator('svg[aria-hidden="true"] > g').filter({ has: page.locator('text', { hasText: 'P1' }) }).first();
+  const overlay = page.getByRole('button', { name: /^Move probe 1 / });
   const scale = () => overlay.getAttribute('transform').then(value => Number(value?.match(/scale\(([^)]+)\)/)?.[1]));
   await expect.poll(scale).toBeGreaterThan(0);
   const originalScale = await scale();
   await frame.evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.zoomCircuit(1));
-  await expect.poll(scale).toBeGreaterThan(originalScale);
+  await expect.poll(scale).toBeGreaterThanOrEqual(originalScale);
+  expect(await scale()).toBeLessThanOrEqual(1);
   const start = Date.now();
   await page.getByRole('button', { name: 'Capture all probes', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Captured' })).toBeVisible({ timeout: 15000 });
