@@ -18,7 +18,7 @@ The analog library contains 41 exercises: nine original designs, 21 worked numer
 | CMOS inverter | Corrected 1.5 V noise-margin targets that were incompatible with a 1.8 V supply. The nominal exercise uses 0.5 V margins and explicitly identifies its educational model. |
 | TIA | Reframed around the supported feedback pole and 100 kΩ transimpedance. An ideal constant-gain op-amp cannot establish realistic phase margin or noise. |
 
-Native CircuitJS device models and ngspice models need not match exactly. Advanced challenge notes identify the specified SPICE model. Generic native symbols come from CircuitJS; no custom symbol backend is used for these exercises.
+Native CircuitJS device models and ngspice models need not match exactly. Advanced challenge notes identify the specified SPICE model. Electrical behavior and connectivity come from CircuitJS; the presentation uses the pinned Analog Canvas artwork. No separate schematic connectivity backend is introduced.
 
 The DC, RC, BJT, rectifier, Sallen–Key, and TIA starter drawings use local ground symbols instead of long return loops. All ground symbols have the same electrical reference. Their connectivity is resolved by CircuitJS; additional ground glyphs are not counted as additional electrical parts by the fixed-topology verifier.
 

@@ -52,17 +52,18 @@ General analysis uses the separate `circuitjs-analysis.ts` interoperability adap
 
 | Native component | SPICE representation |
 |---|---|
-| R, ideal C including polarized presentation, unsaturated L | Passive elements with supported initial conditions |
+| R, C including polarized presentation, unsaturated L | Passive elements with supported initial conditions; capacitor ESR becomes an explicit series resistor |
 | Voltage sources and rails | DC, sine, supported zero-phase square/pulse, or explicit PWL/bitstream stimuli |
 | Ideal current source | DC current, with optional selected AC test excitation |
 | Three-terminal ideal op-amp | Native open-loop gain and output limits, or an explicit LM741 model choice |
 | Five-terminal real op-amp | LM741 with the actual positive/negative supply connections |
 | Diode, BJT and MOSFET | Compatible generic/native-parameter models or selected 1N4148, BC546B/BC556B, IRFP240/IRFP9240 and CMOS90 models |
+| Analog switch | Standard four-terminal SPICE SW model with the native control and on/off resistances |
 | Native reusable composite | Supported constituent elements read from CircuitJS's flattened native analysis graph |
 
 Selecting LM741 for a three-terminal op-amp creates SPICE supply rails from that symbol's output-limit settings and reports this assumption. Five-terminal op-amps use their actual wired supplies. LED and zener artwork requires an explicit diode-model choice; it is not silently converted to a switching diode. Native MOS threshold and beta are available for standard level-1 conversion; choosing a power MOS model or CMOS90 changes the ngspice model explicitly. Model assignments and limitations are shown beside the analysis. Original device files and their compatibility adaptations are documented in [standard model notices](../THIRD_PARTY_NOTICES.md#standard-spice-device-models) and [the public model inventory](../public/spice-models/README.txt).
 
-Supported analyses are operating point, transient, AC and DC sweep. AC controls select the excitation source, magnitude, phase, decade/octave/linear spacing and point count; source phase is converted from native radians to SPICE degrees. DC sweep selects the source explicitly. Transient uses the shared duration/sample target and starts a fresh ngspice response rather than importing native runtime state. Resource limits are enforced by the current simulator policy. Unsupported components, incompatible models, source internal resistance, capacitor ESR, inductor saturation and limited-compliance current sources stop conversion with a useful explanation.
+Supported analyses are operating point, transient, AC and DC sweep. AC controls select the excitation source, magnitude, phase, decade/octave/linear spacing and point count; source phase is converted from native radians to SPICE degrees. DC sweep selects the source explicitly. Transient uses the shared duration/sample target and starts a fresh ngspice response rather than importing native runtime state. Resource limits are enforced by the current simulator policy. Unsupported components, incompatible models, source internal resistance, inductor saturation and limited-compliance current sources stop conversion with a useful explanation.
 
 DC/sine/PWL/bitstream controls apply to the actual native voltage source through the GPL stimulus bridge. PWL uses validated numeric time/value pairs; bitstreams become explicit finite-edge voltage points, with optional repetition. The table and repeat period are serialized in native XML, used by live simulation, and read back for SPICE conversion. Native source edits clear the programmed table and stale host overrides, so later analysis uses the edited source. Programmed current requires an explicit voltage-source/transconductance circuit.
 
