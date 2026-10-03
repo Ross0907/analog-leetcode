@@ -8,17 +8,21 @@ import styles from '../hdl/page.module.css';
 
 const subscribe = (listener: () => void) => { window.addEventListener('storage',listener);window.addEventListener('anacode-hdl-progress',listener);return()=>{window.removeEventListener('storage',listener);window.removeEventListener('anacode-hdl-progress',listener);}; };
 const snapshot = () => { try { return localStorage.getItem(HDL_PROGRESS_KEY) ?? ''; } catch { return ''; } };
+const subscribeHydration = () => () => {};
 type Problem = Pick<HdlChallenge,'slug'|'title'|'topic'|'level'|'checks'|'description'>;
 export function HdlProblemExplorer({ problems }: { problems: Problem[] }) {
+  // Server-rendered controls must not accept input before React can handle it.
+  // Problem links remain ordinary links throughout the loading transition.
+  const hydrated=useSyncExternalStore(subscribeHydration,()=>true,()=>false);
   const [query,setQuery]=useState(''), [level,setLevel]=useState('All'), [topic,setTopic]=useState('All'), [status,setStatus]=useState('All');
   const stored=useSyncExternalStore(subscribe,snapshot,()=>''), progress=useMemo(()=>parseHdlProgress(stored),[stored]);
   const filtered=problems.filter(problem=>(level==='All'||problem.level===level)&&(topic==='All'||problem.topic===topic)&&(status==='All'||(status==='Passed'?progress[problem.slug]?.passed:!progress[problem.slug]?.passed))&&`${problem.title} ${problem.topic} ${problem.description}`.toLowerCase().includes(query.trim().toLowerCase()));
-  return <section aria-label="HDL exercises">
+  return <section aria-label="HDL exercises" aria-busy={!hydrated}>
     <div className={styles.filters}>
-      <label className={styles.search}><Search size={16}/><input aria-label="Search HDL problems" placeholder="Search problems or topics" value={query} onChange={event=>setQuery(event.target.value)}/></label>
-      <select aria-label="HDL difficulty" value={level} onChange={event=>setLevel(event.target.value)}>{['All','Easy','Medium','Hard'].map(value=><option key={value} value={value}>{value==='All'?'All difficulties':value}</option>)}</select>
-      <select aria-label="HDL topic" value={topic} onChange={event=>setTopic(event.target.value)}>{['All',...new Set(problems.map(problem=>problem.topic))].map(value=><option key={value} value={value}>{value==='All'?'All topics':value}</option>)}</select>
-      <select aria-label="HDL status" value={status} onChange={event=>setStatus(event.target.value)}>{['All','Passed','Unsolved'].map(value=><option key={value} value={value}>{value==='All'?'All statuses':value}</option>)}</select>
+      <label className={styles.search}><Search size={16}/><input aria-label="Search HDL problems" placeholder="Search problems or topics" value={query} disabled={!hydrated} onChange={event=>setQuery(event.target.value)}/></label>
+      <select aria-label="HDL difficulty" value={level} disabled={!hydrated} onChange={event=>setLevel(event.target.value)}>{['All','Easy','Medium','Hard'].map(value=><option key={value} value={value}>{value==='All'?'All difficulties':value}</option>)}</select>
+      <select aria-label="HDL topic" value={topic} disabled={!hydrated} onChange={event=>setTopic(event.target.value)}>{['All',...new Set(problems.map(problem=>problem.topic))].map(value=><option key={value} value={value}>{value==='All'?'All topics':value}</option>)}</select>
+      <select aria-label="HDL status" value={status} disabled={!hydrated} onChange={event=>setStatus(event.target.value)}>{['All','Passed','Unsolved'].map(value=><option key={value} value={value}>{value==='All'?'All statuses':value}</option>)}</select>
     </div>
     <p className={styles.count}>{filtered.length} problems · {problems.filter(problem=>progress[problem.slug]?.passed).length} passed in this browser <span>Local practice progress</span></p>
     <div className={styles.list}>{filtered.map(problem=><Link key={problem.slug} href={`/hdl/${problem.slug}`} className={styles.row}>

@@ -75,6 +75,38 @@ test('HDL is discoverable from analog practice and has searchable local progress
   await expect(page.getByRole('link',{name:/Route a data word/})).toContainText('64 checks');
 });
 
+test('HDL search waits for its handlers before accepting input when client scripts are delayed',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  let releaseScripts:()=>void=()=>{};
+  const scriptsReady=new Promise<void>(resolve=>{releaseScripts=resolve;});
+  await page.route('**/*',async route=>{
+    if(route.request().resourceType()==='script')await scriptsReady;
+    await route.continue();
+  });
+  try {
+    await page.goto('/hdl',{waitUntil:'commit'});
+    const library=page.getByRole('region',{name:'HDL exercises'});
+    const search=page.getByRole('textbox',{name:'Search HDL problems'});
+    await expect(search).toBeVisible();
+    await expect(search).toBeDisabled();
+    await expect(library).toHaveAttribute('aria-busy','true');
+    for(const name of ['HDL difficulty','HDL topic','HDL status'])await expect(page.getByRole('combobox',{name})).toBeDisabled();
+    await expect(library.getByRole('link')).toHaveCount(6);
+    await expect(library.getByRole('link').first()).toHaveAttribute('href','/hdl/word-multiplexer');
+    releaseScripts();
+    await expect(search).toBeEnabled();
+    await search.fill('SAR');
+    await expect(library.getByRole('link')).toHaveCount(1);
+    await expect(library.getByRole('link')).toContainText('Sequence a SAR conversion');
+    await page.getByRole('combobox',{name:'HDL difficulty'}).selectOption('Easy');
+    await expect(library.getByRole('link')).toHaveCount(0);
+    await page.getByRole('combobox',{name:'HDL difficulty'}).selectOption('Hard');
+    await expect(library.getByRole('link')).toHaveCount(1);
+    await expect(search).toHaveValue('SAR');
+    await expect(library).toHaveAttribute('aria-busy','false');
+  } finally { releaseScripts(); }
+});
+
 test('HDL panes resize with keyboard and pointer while editor state survives file switches',async({page})=>{
   await page.goto('/hdl/word-multiplexer');
   const editor=page.getByRole('textbox',{name:'Design source'}), code=page.getByRole('region',{name:'HDL source files'});
