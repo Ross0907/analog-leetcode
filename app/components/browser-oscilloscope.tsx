@@ -17,7 +17,7 @@ import { Activity, Download, Eye, EyeOff, Layers, Maximize2, Minimize2, RotateCc
 import { crossings, interpolateWaveform, measureWaveform } from "../../lib/waveform-analysis";
 import { probeColor } from "../../lib/probe-colors";
 import { rectangleView, nearestPlotTrace, instrumentTraceColor, fitTimeWindow, stackedTraceOffsets, type PlotPoint, type TimeWindowMode } from "../../lib/instrument-interactions";
-import { useInstrumentTheme, useTraceAppearance, useInstrumentPanel } from "./instrument-state";
+import { useInstrumentTheme, useTraceAppearance, useInstrumentPanel, useTraceSelection } from "./instrument-state";
 import { TraceContextMenu } from "./trace-context-menu";
 import { exportInstrumentPng } from "./instrument-export";
 
@@ -29,6 +29,9 @@ export type OscilloscopeScale = number | "auto";
 export interface OscilloscopeTrace {
   /** Stable channel identifier. */
   id: string;
+  /** Original acquisition ID when this is a derived plot (for example FFT). */
+  sourceId?: string;
+  highlighted?: boolean;
   /** Human-readable channel name, for example V(out). */
   name: string;
   values: ArrayLike<number>;
@@ -85,6 +88,7 @@ type Point = { x: number; transformedX: number; y: number };
 
 type PreparedTrace = {
   id: string;
+  highlighted: boolean;
   name: string;
   unit: string;
   color: string;
@@ -117,7 +121,17 @@ const VERTICAL_DIVISIONS = 8;
  * accepts only numeric samples, so it can be shared by browser previews and
  * authoritative simulation results.
  */
-export function BrowserOscilloscope({
+export function BrowserOscilloscope(props: BrowserOscilloscopeProps) {
+  const id = useId(), panel = useInstrumentPanel(props.instrumentId ?? id);
+  const [layout, setLayout] = useState<'overlap' | 'separate'>('overlap');
+  const instrumentId = props.instrumentId ?? id;
+  return <div hidden={panel.hidden} data-trace-layout={layout}>
+    {props.traces.length > 1 && <label style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, padding: '4px 6px', fontSize: 11, color: 'var(--muted)' }}>Traces<select aria-label={(props.title ?? 'Oscilloscope') + ' trace layout'} value={layout} onChange={event => { panel.restore(); setLayout(event.target.value as typeof layout); }} style={styles.select}><option value="overlap">Overlap</option><option value="separate">Separate</option></select></label>}
+    {layout === 'separate' && props.traces.length > 1 ? props.traces.map(trace => <OscilloscopePlot key={trace.id} {...props} instrumentId={instrumentId + ':' + trace.id} traces={[trace]} title={(props.title ?? 'Oscilloscope') + ' · ' + trace.name} height={280}/>) : <OscilloscopePlot {...props} instrumentId={instrumentId}/>}
+  </div>;
+}
+
+function OscilloscopePlot({
   x,
   traces,
   domain = "time",
@@ -145,6 +159,7 @@ export function BrowserOscilloscope({
   const controlId = useId();
   const theme = useInstrumentTheme();
   const panel = useInstrumentPanel(instrumentId ?? controlId);
+  const { selectedTraceId, selectTrace } = useTraceSelection();
   const [timeWindow, setTimeWindow] = useState<TimeWindowMode>('elapsed');
   const [exportError, setExportError] = useState<string | null>(null);
   const [appearances, setAppearances] = useTraceAppearance();
@@ -186,7 +201,7 @@ export function BrowserOscilloscope({
   const channelLimit = clamp(Math.trunc(maxChannels), 1, 32);
   const sampleLimit = clamp(Math.trunc(maxSamples), 1_000, 1_000_000);
   const boundedHeight = clamp(panel.maximized ? 540 : height, 260, 720);
-  const activeTraces = useMemo(() => traces.length > channelLimit ? [] : traces.filter((trace) => !removed.has(trace.id)).map((trace) => ({ ...trace, name: names[trace.id] ?? trace.name, color: instrumentTraceColor(safeColor(appearances[trace.id]?.color ?? trace.color, probeColor(trace.id)), theme), lineWidth: appearances[trace.id]?.width ?? trace.lineWidth ?? 1.7, displayOffset: appearances[trace.id]?.offset ?? trace.displayOffset ?? 0 })), [channelLimit, traces, removed, names, appearances, theme]);
+  const activeTraces = useMemo(() => traces.length > channelLimit ? [] : traces.filter((trace) => !removed.has(trace.id)).map((trace) => ({ ...trace, highlighted: (trace.sourceId ?? trace.id) === selectedTraceId, name: names[trace.id] ?? trace.name, color: instrumentTraceColor(safeColor(appearances[trace.id]?.color ?? trace.color, probeColor(trace.id)), theme), lineWidth: appearances[trace.id]?.width ?? trace.lineWidth ?? 1.7, displayOffset: appearances[trace.id]?.offset ?? trace.displayOffset ?? 0 })), [channelLimit, traces, removed, names, appearances, theme, selectedTraceId]);
   const resolvedVisibility = useMemo(
     () => Object.fromEntries(activeTraces.map((trace) => [trace.id, visibility[trace.id] ?? trace.initiallyVisible !== false])),
     [activeTraces, visibility],
@@ -453,6 +468,7 @@ export function BrowserOscilloscope({
       } else if (Math.hypot(selected.end.x - selected.start.x, selected.end.y - selected.start.y) < 6) {
         const normalized = (selected.start.x - plotRectRef.current.left) / plotRectRef.current.width;
         updateCursorFromPointer(event, Math.abs(normalized - cursorA) <= Math.abs(normalized - cursorB) ? 'a' : 'b');
+        selectRenderedTrace(canvasPoint(event));
       }
     }
     selectionRef.current = null; setSelection(null);
@@ -460,15 +476,21 @@ export function BrowserOscilloscope({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
-  function openTraceMenu(event: ReactMouseEvent<HTMLCanvasElement>) {
-    event.preventDefault();
-    const plot = plotRectRef.current; if (!plot) return;
-    const point = canvasPoint(event);
-    if (point.x < plot.left || point.x > plot.left + plot.width || point.y < plot.top || point.y > plot.top + plot.height) { closeTraceMenu(); return; }
-    const lines = preparedTraces.map((trace) => ({ id: trace.id, points: decimateMinMax(trace.points, Math.max(160, Math.floor(plot.width * 2))).map((sample) => ({
+  function selectRenderedTrace(point: PlotPoint) {
+    const plot = plotRectRef.current; if (!plot) return null;
+    if (point.x < plot.left || point.x > plot.left + plot.width || point.y < plot.top || point.y > plot.top + plot.height) return null;
+    const lines = preparedTraces.map((trace) => ({ id: trace.id, strokeWidth: trace.lineWidth + (trace.highlighted ? 1.5 : 0), points: decimateMinMax(trace.points, Math.max(160, Math.floor(plot.width * 2))).map((sample) => ({
       x: plot.left + (sample.transformedX - xView.minimum) / (xView.maximum - xView.minimum) * plot.width, y: mapY(sample.y + trace.displayOffset, plot, yBounds),
     })) }));
     const target = nearestPlotTrace(lines, point, 9);
+    const trace = activeTraces.find(trace => trace.id === target);
+    if (trace) selectTrace(trace.sourceId ?? trace.id);
+    return target;
+  }
+
+  function openTraceMenu(event: ReactMouseEvent<HTMLCanvasElement>) {
+    event.preventDefault();
+    const target = selectRenderedTrace(canvasPoint(event));
     setTraceMenu(target ? { id: target, x: event.clientX, y: event.clientY } : null);
   }
 
@@ -525,7 +547,10 @@ export function BrowserOscilloscope({
           const isVisible = resolvedVisibility[trace.id] ?? true;
           const color = safeColor(trace.color, probeColor(trace.id));
           return (
-            <div className="anacode-scope__channel" style={{ ...styles.channel, borderColor: `${color}80` }} key={trace.id}>
+            <div className="anacode-scope__channel" data-selected={trace.highlighted || undefined} style={{ ...styles.channel, borderColor: `${color}80`, boxShadow: trace.highlighted ? `0 0 0 2px ${color}80` : undefined }} key={trace.id}>
+              <button type="button" aria-label={`Select ${trace.name}`} aria-pressed={trace.highlighted} onClick={() => selectTrace(trace.sourceId ?? trace.id)} onContextMenu={event => { event.preventDefault(); selectTrace(trace.sourceId ?? trace.id); setTraceMenu({ id: trace.id, x: event.clientX, y: event.clientY }); }} style={{ ...styles.channelButton, color }} title="Select this trace and its schematic probe">
+                <span>{trace.name}{trace.displayOffset !== 0 && <small style={{ marginLeft: 5 }}>↕ {formatQuantity(trace.displayOffset ?? 0, trace.unit ?? yUnit)}</small>}</span>
+              </button>
               <button
                 type="button"
                 aria-pressed={isVisible}
@@ -537,7 +562,6 @@ export function BrowserOscilloscope({
                 style={{ ...styles.channelButton, color }}
               >
                 {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
-                <span>{trace.name}{trace.displayOffset !== 0 && <small style={{ marginLeft: 5 }}>↕ {formatQuantity(trace.displayOffset ?? 0, trace.unit ?? yUnit)}</small>}</span>
               </button>
 
             </div>
@@ -818,6 +842,7 @@ function prepareTraces({
     const measurements = measureTrace(points, domain);
     return [{
       id: trace.id,
+      highlighted: trace.highlighted ?? false,
       name: trace.name,
       unit: trace.unit ?? fallbackUnit,
       color: safeColor(trace.color, probeColor(trace.id)),
@@ -1045,7 +1070,7 @@ function drawTrace(
   const points = decimateMinMax(trace.points, Math.max(160, Math.floor(plot.width * 2)));
   context.save();
   context.strokeStyle = trace.color;
-  context.lineWidth = trace.lineWidth;
+  context.lineWidth = trace.lineWidth + (trace.highlighted ? 1.5 : 0);
   context.lineJoin = "round";
   context.lineCap = "round";
   context.shadowBlur = 0;

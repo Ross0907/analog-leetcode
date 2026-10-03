@@ -29,6 +29,17 @@ test('right-click hit testing chooses the nearest visible trace segment, not plo
   assert.equal(distanceToSegment({ x: 15, y: 5 }, { x: 0, y: 5 }, { x: 10, y: 5 }), 5);
 });
 
+test('overlapping trace hit testing respects the topmost painted stroke and retains nearest-line fallback', () => {
+  const lines = [
+    { id: 'obscured', strokeWidth: 1.7, points: [{ x: 0, y: 10 }, { x: 100, y: 10 }] },
+    { id: 'visible', strokeWidth: 3.2, points: [{ x: 0, y: 11 }, { x: 100, y: 11 }] },
+  ];
+  assert.equal(nearestPlotTrace(lines, { x: 50, y: 10 }), 'visible');
+  assert.equal(nearestPlotTrace([...lines].reverse(), { x: 50, y: 10 }), 'obscured');
+  assert.equal(nearestPlotTrace(lines, { x: 50, y: 6 }), 'obscured');
+  assert.equal(nearestPlotTrace(lines, { x: 50, y: 25 }), null);
+});
+
 test('bright trace colors have readable light-theme contrast without changing dark colors', () => {
   for (const color of ['#ffd33d', '#22c7df', '#f4f4f5', '#7ed957', '#000000']) {
     assert.equal(instrumentTraceColor(color, 'dark'), color);
@@ -77,5 +88,5 @@ test('Auto set uses measured voltage range and physically available FFT spacing'
   const uniform = Array.from({ length: 8192 }, (_, i) => i / 8192);
   assert.equal(availableFftLength(uniform), 8192);
   const adaptive = [...Array.from({ length: 2001 }, (_, i) => i / 100000), 0.04];
-  assert.equal(availableFftLength(adaptive), 64, 'A long gap cannot be treated as thousands of uniformly captured samples');
+  assert.equal(availableFftLength(adaptive), 0, 'A long gap cannot be treated as thousands of uniformly captured samples');
 });

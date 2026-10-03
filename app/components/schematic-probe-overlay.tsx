@@ -5,9 +5,10 @@ import { isProbeWire, probeAttachment, probeNodeName, probePosition } from '../.
 import styles from './circuitjs-workbench.module.css';
 type Point = { x: number; y: number };
 /** Independent probe controls never dispatch a native component drag. */
-export function SchematicProbeOverlay({ api, frame, probes, disabled, onChange, onMessage }: {
+export function SchematicProbeOverlay({ api, frame, probes, disabled, onChange, onMessage, selectedProbeId, onSelectProbe }: {
   api: RefObject<CircuitJsApi | null>; frame: RefObject<HTMLIFrameElement | null>; probes: CircuitJsProbe[];
   disabled?: boolean; onChange: (probes: CircuitJsProbe[]) => void; onMessage: (message: string) => void;
+  selectedProbeId?: string | null; onSelectProbe?: (id: string) => void;
 }) {
   const groupsRef = useRef(new Map<string, SVGGElement>());
   const offsetsRef = useRef(new Map<string, Point>());
@@ -19,10 +20,21 @@ export function SchematicProbeOverlay({ api, frame, probes, disabled, onChange, 
       if (native && canvas && frame.current?.offsetWidth) {
         const rect = canvas.getBoundingClientRect();
         const markerScale = Math.max(.6, Math.min(1, Math.sqrt(Math.abs(native.screenX(16) - native.screenX(0)) / 16)));
-        const obstacles = native.getElements().filter(element => !isProbeWire(element) && element.getPostCount()).map(element => {
+        const zoom = Math.abs(native.screenX(16) - native.screenX(0)) / 16;
+        const obstacles = native.getElements().filter(element => !isProbeWire(element) && element.getPostCount()).flatMap(element => {
           const xs = Array.from({ length: element.getPostCount() }, (_, i) => rect.left + native.screenX(element.getPostX(i)));
           const ys = Array.from({ length: element.getPostCount() }, (_, i) => rect.top + native.screenY(element.getPostY(i)));
-          return { left: Math.min(...xs) - 10, right: Math.max(...xs) + (element.getType() === 'LabeledNodeElm' ? 45 : 10), top: Math.min(...ys) - 15, bottom: Math.max(...ys) + 15 };
+          const bounds = { left: Math.min(...xs) - 10, right: Math.max(...xs) + (element.getType() === 'LabeledNodeElm' ? 45 : 10), top: Math.min(...ys) - 15, bottom: Math.max(...ys) + 15 };
+          // Source values sit beside the symbol, outside its terminal envelope.
+          // Reserve that ink as well, including the two-line PWL period label.
+          if (/VoltageElm$|CurrentElm$/.test(element.getType()) && xs.length === 2) {
+            const cx = (xs[0] + xs[1]) / 2, cy = (ys[0] + ys[1]) / 2;
+            const width = Math.max(70, (element.getEditableValue()?.text.length ?? 8) * 10) * zoom;
+            return [bounds, Math.abs(xs[0] - xs[1]) < Math.abs(ys[0] - ys[1])
+              ? { left: cx - width - 20 * zoom, right: cx - 10 * zoom, top: cy - 18 * zoom, bottom: cy + 24 * zoom }
+              : { left: cx - width / 2, right: cx + width / 2, top: cy - 42 * zoom, bottom: cy - 8 * zoom }];
+          }
+          return [bounds];
         });
         const occupied: Point[] = [];
         for (const probe of probes.filter(probe => probe.enabled)) {
@@ -70,13 +82,14 @@ export function SchematicProbeOverlay({ api, frame, probes, disabled, onChange, 
       onMessage('Probe moved. Its electrical connection is unchanged.');
     }
   };
-  return <svg className={styles.markers} aria-label="Schematic probes">{probes.map((probe, index) => probe.enabled && <g key={probe.id} ref={element => { if (element) groupsRef.current.set(probe.id, element); else groupsRef.current.delete(probe.id); }} color={probe.color}>
+  return <svg className={styles.markers} aria-label="Schematic probes">{probes.map((probe, index) => probe.enabled && <g key={probe.id} data-selected={selectedProbeId === probe.id || undefined} ref={element => { if (element) groupsRef.current.set(probe.id, element); else groupsRef.current.delete(probe.id); }} color={probe.color}>
+    {selectedProbeId === probe.id && <circle r="6" fill="none" stroke="currentColor" strokeWidth="1.5"/>}
     <path data-lead fill="none" stroke="currentColor" strokeWidth="1.6"/><circle r="2.2" fill="currentColor"/>
-    <g data-grip role="button" tabIndex={disabled ? -1 : 0} aria-label={`Move probe ${index + 1} ${probe.name}`} aria-disabled={disabled || undefined} className={styles.probeGrip}
-      onPointerDown={event => { if (disabled || event.button !== 0) return; event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId); const offset = offsetsRef.current.get(probe.id) ?? { x: -32, y: -29 }; dragRef.current = { id: probe.id, start: { x: event.clientX, y: event.clientY }, offset, current: offset }; }}
+    <g data-grip role="button" tabIndex={disabled ? -1 : 0} aria-label={`Move probe ${index + 1} ${probe.name}`} aria-pressed={selectedProbeId === probe.id} aria-disabled={disabled || undefined} className={styles.probeGrip}
+      onPointerDown={event => { if (disabled || event.button !== 0) return; event.preventDefault(); event.stopPropagation(); onSelectProbe?.(probe.id); event.currentTarget.setPointerCapture(event.pointerId); const offset = offsetsRef.current.get(probe.id) ?? { x: -32, y: -29 }; dragRef.current = { id: probe.id, start: { x: event.clientX, y: event.clientY }, offset, current: offset }; }}
       onPointerMove={event => { const drag = dragRef.current; if (drag?.id === probe.id) { event.preventDefault(); event.stopPropagation(); drag.current = { x: Math.max(-200, Math.min(200, drag.offset.x + event.clientX - drag.start.x)), y: Math.max(-200, Math.min(200, drag.offset.y + event.clientY - drag.start.y)) }; } }}
       onPointerUp={event => release(event, probe)} onPointerCancel={event => release(event, probe, true)}
-      onKeyDown={event => { if (disabled) return; const step = event.shiftKey ? 20 : 5, offset = offsetsRef.current.get(probe.id) ?? { x: -32, y: -29 }; const delta = ({ ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] } as Record<string, number[]>)[event.key]; if (delta) { event.preventDefault(); onChange(probes.map(other => other.id === probe.id ? { ...other, markerOffset: { x: Math.max(-200, Math.min(200, offset.x + delta[0])), y: Math.max(-200, Math.min(200, offset.y + delta[1])) } } : other)); } }}>
+      onKeyDown={event => { if (disabled) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectProbe?.(probe.id); return; } const step = event.shiftKey ? 20 : 5, offset = offsetsRef.current.get(probe.id) ?? { x: -32, y: -29 }; const delta = ({ ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] } as Record<string, number[]>)[event.key]; if (delta) { event.preventDefault(); onSelectProbe?.(probe.id); onChange(probes.map(other => other.id === probe.id ? { ...other, markerOffset: { x: Math.max(-200, Math.min(200, offset.x + delta[0])), y: Math.max(-200, Math.min(200, offset.y + delta[1])) } } : other)); } }}>
       <title>{probe.name} · {probe.kind === 'voltage' ? 'Drag into clear space, or drop on a wire to reconnect.' : 'Drag into clear space. Current stays attached to this component.'} Arrow keys move the grip.</title>
       <circle r="18" fill="transparent"/>
       <path data-body d="M-12 0 L-6 -4 H9 Q12 -4 12 -1 V1 Q12 4 9 4 H-6 Z M9 -4 V4" fill="var(--probe-paper)" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>

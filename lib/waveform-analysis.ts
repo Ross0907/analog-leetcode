@@ -1,4 +1,5 @@
 import FFT from "fft.js";
+import { inspectFftSampling, uniformFftSuffix } from './fft-sampling';
 
 export type WaveformPoint = { x: number; y: number };
 export type WindowFunction = "rectangular" | "hann" | "hamming" | "blackman";
@@ -82,25 +83,21 @@ export function computeSpectrum(time: ArrayLike<number>, values: ArrayLike<numbe
   if (!Number.isInteger(length) || length < 64 || length > 131072 || (length & (length - 1)) !== 0) throw new Error("FFT length must be a power of two from 64 to 131072.");
   if (time.length !== values.length || time.length < length) throw new Error(`Capture at least ${length} samples for this FFT length.`);
   const points: WaveformPoint[] = [];
-  let largestStep = 0; let smallestStep = Infinity;
+  const sampling = inspectFftSampling(time);
   for (let i = 0; i < time.length; i++) {
     const x = Number(time[i]); const y = Number(values[i]);
     if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("FFT requires finite samples.");
-    if (i > 0) {
-      const step = x - Number(time[i - 1]);
-      if (step <= 0) throw new Error("FFT requires strictly increasing sample times.");
-      largestStep = Math.max(largestStep, step); smallestStep = Math.min(smallestStep, step);
-    }
     points.push({ x, y });
   }
-  const irregular = largestStep / smallestStep > 1.00001;
-  const step = irregular ? largestStep : (Number(time[time.length - 1]) - Number(time[0])) / (time.length - 1);
+  const uniform = uniformFftSuffix(time, length);
+  const irregular = uniform === null;
+  const step = uniform?.step ?? sampling.largestStep;
   const end = points[points.length - 1]!.x;
   const start = end - (length - 1) * step;
   if (start < points[0]!.x - step * 1e-6) throw new Error("Capture is too short at its largest timestep. Choose a smaller FFT or capture longer with a smaller maximum timestep.");
   // Decimal sample spacing can round the final interpolation coordinate one
   // ULP past the recorded endpoint. Stay within the already-validated record.
-  const samples = Array.from({ length }, (_, i) => interpolateWaveform(points, Math.min(end, Math.max(points[0]!.x, start + i * step)))!);
+  const samples = uniform ? Array.from({ length }, (_, i) => Number(values[uniform.start + i])) : Array.from({ length }, (_, i) => interpolateWaveform(points, Math.min(end, Math.max(points[0]!.x, start + i * step)))!);
   if (samples.some((sample) => sample === null || !Number.isFinite(sample))) throw new Error("FFT resampling exceeds the capture.");
   const mean = removeDc ? samples.reduce((sum, value) => sum + value, 0) / length : 0;
   let windowSum = 0;

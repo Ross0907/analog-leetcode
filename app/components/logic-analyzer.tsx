@@ -7,7 +7,7 @@ import { heldSampleIndex, logicState, logicWord, logicPath } from '../../lib/log
 import type { SimulationPayload } from '../../lib/simulator-contract';
 import { probeColor } from '../../lib/probe-colors';
 import { instrumentTraceColor, fitTimeWindow, type TimeWindowMode } from '../../lib/instrument-interactions';
-import { useInstrumentTheme, useTraceAppearance, useInstrumentPanel } from './instrument-state';
+import { useInstrumentTheme, useTraceAppearance, useInstrumentPanel, useTraceSelection } from './instrument-state';
 import { TraceContextMenu } from './trace-context-menu';
 import { exportInstrumentPng, instrumentPlots } from './instrument-export';
 import { automaticLogicThresholds } from '../../lib/logic-analysis';
@@ -17,6 +17,8 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
   const id = useId();
   const theme = useInstrumentTheme();
   const panel = useInstrumentPanel('logic');
+  const { selectedTraceId, selectTrace } = useTraceSelection();
+  const [layout, setLayout] = useState<'overlap' | 'separate'>('separate');
   const rootRef = useRef<HTMLElement>(null);
   const [timeWindow, setTimeWindow] = useState<TimeWindowMode>('elapsed');
   const [laneHeight, setLaneHeight] = useState(46);
@@ -60,6 +62,7 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
   const pointerDown = (event: ReactPointerEvent<SVGSVGElement>, traceId: string) => {
     if (event.button !== 0) return;
     event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); closeMenu();
+    selectTrace(traceId);
     const fraction = xFraction(event);
     selectionRef.current = { id: traceId, start: fraction, end: fraction };
     setSelection(selectionRef.current);
@@ -97,23 +100,29 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
       <button type="button" onClick={reset}>Reset view</button>
       <label>Time window<select aria-label="Time window" value={timeWindow} onChange={event => { setTimeWindow(event.target.value as TimeWindowMode); reset(); }}><option value="elapsed">0 → latest sample</option><option value="samples">Fit samples</option>{recordDuration !== undefined && recordDuration > 0 && <option value="requested">0 → requested duration</option>}</select></label>
       <label>Lane spacing<select aria-label="Logic lane spacing" value={laneHeight} onChange={event => setLaneHeight(Number(event.target.value))}><option value="46">Compact</option><option value="64">Comfortable</option><option value="88">Wide</option></select></label>
+      <label>Traces<select aria-label="Logic analyzer trace layout" value={layout} onChange={event => setLayout(event.target.value as typeof layout)}><option value="overlap">Overlap</option><option value="separate">Separate</option></select></label>
     </div>
     {high <= low ? <p role="alert">The high threshold must exceed the low threshold.</p> : channels.length === 0 ? <p>Add a voltage probe to view digital states.</p> : <>
       <div className={styles.logicRows}>{channels.map((trace, channel) => {
         const appearance = appearances[trace.id];
         const color = instrumentTraceColor(appearance?.color ?? trace.color ?? probeColor(trace.id), theme);
         const waveform = logicPath(payload.x, trace.values, visibleStart, visibleEnd, low, high);
-        return <div className={styles.logicRow} key={trace.id}>
-          <label style={{ color }}><input aria-label={'Include ' + trace.name + ' in bus'} type="checkbox" checked={busIds.includes(trace.id)} disabled={!busIds.includes(trace.id) && busIds.length >= 16} onChange={(event) => setBusIds(event.target.checked ? [...busIds, trace.id] : busIds.filter((value) => value !== trace.id))}/><button type="button" aria-label={'Style ' + trace.name} title="Trace appearance" onClick={(event) => { const bounds = event.currentTarget.getBoundingClientRect(); setMenu({ id: trace.id, x: bounds.left, y: bounds.bottom }); }}>D{channel} · {trace.name}</button></label>
-          <svg style={{ height: panel.maximized ? Math.max(64, laneHeight) : laneHeight }} viewBox="0 0 1000 46" preserveAspectRatio="none" role="img" aria-label={trace.name + ' digital waveform'} onPointerDown={(event) => pointerDown(event, trace.id)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onDoubleClick={reset} onContextMenu={(event) => { event.preventDefault(); if (event.target instanceof SVGPathElement) setMenu({ id: trace.id, x: event.clientX, y: event.clientY }); else closeMenu(); }}>
+        return <div className={styles.logicRow} key={trace.id} data-selected={selectedTraceId === trace.id || undefined} data-overlap={layout === 'overlap' || undefined}>
+          <label style={{ color }}><input aria-label={'Include ' + trace.name + ' in bus'} type="checkbox" checked={busIds.includes(trace.id)} disabled={!busIds.includes(trace.id) && busIds.length >= 16} onChange={(event) => setBusIds(event.target.checked ? [...busIds, trace.id] : busIds.filter((value) => value !== trace.id))}/><button type="button" aria-label={'Select ' + trace.name} aria-pressed={selectedTraceId === trace.id} title="Select trace; right-click for appearance" onClick={() => selectTrace(trace.id)} onContextMenu={event => { event.preventDefault(); selectTrace(trace.id); setMenu({ id: trace.id, x: event.clientX, y: event.clientY }); }}>D{channel} · {trace.name}</button></label>
+          {layout === 'separate' && <svg style={{ height: panel.maximized ? Math.max(64, laneHeight) : laneHeight }} viewBox="0 0 1000 46" preserveAspectRatio="none" role="img" aria-label={trace.name + ' digital waveform'} onPointerDown={(event) => pointerDown(event, trace.id)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onDoubleClick={reset} onContextMenu={(event) => { event.preventDefault(); if (event.target instanceof SVGPathElement) { selectTrace(trace.id); setMenu({ id: trace.id, x: event.clientX, y: event.clientY }); } else closeMenu(); }}>
             <path d={waveform.path} fill="none" stroke={color} strokeWidth={appearance?.width ?? 1.8} vectorEffect="non-scaling-stroke" pointerEvents="stroke"/>
             <line x1={cursor * 1000} x2={cursor * 1000} y1="0" y2="46" stroke="currentColor" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" pointerEvents="none"/>
             {selection?.id === trace.id && <rect className={styles.logicSelection} x={1000 * Math.min(selection.start, selection.end)} y="0" width={1000 * Math.abs(selection.end - selection.start)} height="46"/>}
-          </svg>
+          </svg>}
           <output style={{ color }}>{logicState(trace.values[index]!, low, high)}</output>
           {waveform.truncated && <small>More than 6,000 transitions. Zoom into a shorter time window to inspect every edge.</small>}
         </div>;
       })}</div>
+      {layout === 'overlap' && <svg className={styles.logicOverlap} viewBox="0 0 1000 46" preserveAspectRatio="none" role="img" aria-label="Overlapping digital waveforms" onPointerDown={event => pointerDown(event, event.target instanceof SVGPathElement ? event.target.dataset.traceId! : selectedTraceId ?? channels[0]!.id)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onDoubleClick={reset} onContextMenu={event => { event.preventDefault(); if (event.target instanceof SVGPathElement && event.target.dataset.traceId) { selectTrace(event.target.dataset.traceId); setMenu({ id: event.target.dataset.traceId, x: event.clientX, y: event.clientY }); } }}>
+        {channels.map(trace => <path key={trace.id} data-trace-id={trace.id} d={logicPath(payload.x, trace.values, visibleStart, visibleEnd, low, high).path} fill="none" stroke={instrumentTraceColor(appearances[trace.id]?.color ?? trace.color ?? probeColor(trace.id), theme)} strokeWidth={(appearances[trace.id]?.width ?? 1.8) + (selectedTraceId === trace.id ? 1.5 : 0)} vectorEffect="non-scaling-stroke" pointerEvents="stroke"/>)}
+        <line x1={cursor * 1000} x2={cursor * 1000} y1="0" y2="46" stroke="currentColor" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" pointerEvents="none"/>
+        {selection && <rect className={styles.logicSelection} x={1000 * Math.min(selection.start, selection.end)} y="0" width={1000 * Math.abs(selection.end - selection.start)} height="46"/>}
+      </svg>}
       <div className={styles.logicAxis}><span>{formatEngineering(visibleStart, 's')}</span><span>{formatEngineering(visibleEnd, 's')}</span></div>
       <p className={styles.note}>Auto set chooses thresholds at 20% and 80% of the captured voltage range. For a constant record it keeps valid thresholds or restores 0.8 V / 2 V. Drag across a lane to zoom · Double-click to reset · Right-click a trace to style. Select up to 16 channels for a bus; the first selected channel in the list is bit 0. Voltages between thresholds display X.</p>
       {selected.length > 0 && <output className={styles.bus} aria-label="Logic bus value">{word.hex} <span>{word.binary}</span></output>}

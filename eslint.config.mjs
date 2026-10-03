@@ -28,6 +28,7 @@ const eslintConfig = defineConfig([
     "public/hdl/icarus/**",
     "public/hdl/viewer/vcdrom.js",
     "vendor/eecircuit-engine/dist/**",
+    "vendor/braces/**",
     "artifacts/**",
     "test-results/**",
     "playwright-report/**",

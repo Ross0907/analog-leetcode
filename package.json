@@ -11,7 +11,7 @@
     "start": "vinext start",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && npm run audit:simulator && npm run test:unit && node --import tsx --test tests/rendered-html.test.mjs",
-    "test:unit": "node --import tsx --test tests/*.test.mts",
+    "test:unit": "node --import tsx --test tests/*.test.mts && node --test vendor/braces/security.test.cjs",
     "test:e2e": "playwright test",
     "audit:simulator": "node scripts/audit-simulator-provenance.mjs && node scripts/audit-circuitjs.mjs && node scripts/audit-kicad-symbols.mjs && node scripts/build-kicad-presentation.mjs --check && node scripts/audit-hdl.mjs && node scripts/build-analog-canvas-symbols.mjs --check",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
@@ -49,6 +49,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.1",
     "@vitejs/plugin-rsc": "0.5.34",
+    "braces": "file:vendor/braces",
     "drizzle-kit": "0.31.10",
     "eslint": "10.11.0",
     "eslint-plugin-jsx-a11y-x": "0.2.0",
@@ -68,7 +69,8 @@
     "@esbuild-kit/core-utils": {
       "esbuild": "0.25.12"
     },
-    "fflate": "0.8.3"
+    "fflate": "0.8.3",
+    "braces": "$braces"
   },
   "type": "module",
   "packageManager": "npm@12.0.2",

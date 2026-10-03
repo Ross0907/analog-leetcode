@@ -1,3 +1,4 @@
+import { inspectFftSampling } from './fft-sampling';
 export type PlotPoint = { x: number; y: number };
 export type PlotBounds = { minimum: number; maximum: number };
 export type PlotRectangle = { left: number; top: number; width: number; height: number };
@@ -18,10 +19,7 @@ export function stackedTraceOffsets(traces: readonly { id: string; minimum: numb
 }
 
 export function availableFftLength(time: readonly number[], maximum = 131072) {
-  let largestInterval = 0;
-  for (let index = 1; index < time.length; index++) largestInterval = Math.max(largestInterval, time[index]! - time[index - 1]!);
-  const count = largestInterval > 0 ? Math.floor(((time.at(-1) ?? 0) - (time[0] ?? 0)) / largestInterval + 1e-8) + 1 : 0;
-  return Math.max(64, 2 ** Math.floor(Math.log2(Math.max(1, Math.min(maximum, count)))));
+  return Math.min(2 ** Math.floor(Math.log2(Math.max(1, maximum))), inspectFftSampling(time).supportedLength);
 }
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value));
@@ -47,17 +45,23 @@ export function distanceToSegment(point: PlotPoint, a: PlotPoint, b: PlotPoint) 
 }
 
 /** Hit test only the displayed polylines, within a bounded pixel tolerance. */
-export function nearestPlotTrace(traces: readonly { id: string; points: readonly PlotPoint[] }[], point: PlotPoint, tolerance = 8) {
+export function nearestPlotTrace(traces: readonly { id: string; points: readonly PlotPoint[]; strokeWidth?: number }[], point: PlotPoint, tolerance = 8) {
   let closest: string | null = null, distance = tolerance;
+  let painted: string | null = null;
   for (const trace of traces) {
+    let traceDistance = Infinity;
     for (let index = 0; index < trace.points.length; index++) {
       const a = trace.points[Math.max(0, index - 1)]!, b = trace.points[index]!;
       if (![a.x, a.y, b.x, b.y].every(Number.isFinite)) continue;
       const candidate = distanceToSegment(point, a, b);
+      traceDistance = Math.min(traceDistance, candidate);
       if (candidate < distance) { distance = candidate; closest = trace.id; }
     }
+    // Later traces paint over earlier ones. A click within a visible stroke
+    // must select that stroke even if an obscured centerline is nearer.
+    if (trace.strokeWidth && traceDistance <= Math.min(tolerance, trace.strokeWidth / 2 + 0.5)) painted = trace.id;
   }
-  return closest;
+  return painted ?? closest;
 }
 
 /** A theme-only contrast adjustment preserves hue and the stored user color. */

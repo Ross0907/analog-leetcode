@@ -8,7 +8,7 @@ const source = readFileSync('public/analog-canvas/source/razavi-catalog.generate
 if (createHash('sha256').update(source).digest('hex') !== '8a2aaf499ae19d33e28667951e633d36a3b765cf20974e465bce610c21985f49') throw new Error('Pinned Analog Canvas source hash changed.');
 const { razaviCatalogSymbols, razaviSymbolCatalogEntries } = await import(`data:text/javascript;base64,${Buffer.from(stripTypeScriptTypes(source)).toString('base64')}`);
 const revision = '85e6be67420a2395d5094325123b6debc1eb0286';
-const selected = ['resistor', 'capacitor', 'inductor', 'diode', 'zener-diode', 'battery', 'voltage-source', 'pulse-voltage-source', 'current-source', 'ground', 'npn', 'pnp', 'nmos', 'pmos', 'opamp'];
+const selected = ['resistor', 'capacitor', 'inductor', 'inductor-compact', 'diode', 'zener-diode', 'battery', 'voltage-source', 'pulse-voltage-source', 'current-source', 'ground', 'npn', 'pnp', 'nmos', 'pmos', 'opamp', 'opamp-wide'];
 const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 const manifest = { schemaVersion: 1, repository: 'https://github.com/cascode-ai/analog-canvas', revision, license: 'AGPL-3.0-only',
   sourceSha256: sha256('public/analog-canvas/source/razavi-catalog.generated.ts.txt'), licenseSha256: sha256('public/analog-canvas/LICENSE.md'),

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Render actual pinned Analog Canvas catalog primitives onto native CircuitJS posts.
 const definitions = {
-  ResistorElm: ['resistor', '1', '2'], CapacitorElm: ['capacitor', '1', '2'], InductorElm: ['inductor', '1', '2'],
+  ResistorElm: ['resistor', '1', '2'], CapacitorElm: ['capacitor', '1', '2'], InductorElm: ['inductor-compact', '1', '2'],
   DiodeElm: ['diode', 'A', 'K'], ZenerElm: ['zener-diode', 'A', 'K'], CurrentElm: ['current-source', '+', '-'],
-  GroundElm: ['ground', '0'], OpAmpElm: ['opamp', 'IN-', 'IN+', 'OUT'],
+  GroundElm: ['ground', '0'], OpAmpElm: ['opamp-wide', 'IN-', 'IN+', 'OUT'],
   NTransistorElm: ['npn', 'B', 'C', 'E'], PTransistorElm: ['pnp', 'B', 'C', 'E'],
   NMosfetElm: ['nmos', 'G', 'S', 'D'], PMosfetElm: ['pmos', 'G', 'D', 'S'],
 };
 export function analogSymbolDefinition(element) {
   const type = element.getType();
   if (type === 'BatteryElm') return ['battery', '-', '+'];
-  if (['VoltageElm', 'DCVoltageElm', 'ACVoltageElm'].includes(type)) return [element.getWaveform?.() === 0 ? 'battery' : [2, 5, -2].includes(element.getWaveform?.()) ? 'pulse-voltage-source' : 'voltage-source', '-', '+'];
+  if (['VoltageElm', 'DCVoltageElm', 'ACVoltageElm'].includes(type)) return [[0, 7].includes(element.getWaveform?.()) ? 'battery' : [2, 5].includes(element.getWaveform?.()) ? 'pulse-voltage-source' : 'voltage-source', '-', '+'];
   if (type === 'MosfetElm') return definitions[(element.getFlags() & 1) ? 'PMosfetElm' : 'NMosfetElm'];
   if (type === 'TransistorElm') return definitions[/\(pnp\)$/i.test(element.getInfo()[0] ?? '') ? 'PTransistorElm' : 'NTransistorElm'];
   return definitions[type];
@@ -23,7 +23,8 @@ export function analogPlacement(symbol, definition, element) {
   const pins = definition.slice(1).map((name) => symbol.pins.find((pin) => pin.name === name)?.at);
   if (pins.some((pin) => !pin) || pins.length !== element.getPostCount()) return null;
   const posts = pins.map((_, index) => ({ x: element.getPostX(index), y: element.getPostY(index) }));
-  const [a, b] = pins.length === 3 && symbol.id !== 'opamp' ? [1, 2] : [0, 1];
+  const amplifier = symbol.id === 'opamp-wide';
+  const [a, b] = pins.length === 3 && !amplifier ? [1, 2] : [0, 1];
   if (pins.length === 1) {
     // Ground is an absolute reference, so its bars always face down the page.
     const c = 1, s = 0;
@@ -32,7 +33,9 @@ export function analogPlacement(symbol, definition, element) {
   const length = (p, q) => Math.hypot(q.x - p.x, q.y - p.y);
   const sourceLength = length(pins[a], pins[b]), targetLength = length(posts[a], posts[b]);
   if (sourceLength < 1e-6 || targetLength < 2) return null;
-  let scale = Math.min(targetLength / sourceLength, pins.length === 2 ? 1.25 : 1);
+  // Terminal span changes only the straight extensions, never enlarges a body.
+  // Very short authored components shrink uniformly to stay inside their posts.
+  let scale = Math.min(targetLength / sourceLength, 1);
   let reflection = 1;
   if (pins.length === 3) {
     const other = a === 0 ? 2 : 0;
@@ -41,9 +44,12 @@ export function analogPlacement(symbol, definition, element) {
     reflection = sc * tc < 0 ? -1 : 1;
     scale = Math.min(scale, Math.abs(tc / targetLength) / Math.abs(sc / sourceLength));
     if (symbol.id === 'npn' || symbol.id === 'pnp') scale *= 0.7;
-    if (symbol.id === 'opamp') {
-      const depth = Math.abs(tc / targetLength), sourceDepth = Math.abs(sc / sourceLength);
-      scale = Math.min(scale, Math.max(depth * 0.5, depth - 16) / sourceDepth);
+    if (amplifier) {
+      // The upstream wide variant has 40-unit input pitch. Match the real signed
+      // posts exactly (normal native pitch 32 => uniform scale .8), avoiding any
+      // fan-out bends. A too-short authored amplifier uses the native fallback.
+      scale = targetLength / sourceLength;
+      if (scale * Math.abs(sc / sourceLength) > Math.abs(tc / targetLength) + 1e-6) return null;
     }
     // The upstream transistor geometry is unchanged; fitting reserves visible
     // clearance between its collector/emitter elbow and the actual native post.
@@ -53,9 +59,9 @@ export function analogPlacement(symbol, definition, element) {
   const center = { x: (pins[a].x + pins[b].x) / 2, y: (pins[a].y + pins[b].y) / 2 };
   const target = { x: (posts[a].x + posts[b].x) / 2, y: (posts[a].y + posts[b].y) / 2 };
   const matrix = [c, s, -s * reflection, c * reflection, target.x - c * center.x + s * center.y * reflection, target.y - s * center.x - c * center.y * reflection];
-  if (symbol.id === 'opamp') {
+  if (amplifier) {
     // Center its three-pin envelope between the real input and output posts.
-    // This leaves room for input lead bends outside the triangular body.
+    // Both input extensions remain straight along the symbol's horizontal axis.
     matrix[4] += (posts[2].x - (matrix[0] * pins[2].x + matrix[2] * pins[2].y + matrix[4])) / 2;
     matrix[5] += (posts[2].y - (matrix[1] * pins[2].x + matrix[3] * pins[2].y + matrix[5])) / 2;
   }
@@ -73,6 +79,29 @@ export function drawAnalogPrimitive(context, primitive, symbolScale = 1) {
   if (primitive.kind === 'circle') path.arc(primitive.center.x, primitive.center.y, primitive.radius, 0, Math.PI * 2);
   if (primitive.fill === 'foreground') context.fill(path);
   if (primitive.stroke !== 'none') context.stroke(path);
+}
+/** Native source waveform annotation inside the unchanged upstream source body.
+ * The generic upstream voltage symbol deliberately has no sine mark. These
+ * indicators follow CircuitJS waveform types; PWL stays explicitly arbitrary.
+ */
+export function drawSourceWaveform(context, waveform, center, scale = 1) {
+  if (![1, 3, 4, 6, -2].includes(waveform)) return;
+  context.save();
+  try {
+    context.translate(center.x, center.y);
+    context.lineWidth = 2;
+    context.lineCap = 'round'; context.lineJoin = 'round';
+    if (waveform === -2 || waveform === 6) {
+      context.font = `${5.8 * scale}px system-ui,sans-serif`;
+      context.textAlign = 'center'; context.textBaseline = 'middle';
+      context.fillText(waveform === -2 ? 'PWL' : 'N', 0, 0);
+      return;
+    }
+    const points = waveform === 1
+      ? Array.from({ length: 25 }, (_, index) => { const x = index / 24; return { x: (x * 14 - 7) * scale, y: -Math.sin(x * Math.PI * 2) * 4.5 * scale }; })
+      : (waveform === 3 ? [[-7,0],[-3.5,-4.5],[3.5,4.5],[7,0]] : [[-7,4.5],[0,-4.5],[0,4.5],[7,-4.5]]).map(([x,y])=>({x:x*scale,y:y*scale}));
+    context.beginPath(); points.forEach((point,index) => index ? context.lineTo(point.x,point.y) : context.moveTo(point.x,point.y)); context.stroke();
+  } finally { context.restore(); }
 }
 /** Palette exports use the same untouched primitive coordinates and default variant. */
 export function analogSvg(symbol) {
@@ -104,15 +133,18 @@ export async function createAnalogCanvasRenderer() {
       pins.forEach((pin, index) => {
         const x = matrix[0] * pin.x + matrix[2] * pin.y + matrix[4], y = matrix[1] * pin.x + matrix[3] * pin.y + matrix[5], post = posts[index];
         context.moveTo(post.x, post.y);
-        if (symbol.id === 'opamp' && index < 2) {
-          const norm = Math.hypot(matrix[0], matrix[1]), ux = matrix[0] / norm, uy = matrix[1] / norm;
-          const along = (x - post.x) * ux + (y - post.y) * uy;
-          context.lineTo(post.x + ux * along / 2, post.y + uy * along / 2);
-          context.lineTo(x - ux * along / 2, y - uy * along / 2);
-        } else if (Math.abs(x - post.x) > 0.1 && Math.abs(y - post.y) > 0.1) context.lineTo(x, post.y);
+        if (!symbol.id.startsWith('opamp') && Math.abs(x - post.x) > 0.1 && Math.abs(y - post.y) > 0.1) context.lineTo(x, post.y);
         context.lineTo(x, y);
-      }); context.stroke(); context.transform(...matrix);
-      analogPrimitives(symbol).forEach((primitive) => drawAnalogPrimitive(context, primitive, Math.hypot(matrix[0], matrix[1])));
+      }); context.stroke();
+      context.save();
+      try {
+        context.transform(...matrix);
+        analogPrimitives(symbol).forEach((primitive) => drawAnalogPrimitive(context, primitive, Math.hypot(matrix[0], matrix[1])));
+      } finally { context.restore(); }
+      // Keep the time-axis indicator upright regardless of source rotation.
+      if (symbol.id === 'voltage-source') {
+        drawSourceWaveform(context, element.getWaveform?.(), {x:matrix[4],y:matrix[5]}, Math.hypot(matrix[0],matrix[1]));
+      }
       return true;
     } finally { context.restore(); }
   } };

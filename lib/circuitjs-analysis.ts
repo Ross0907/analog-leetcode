@@ -9,7 +9,7 @@ import { SIMULATOR_NETLIST_LIMITS } from './simulator-netlist-policy';
 export type NativeSourceOverride =
   | { type: 'dc'; value: number }
   | { type: 'sine'; offset: number; amplitude: number; frequencyHz: number; phaseDeg?: number }
-  | { type: 'pwl'; points: { timeS: number; value: number }[] }
+  | { type: 'pwl'; points: { timeS: number; value: number }[]; repeatPeriodS?: number }
   | { type: 'bitstream'; bits: string; bitPeriodS: number; low: number; high: number; riseS: number; delayS?: number; repeat?: boolean };
 
 export type NativeAnalysisOption = { index: number; label: string; nativeType: string };
@@ -83,6 +83,8 @@ export function circuitJsAnalysisOptions(api: CircuitJsApi): { sources: NativeAn
  * Editing, wiring, hit testing and native simulation remain owned by CircuitJS.
  */
 export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSettings) {
+  const connectionError = api.ensureAnalyzed?.();
+  if (connectionError) throw new Error('Fix the schematic before analysis: ' + connectionError);
   if (api.getStopMessage()) throw new Error('Fix the schematic before analysis: ' + api.getStopMessage());
   const topLevel = api.getElements();
   const elements = circuitJsAnalysisElements(api);
@@ -94,6 +96,10 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
   const modelAssignments: { index: number; model: string; label: string }[] = [];
   const notes: string[] = [];
   const sourceIds = new Map<number, string>();
+  // Keep native identity until the existing deck compiler has assigned its
+  // actual device name. Internal block devices and synthetic IC rails have no
+  // directly selectable schematic branch and must not be inferred by ordinal.
+  const currentElements = new Map<string, CircuitJsElement>();
   const reference = (prefix: string) => prefix + (references[prefix] = (references[prefix] ?? 0) + 1);
   function bind(node: number, componentId: string, pinId: string) {
     if (!Number.isInteger(node) || node < 0) throw new Error('Wait for the schematic to finish connecting its nodes.');
@@ -110,7 +116,7 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
     if (type === 'LabeledNodeElm') {
       if (elementIndex >= topLevel.length) continue; // Internal block labels can repeat across instances.
       const name = element.getLabelName();
-      if (!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(name)) throw new Error('SPICE node labels must use letters, numbers and underscores, beginning with a letter.');
+      if (!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(name)) throw new Error('SPICE node labels must begin with a letter and use up to 32 letters, numbers and underscores.');
       const previous = labels.get(element.getNodeId(0));
       if (previous && previous.toLowerCase() !== name.toLowerCase()) throw new Error('Use one name for each electrical node before SPICE analysis.');
       labels.set(element.getNodeId(0), name); continue;
@@ -151,6 +157,7 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
     } else if (type === 'InductorElm') {
       if (value('isat', 0) !== 0) throw new Error('SPICE conversion currently supports unsaturated inductors. Use live measurements for this model.');
       components.push({ ...base, reference: reference('L'), kind: 'inductor', parameters: { inductanceH: value('l'), initialCurrentA: value('ic', 0) } }); terminal(element, id, ['a', 'b']);
+      if (elementIndex < topLevel.length) currentElements.set(id, element);
     } else if (sourceTypes.includes(type) && type !== 'CurrentElm') {
       const waveform = value('wf', 0), amplitude = value('maxv', 0), bias = value('bias', 0), phaseDeg = value('phaseShift', 0) * 180 / Math.PI;
       if (value('ir', 0) !== 0) throw new Error('For SPICE analysis, express source internal resistance as a separate series resistor.');
@@ -186,6 +193,7 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
       } else if (waveform !== 0 || type === 'DataInputElm') throw new Error('Choose explicit PWL or bitstream settings for ' + type.replace(/Elm$/, '') + ' before SPICE analysis.');
       if (settings.acSource !== undefined) parameters.ac = settings.acSource === elementIndex ? { magnitude: settings.acMagnitude ?? 1, phaseDeg: settings.acPhaseDeg ?? 0 } : undefined;
       components.push({ ...base, reference: reference('V'), kind: 'voltage-source', parameters });
+      if (elementIndex < topLevel.length) currentElements.set(id, element);
       sourceIds.set(elementIndex, id);
       if (element.getPostCount() === 1) { terminal(element, id, ['positive']); bind(0, id, 'negative'); }
       else terminal(element, id, ['negative', 'positive']);
@@ -278,5 +286,10 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
     if (error instanceof CircuitDocumentError) throw new Error(error.diagnostics.filter(item => item.severity === 'error').slice(0, 4).map(item => item.message).join(' ') || error.message, { cause: error });
     throw error;
   }
-  return { document, deck: generated.deck, probes: Object.values(generated.probeExpressions), modelAssignments, notes };
+  const currentBindings = [...currentElements].map(([componentId, element]) => {
+    const name = generated.deviceNameByComponentId[componentId];
+    if (!name) throw new Error('The compiled current branch is missing its device name.');
+    return { element, expression: `I(${name})` };
+  });
+  return { document, deck: generated.deck, probes: Object.values(generated.probeExpressions), currentBindings, modelAssignments, notes };
 }

@@ -143,8 +143,8 @@ test("real ngspice acquires more than four probes and the waveform/FFT controls 
   await spectrum.getByRole("combobox", { name: "Window", exact: true }).selectOption("blackman");
   await spectrum.getByRole("checkbox", { name: "Log frequency", exact: true }).check();
   await spectrum.getByRole("checkbox", { name: "Magnitude in dB", exact: true }).uncheck();
-  await expect(spectrum.getByRole("region", { name: "FFT spectrum", exact: true })).toBeVisible();
-  const fftPlot = spectrum.getByRole('region', { name: 'FFT spectrum', exact: true });
+  await expect(spectrum.getByRole("region", { name: "FFT spectrum · A", exact: true })).toBeVisible();
+  const fftPlot = spectrum.getByRole('region', { name: 'FFT spectrum · V', exact: true });
   await expectAreaZoom(page, fftPlot);
   await expectPlotTheme(page, fftPlot, 'light');
   const fftMenu = await rightClickRenderedTrace(page, fftPlot, 'V(n6)');
@@ -243,6 +243,7 @@ test("live acquisition remains bounded, updates real samples and freezes without
   await expect(settings).toHaveValue('131072');
   await settings.selectOption('1024');
   await workspace.getByLabel('Probe 1 name', { exact: true }).fill('Input rail');
+  await openSettings(page, 'Acquisition options');
   await workspace.getByLabel('Live acquisition mode', { exact: true }).selectOption('continuous');
   await workspace.getByRole('button', { name: 'Start live measurements', exact: true }).click();
   const status = workspace.getByLabel('Live acquisition status', { exact: true });

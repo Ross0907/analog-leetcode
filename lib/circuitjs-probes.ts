@@ -1,5 +1,19 @@
 import { supportsCircuitJsCurrent, type CircuitJsApi, type CircuitJsElement, type CircuitJsProbe } from './circuitjs';
-import type { SimulationPayload } from './simulator-contract';
+import type { SimulationPayload, Trace } from './simulator-contract';
+
+export function spiceProbeMatches(probe: CircuitJsProbe, trace: Pick<Trace,'name'|'node'>, api: CircuitJsApi, bindings: {element:CircuitJsElement;expression:string}[]) {
+  const vector=(trace.node ?? trace.name).replace(/^∠/,'').toLowerCase();
+  if (/^i\(/.test(vector)) return probe.kind==='current' && bindings.some(binding=>binding.element===probe.element && binding.expression.toLowerCase()===vector);
+  return probe.kind==='voltage' && probeNodeName(api,probe.element,probe.post).toLowerCase().replace(/^node\s+/,'node')===vector.replace(/^v\((.*)\)$/,'$1');
+}
+
+/** Presentation only: retain canonical solver names, IDs, signs and sample arrays. */
+export function spiceProbePayloadAppearance(payload: SimulationPayload, probes: CircuitJsProbe[], api: CircuitJsApi, bindings: {element:CircuitJsElement;expression:string}[]): SimulationPayload {
+  return {...payload,traces:payload.traces.map(trace=>{
+    const probe=probes.find(probe=>spiceProbeMatches(probe,trace,api,bindings));
+    return probe?{...trace,color:probe.color}:trace;
+  })};
+}
 
 export const isProbeWire = (element: CircuitJsElement) => ['WireElm', 'RoutedWireElm'].includes(element.getType());
 

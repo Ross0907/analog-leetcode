@@ -4,6 +4,7 @@ import { CircuitBoard, FileJson2, ShieldCheck } from "lucide-react";
 import { SiteHeader } from "../components/site-header";
 import { SiteFooter } from "../components/site-footer";
 import { ProblemExplorer } from "../components/problem-explorer";
+import { PracticeTrackNav } from '../components/practice-track-nav';
 
 export const metadata: Metadata = {
   title: "Analog circuit problems",
@@ -15,6 +16,7 @@ export default function ProblemsPage() {
     <>
       <SiteHeader active="problems" />
       <main className="page-main">
+        <div className="shell"><PracticeTrackNav active="analog"/></div>
         <section className="catalog-hero shell">
           <div>
             <div className="eyebrow"><CircuitBoard size={15} /> Challenge library</div>
