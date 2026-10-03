@@ -37,6 +37,8 @@ export interface CircuitJsApi {
   addNetLabel?(name: string, style: 'plain' | 'flag'): string | null;
   /** Resets native time/device history, retaining component identity and run/pause state. */
   resetSimulation?(): void;
+  /** Allocate the current native graph without advancing simulation time. */
+  ensureAnalyzed?(): string | null;
   /** Advance the existing native solver, yielding after this many steps or milliseconds. */
   stepSimulation?(maxSteps: number, budgetMs: number): number;
   getCircuitRevision?(): number;
@@ -142,6 +144,8 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
   onProgress?: (progress: CircuitJsCaptureProgress) => void;
   restart?: boolean;
 } = {}) {
+  const connectionError = api.ensureAnalyzed?.();
+  if (connectionError) throw new Error('Fix the schematic before capturing: ' + connectionError);
   if (!(duration >= 1e-9 && duration <= 10) || !Number.isFinite(duration)) throw new Error('Capture duration must be between 1 ns and 10 seconds.');
   if (!Number.isInteger(requestedSamples) || requestedSamples < 128 || requestedSamples > 131072) throw new Error('Choose between 128 and 131,072 samples.');
   const active = probes.filter((probe) => probe.enabled);
@@ -158,10 +162,11 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
   const initialTime = api.getTime();
   const x: number[] = [];
   const values = active.map(() => [] as number[]);
-  const maxPoints = Math.min(131072, Math.floor(2097152 / (active.length + 1)), requestedSamples * 2);
+  const maxPoints = Math.min(131072, Math.floor(2097152 / (active.length + 1)));
+  const effectiveTarget = Math.min(requestedSamples, maxPoints);
   const previousMaxStep = api.getMaxTimeStep();
   // The first reading is the first accepted step, not a synthesized t=0 point.
-  const captureStep = duration / requestedSamples;
+  const captureStep = duration / effectiveTarget;
   let pumpTimer: ReturnType<typeof setTimeout> | undefined;
   let lastProgress = -Infinity;
   let finished = false;
@@ -174,7 +179,7 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
     const elapsedMs = performance.now() - started;
     if (!force && elapsedMs - lastProgress < 100) return;
     lastProgress = elapsedMs;
-    options.onProgress?.({ samples: x.length, target: requestedSamples, time: x.at(-1) ?? 0, elapsedMs });
+    options.onProgress?.({ samples: x.length, target: effectiveTarget, time: x.at(-1) ?? 0, elapsedMs });
   }
   function cleanup() {
     finished = true;
@@ -196,7 +201,10 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
     resolve({ engine: 'circuitjs1', analysis: 'transient', xLabel: 'Time', xUnit: 's', yLabel: 'Probe readings', yUnit: 'V', x,
       traces: active.map((probe, index) => ({ id: probe.id, name: probe.name, values: values[index], unit: probe.kind === 'current' ? 'A' : 'V', quantity: probe.kind, color: probe.color, node: `CircuitJS node ${probe.element.getNodeId(probe.post)}` })),
       operatingPoint: active.map((probe, index) => ({ name: probe.name, value: values[index].at(-1) ?? 0, unit: probe.kind === 'current' ? 'A' : 'V' })),
-      warnings: capped ? ['Capture reached its adaptive-sample limit before the requested duration. Increase the sample interval.'] : [], runtimeMs: performance.now() - started });
+      warnings: [
+        ...(effectiveTarget < requestedSamples ? [`Record depth is ${effectiveTarget.toLocaleString()} samples per channel to fit the acquisition memory limit.`] : []),
+        ...(capped ? ['Capture reached its adaptive-sample limit before the requested duration. Increase the sample interval.'] : []),
+      ], runtimeMs: performance.now() - started });
   }
   api.setSimRunning(false);
   api.setMaxTimeStep(captureStep);

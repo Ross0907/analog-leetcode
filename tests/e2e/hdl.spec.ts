@@ -3,12 +3,14 @@ import { HDL_CHALLENGES } from '../../lib/hdl-challenges';
 
 test('HDL playground executes Icarus and renders actual VCD in the embedded viewer',async({page})=>{
   test.setTimeout(90_000);
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto('/hdl/playground');
   await expect(page.getByRole('textbox',{name:'Design source'})).toContainText('posedge clk');
   await page.getByRole('button',{name:'Run',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('Finished',{timeout:30_000});
   const viewer=page.frameLocator('iframe[title="VCDrom logic waveform viewer"]');
   await expect(viewer.locator('canvas').first()).toBeVisible({timeout:25_000});
+  expect(errors).toEqual([]);
   await page.screenshot({path:'artifacts/qa/hdl-workspace.png',fullPage:true});
   await expect(viewer.getByRole('alert')).toBeHidden();
   await page.getByRole('combobox',{name:'Output layout'}).selectOption('split');
@@ -27,12 +29,20 @@ test('HDL checks distinguish wrong logic, fixed logic, syntax errors, and persis
   await page.goto(`/hdl/${challenge.slug}`);
   const editor=page.getByRole('textbox',{name:'Design source'});
   await editor.fill(challenge.solution.replace('sel==0 ? a : sel==1 ? b : sel==2 ? c : d','a'));
-  await page.getByRole('button',{name:'Check solution'}).click();
+  await page.getByRole('tab',{name:'tb.sv',exact:true}).click();
+  await page.getByRole('textbox',{name:'Testbench source',exact:true}).fill('module tb; initial begin $display("ANACODE_RESULT checks=64 failures=0"); $finish; end endmodule');
+  await page.getByRole('tab',{name:'Supplied tests',exact:true}).click();
+  await expect(page.getByRole('textbox',{name:'Supplied testbench source'})).toHaveAttribute('aria-readonly','true');
+  await page.getByRole('tab',{name:'design.sv',exact:true}).click();
+  await page.getByRole('button',{name:'Submit',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('Some practice checks failed',{timeout:30_000});
-  await expect(page.getByLabel('Simulator console')).toContainText('FAIL: Selected word');
+  await expect(page.getByLabel('Submission diagnostics')).toContainText('FAIL: Selected word');
+  await expect(page.getByLabel('Test case results')).toContainText('18 / 64 checks passed');
   await editor.fill(challenge.solution);
-  await page.getByRole('button',{name:'Check solution'}).click();
+  await page.getByRole('button',{name:'Submit',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('All 64 practice checks passed',{timeout:30_000});
+  await page.getByRole('tab',{name:'Waveforms',exact:true}).click();
+  await expect(page.frameLocator('iframe[title="VCDrom logic waveform viewer"]').locator('canvas').first()).toBeVisible({timeout:25_000});
   await editor.fill(`${challenge.solution}\n// revision`);
   await expect(page.getByRole('status')).toContainText('Draft changed');
   await expect(page.getByRole('button',{name:'VCD',exact:true})).toBeDisabled();
@@ -42,6 +52,88 @@ test('HDL checks distinguish wrong logic, fixed logic, syntax errors, and persis
   await page.getByRole('button',{name:'Run',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('Compile or simulation error',{timeout:30_000});
   await expect(page.getByLabel('Simulator console')).toContainText('design.v');
+  await page.getByRole('tab',{name:'Test results',exact:true}).click();
+  await page.getByRole('button',{name:/^design.sv:1/}).first().click();
+  await expect(editor).toBeFocused();
+});
+
+test('HDL is discoverable from analog practice and has searchable local progress on mobile',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/problems');
+  await page.getByRole('navigation',{name:'Practice tracks'}).getByRole('link',{name:/Verilog/}).click();
+  await expect(page.getByRole('heading',{name:'Verilog & SystemVerilog practice'})).toBeVisible();
+  await page.getByRole('textbox',{name:'Search HDL problems'}).fill('SAR');
+  await expect(page.getByRole('region',{name:'HDL exercises'}).getByRole('link')).toHaveCount(1);
+  await page.getByRole('link',{name:/Sequence a SAR conversion/}).click();
+  await expect(page.getByRole('button',{name:'Submit',exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBeTruthy();
+  await page.getByRole('link',{name:'Problem list',exact:true}).click();
+  await page.getByRole('textbox',{name:'Search HDL problems'}).fill('');
+  await page.evaluate(()=>{localStorage.setItem('anacode-hdl-progress-v1',JSON.stringify({'word-multiplexer':{passed:true,checks:64,failures:0,submittedAt:new Date().toISOString()}}));window.dispatchEvent(new Event('anacode-hdl-progress'));});
+  await page.getByRole('combobox',{name:'HDL status'}).selectOption('Passed');
+  await expect(page.getByRole('region',{name:'HDL exercises'}).getByRole('link')).toHaveCount(1);
+  await expect(page.getByRole('link',{name:/Route a data word/})).toContainText('64 checks');
+});
+
+test('HDL search waits for its handlers before accepting input when client scripts are delayed',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  let releaseScripts:()=>void=()=>{};
+  const scriptsReady=new Promise<void>(resolve=>{releaseScripts=resolve;});
+  await page.route('**/*',async route=>{
+    if(route.request().resourceType()==='script')await scriptsReady;
+    await route.continue();
+  });
+  try {
+    await page.goto('/hdl',{waitUntil:'commit'});
+    const library=page.getByRole('region',{name:'HDL exercises'});
+    const search=page.getByRole('textbox',{name:'Search HDL problems'});
+    await expect(search).toBeVisible();
+    await expect(search).toBeDisabled();
+    await expect(library).toHaveAttribute('aria-busy','true');
+    for(const name of ['HDL difficulty','HDL topic','HDL status'])await expect(page.getByRole('combobox',{name})).toBeDisabled();
+    await expect(library.getByRole('link')).toHaveCount(6);
+    await expect(library.getByRole('link').first()).toHaveAttribute('href','/hdl/word-multiplexer');
+    releaseScripts();
+    await expect(search).toBeEnabled();
+    await search.fill('SAR');
+    await expect(library.getByRole('link')).toHaveCount(1);
+    await expect(library.getByRole('link')).toContainText('Sequence a SAR conversion');
+    await page.getByRole('combobox',{name:'HDL difficulty'}).selectOption('Easy');
+    await expect(library.getByRole('link')).toHaveCount(0);
+    await page.getByRole('combobox',{name:'HDL difficulty'}).selectOption('Hard');
+    await expect(library.getByRole('link')).toHaveCount(1);
+    await expect(search).toHaveValue('SAR');
+    await expect(library).toHaveAttribute('aria-busy','false');
+  } finally { releaseScripts(); }
+});
+
+test('HDL panes resize with keyboard and pointer while editor state survives file switches',async({page})=>{
+  await page.goto('/hdl/word-multiplexer');
+  const editor=page.getByRole('textbox',{name:'Design source'}), code=page.getByRole('region',{name:'HDL source files'});
+  await expect(editor).toBeVisible();
+  const side=page.getByRole('separator',{name:'Resize problem description'});
+  const before=(await code.boundingBox())!.width;
+  await side.focus();await side.press('ArrowRight');await side.press('ArrowRight');
+  expect((await code.boundingBox())!.width).toBeLessThan(before-20);
+  const vertical=page.getByRole('separator',{name:'Resize editor and results'}), initialHeight=(await code.boundingBox())!.height;
+  const handle=(await vertical.boundingBox())!;
+  await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);await page.mouse.down();await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2+55,{steps:6});await page.mouse.up();
+  expect((await code.boundingBox())!.height).toBeGreaterThan(initialHeight+30);
+  await editor.fill(HDL_CHALLENGES[0].solution);
+  await page.getByRole('combobox',{name:'HDL language'}).selectOption('2005');
+  await page.getByRole('button',{name:'Submit',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('All 64 practice checks passed',{timeout:30_000});
+  await page.setViewportSize({width:1280,height:720});
+  await vertical.focus();await vertical.press('End');
+  await expect(vertical).toHaveAttribute('aria-controls',(await code.getAttribute('id'))!);
+  const results=(await page.getByRole('region',{name:'HDL simulation results'}).boundingBox())!;
+  const codingBottom=await code.evaluate(element=>element.parentElement!.getBoundingClientRect().bottom);
+  expect(results.y+results.height).toBeLessThanOrEqual(codingBottom+1);
+  await editor.press('ControlOrMeta+End');await editor.pressSequentially('// kept undo history');
+  await page.getByRole('tab',{name:'tb.sv',exact:true}).click();await page.getByRole('tab',{name:'design.sv',exact:true}).click();
+  await editor.press('ControlOrMeta+z');
+  await expect(editor).not.toContainText('// kept undo history');
+  await expect(editor).toContainText('assign y = sel==0');
 });
 
 test('HDL runaway execution can be stopped without freezing the editor',async({page})=>{

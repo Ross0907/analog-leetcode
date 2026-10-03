@@ -3,6 +3,21 @@
 import { createContext, use, useEffect, useMemo, useState, useSyncExternalStore, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 
 export type TraceAppearance = { color?: string; width?: number; offset?: number };
+export type CaptureRequest = { minimumSamples: number; fftLength: number; reason: string };
+type TraceSelection = { selectedTraceId: string | null; selectTrace: (id: string | null) => void };
+const SelectionContext = createContext<TraceSelection | null>(null);
+
+export function TraceSelectionProvider({ children, selectedTraceId, onSelectTrace }: { children: ReactNode; selectedTraceId?: string | null; onSelectTrace?: (id: string | null) => void }) {
+  const [localId, setLocalId] = useState<string | null>(null);
+  const value = useMemo(() => ({ selectedTraceId: selectedTraceId === undefined ? localId : selectedTraceId, selectTrace: (id: string | null) => { setLocalId(id); onSelectTrace?.(id); } }), [localId, selectedTraceId, onSelectTrace]);
+  return <SelectionContext value={value}>{children}</SelectionContext>;
+}
+
+export function useTraceSelection() {
+  const shared = use(SelectionContext);
+  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  return shared ?? { selectedTraceId, selectTrace: setSelectedTraceId };
+}
 type AppearanceState = [Record<string, TraceAppearance>, Dispatch<SetStateAction<Record<string, TraceAppearance>>>];
 const AppearanceContext = createContext<AppearanceState | null>(null);
 
@@ -34,7 +49,7 @@ export function useInstrumentPanel(id: string) {
   const maximized = shared ? shared.maximizedId === id : localMaximized;
   return {
     maximized,
-    hidden: Boolean(shared?.maximizedId && shared.maximizedId !== id),
+    hidden: Boolean(shared?.maximizedId && shared.maximizedId !== id && !shared.maximizedId.startsWith(id + ':')),
     toggleMaximized: () => { if (shared) shared.setMaximized(maximized ? null : id); else setLocalMaximized(!maximized); },
     restore: () => { shared?.setMaximized(null); setLocalMaximized(false); },
   };

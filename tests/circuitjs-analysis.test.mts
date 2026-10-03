@@ -21,6 +21,36 @@ test('analysis maps native node IDs and polarity, rereading actual edited values
   assert.notEqual(before.deck, after.deck);
 });
 
+test('current bindings preserve native identity and compiled references across grounds, IC supplies and block internals', () => {
+  const supply = element('VoltageElm', [0, 1], 'wf="0" maxv="5"');
+  const inductor = element('InductorElm', [1, 2], 'l="0.01" ic="0"');
+  const laterSupply = element('VoltageElm', [0, 4], 'wf="0" maxv="10"');
+  const rail = element('RailElm', [7], 'wf="0" maxv="3.3"');
+  const block = element('CustomCompositeElm', [4, 5]);
+  const top = [
+    element('GroundElm', [0]), element('ResistorElm', [1, 0], 'r="1000"'), supply,
+    inductor, element('ResistorElm', [2, 0], 'r="500"'),
+    element('OpAmpElm', [3, 1, 3], 'ga="100000" ma="15" mi="-15"'),
+    element('ResistorElm', [3, 0], 'r="1000"'), laterSupply,
+    element('GroundElm', [0]), element('WireElm', [4, 4]), block,
+    rail, element('ResistorElm', [7, 0], 'r="3300"'),
+  ];
+  const hiddenSupply = element('VoltageElm', [0, 6], 'wf="0" maxv="2"');
+  const hiddenInductor = element('InductorElm', [4, 5], 'l="0.02" ic="0"');
+  const native = { ...api(top), getAnalysisElements: () => [
+    ...top, hiddenSupply, element('ResistorElm', [6, 0], 'r="1000"'),
+    hiddenInductor, element('ResistorElm', [5, 0], 'r="500"'),
+  ] };
+  const result = circuitJsAnalysis(native, { ...settings, models: { 5: 'lm741' } });
+  assert.deepEqual(result.currentBindings.map(binding => binding.expression), ['I(V1)', 'I(L1)', 'I(V4)', 'I(V5)']);
+  [supply, inductor, laterSupply, rail].forEach((expected, index) => assert.equal(result.currentBindings[index].element, expected));
+  assert.match(result.deck, /^V4 node4 0 DC 1e1$/m);
+  assert.match(result.deck, /^V5 node7 0 DC 3\.3e0$/m);
+  assert.match(result.deck, /^V6 node6 0 DC 2e0$/m);
+  assert.match(result.deck, /^L2 node4 node5 2e-2(?: IC=0)?$/m);
+  assert.ok(result.currentBindings.every(binding => !['I(V2)', 'I(V3)', 'I(V6)', 'I(L2)'].includes(binding.expression)), 'Synthetic rails and devices inside blocks have no selectable current binding.');
+});
+
 test('DC current and single-terminal rail sources preserve native current direction and implicit ground', () => {
   const native = api([element('RailElm', [1], 'wf="0" maxv="3.3"'), element('ResistorElm', [1, 2], 'r="1000"'), element('CurrentElm', [2, 0], 'cu="0.001"')]);
   const result = circuitJsAnalysis(native, settings);

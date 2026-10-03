@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { Download, Maximize2, Minimize2 } from 'lucide-react';
 import { formatEngineering } from '../../lib/engineering';
 import { exportInstrumentPng } from './instrument-export';
-import { useInstrumentPanel, useInstrumentTheme } from './instrument-state';
+import { useInstrumentPanel, useInstrumentTheme, useTraceSelection } from './instrument-state';
 import styles from './instrument-workspace.module.css';
 
-export function DcReadout({ values, sampleTime }: { values: { name: string; value: number; unit?: string }[]; sampleTime?: number }) {
+export function DcReadout({ values, sampleTime }: { values: { id?: string; name: string; value: number; unit?: string; color?: string }[]; sampleTime?: number }) {
   const panel = useInstrumentPanel('dc');
   const theme = useInstrumentTheme();
+  const { selectedTraceId, selectTrace } = useTraceSelection();
+  const [layout, setLayout] = useState<'together' | 'separate'>('together');
   const [units, setUnits] = useState<'engineering' | 'base'>('engineering');
   const [error, setError] = useState<string | null>(null);
   const display = (value: number, unit = 'V') => !Number.isFinite(value) ? 'Unavailable' : units === 'base' ? Number(value.toPrecision(6)) + ' ' + unit : value === 0 ? '0 ' + unit : formatEngineering(value, unit);
@@ -26,7 +28,8 @@ export function DcReadout({ values, sampleTime }: { values: { name: string; valu
       <button type="button" onClick={() => void save()} aria-label="Save instrument PNG" title="Save instrument PNG"><Download size={16}/></button>
     </div></header>
     <label className={styles.readoutUnits}>Units<select aria-label="DC readout units" value={units} onChange={event => setUnits(event.target.value as typeof units)}><option value="engineering">Automatic engineering units</option><option value="base">Base units (V, A)</option></select></label>
-    <div className="op-grid">{values.map(point => <div key={point.name}><span>{point.name}</span><strong>{display(point.value, point.unit)}</strong></div>)}</div>
+    <label className={styles.readoutUnits}>Readouts<select aria-label="DC readings layout" value={layout} onChange={event => setLayout(event.target.value as typeof layout)}><option value="together">Together</option><option value="separate">Separate rows</option></select></label>
+    <div className="op-grid" style={layout === 'separate' ? { gridTemplateColumns: '1fr' } : undefined}>{values.map(point => <div key={point.id ?? point.name} data-selected={selectedTraceId === (point.id ?? point.name) || undefined}><button type="button" className={styles.readoutSelect} aria-label={'Select ' + point.name} aria-pressed={selectedTraceId === (point.id ?? point.name)} onClick={() => selectTrace(point.id ?? point.name)}><span>{point.name}</span><strong>{display(point.value, point.unit)}</strong></button></div>)}</div>
     {sampleTime !== undefined && <p className={styles.note}>These are the latest measured values, not a separate operating-point calculation.</p>}
     {error && <p role="alert">{error}</p>}
   </section>;

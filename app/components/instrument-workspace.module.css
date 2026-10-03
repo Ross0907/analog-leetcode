@@ -2,6 +2,7 @@
 
 .traceMenu{position:fixed;z-index:1200;width:232px;max-height:calc(100dvh - 16px);overflow:auto;padding:12px;display:grid;gap:12px;border:1px solid var(--line-strong,#a7b0bc);border-radius:10px;background:var(--surface,#fff);color:var(--ink,#1c2330);box-shadow:0 12px 40px #0003;font-size:12px;outline:none}
 .traceMenu:focus-visible{outline:2px solid var(--accent,#0b78b7)}
+.logicRow[data-selected=true],.readout :global(.op-grid)>div[data-selected=true]{outline:2px solid var(--blue,#1684be);outline-offset:-2px;border-radius:5px;background:color-mix(in srgb,var(--blue,#1684be) 7%,var(--surface))}.logicRow[data-overlap=true]{grid-template-columns:1fr auto}.logicOverlap{width:100%;height:140px;touch-action:none;cursor:crosshair;color:var(--muted);background:var(--surface-soft);border:1px solid var(--line);border-radius:5px}.readoutSelect{display:flex;flex-direction:column;gap:5px;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit}.readoutSelect:focus-visible{outline:2px solid var(--blue)}
 .menuHeading{display:flex;align-items:center;justify-content:space-between;gap:10px}.menuHeading strong{overflow-wrap:anywhere}
 .traceMenu label{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .traceMenu input,.traceMenu select{min-width:0;max-width:126px;padding:5px;border:1px solid var(--line,#d6dae2);border-radius:5px;background:var(--surface-soft,#f3f5f8);color:inherit;font:inherit}

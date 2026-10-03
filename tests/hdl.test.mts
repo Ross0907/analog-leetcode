@@ -20,6 +20,15 @@ test('Real HDL checks reject compilable but wrong logic',async()=>{
   // Emscripten sets process.exitCode on expected nonzero exits in Node only.
   process.exitCode=0;
 });
+
+test('exhaustive failed submissions finish all cases without overflowing console output',async()=>{
+  const challenge=HDL_CHALLENGES.find(item=>item.slug==='saturating-adder')!;
+  const result=await runHdl({design:challenge.starter,testbench:challenge.testbench,language:'2012'});
+  const checked=hdlCheckResult(result.log,result.exitCode,challenge.checks);
+  assert.equal(checked.checks,65536);assert.equal(checked.failures,65536);assert.equal(checked.passed,false);
+  assert.equal(result.log.match(/^FAIL:/gm)?.length,20);assert.match(result.log,/final count includes every check/);
+  process.exitCode=0;
+});
 test('Icarus returns compile diagnostics with source filenames',async()=>{
   const result=await runHdl({design:'module top_module(input a output y); endmodule',testbench:'module tb; endmodule',language:'2005'});
   assert.notEqual(result.exitCode,0);

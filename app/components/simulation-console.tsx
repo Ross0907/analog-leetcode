@@ -50,6 +50,9 @@ export function SimulationConsole({
   compact = false,
   settingsSlot,
   invalidationKey,
+  runRequest,
+  onRunningChange,
+  getCurrentInvalidationKey,
 }: {
   initialNetlist: string;
   probe?: string | readonly string[];
@@ -57,14 +60,17 @@ export function SimulationConsole({
   judge?: JudgeKind;
   circuitDocument?: CircuitDocument;
   autoRun?: boolean;
-  prepareCircuit?: () => { document: CircuitDocument; deck: string; probes?: readonly string[] };
+  prepareCircuit?: () => { document: CircuitDocument; deck: string; probes?: readonly string[]; invalidationKey?: string };
   prepareGrading?: () => CircuitDocument;
-  onResult?: (payload: SimulationPayload | null) => void;
+  onResult?: (payload: SimulationPayload | null, source?: 'schematic' | 'deck') => void;
   hideWaveforms?: boolean;
   requireSchematic?: boolean;
   compact?: boolean;
   settingsSlot?: ReactNode;
   invalidationKey?: string;
+  runRequest?: number;
+  onRunningChange?: (running: boolean) => void;
+  getCurrentInvalidationKey?: () => string;
 }) {
   const [netlist, setNetlist] = useState(initialNetlist);
   const [analysisSource, setAnalysisSource] = useState<"schematic" | "deck">(prepareCircuit ? "schematic" : "deck");
@@ -82,8 +88,12 @@ export function SimulationConsole({
   const prepareWorkerRef = useRef<() => SimulatorWorkerSession | null>(() => null);
   const submissionSequenceRef = useRef(0);
   const previousInvalidationRef = useRef(invalidationKey);
+  const previousRunRequestRef = useRef(runRequest);
+  const preparedInvalidationRef = useRef<string | undefined>(undefined);
+  const preparedGradeInvalidationRef = useRef<string | undefined>(undefined);
 
-  useEffect(() => { onResult?.(simulation); }, [simulation, onResult]);
+  useEffect(() => { onResult?.(simulation, analysisSource); }, [simulation, onResult, analysisSource]);
+  useEffect(() => { onRunningChange?.(running); }, [running, onRunningChange]);
 
   const disposeWorker = useCallback((session = workerSessionRef.current) => {
     if (!session) return;
@@ -209,14 +219,20 @@ export function SimulationConsole({
   const cancelSimulation = useCallback(() => {
     if (activeRunRef.current) disposeWorker();
     activeRunRef.current = null;
+    preparedInvalidationRef.current = undefined;
     if (mountedRef.current) setRunning(false);
   }, [disposeWorker]);
 
   useEffect(() => {
     if (previousInvalidationRef.current === invalidationKey) return;
     previousInvalidationRef.current = invalidationKey;
-    submissionSequenceRef.current++;
-    const timer = setTimeout(() => { cancelSimulation(); setSimulation(null); setGrade(null); setSimError(null); setSubmitting(false); }, 0);
+    // Native analysis may finish during preparation. That render must not cancel
+    // the run compiled from the newly analyzed connections.
+    if (preparedGradeInvalidationRef.current !== invalidationKey) submissionSequenceRef.current++;
+    const timer = setTimeout(() => {
+      if (preparedInvalidationRef.current !== invalidationKey) { cancelSimulation(); setSimulation(null); setSimError(null); }
+      if (preparedGradeInvalidationRef.current !== invalidationKey) { setGrade(null); setSubmitting(false); }
+    }, 0);
     return () => clearTimeout(timer);
   }, [invalidationKey, cancelSimulation]);
 
@@ -241,10 +257,12 @@ export function SimulationConsole({
       try {
         if (!prepareCircuit) throw new Error("Wire the circuit in the schematic before running it.");
         const prepared = prepareCircuit();
+        preparedInvalidationRef.current = prepared.invalidationKey ?? invalidationKey;
         runNetlist = prepared.deck;
         if (prepared.probes) { probes = validateSimulatorProbes(prepared.probes); setProbeText(probes.join(", ")); }
         setNetlist(runNetlist);
       } catch (cause) {
+        preparedInvalidationRef.current = getCurrentInvalidationKey?.() ?? invalidationKey;
         activeRunRef.current = null; setRunning(false);
         setSimError(cause instanceof Error ? cause.message : "Check the schematic wiring before running.");
         return;
@@ -264,7 +282,14 @@ export function SimulationConsole({
     } else if (session.phase === "ready") {
       dispatchRequest(session, request);
     }
-  }, [cancelSimulation, dispatchRequest, netlist, prepareWorker, probeText, requireSchematic, prepareCircuit, analysisSource]);
+  }, [cancelSimulation, dispatchRequest, netlist, prepareWorker, probeText, requireSchematic, prepareCircuit, analysisSource, invalidationKey, getCurrentInvalidationKey]);
+
+  useEffect(() => {
+    if (previousRunRequestRef.current === runRequest) return;
+    // Apply the shared duration/depth and clear invalidated results before running.
+    const timer = setTimeout(() => { previousRunRequestRef.current = runRequest; runSimulation(); }, 0);
+    return () => clearTimeout(timer);
+  }, [runRequest, runSimulation]);
 
   useEffect(() => {
     prepareWorkerRef.current = prepareWorker;
@@ -292,8 +317,12 @@ export function SimulationConsole({
     if (!challengeSlug || !judge) return;
     const submissionSequence = ++submissionSequenceRef.current;
     let submittedDocument: CircuitDocument | undefined;
-    try { submittedDocument = prepareGrading?.() ?? prepareCircuit?.().document ?? circuitDocument; }
+    try {
+      submittedDocument = prepareGrading?.() ?? prepareCircuit?.().document ?? circuitDocument;
+      preparedGradeInvalidationRef.current = getCurrentInvalidationKey?.() ?? invalidationKey;
+    }
     catch (cause) {
+      preparedGradeInvalidationRef.current = getCurrentInvalidationKey?.() ?? invalidationKey;
       setGrade({ passed: false, score: 0, summary: cause instanceof Error ? cause.message : "Check the circuit connections before submitting.", diagnostics: [], graderVersion: "client-validation", persisted: false });
       return;
     }
@@ -347,7 +376,7 @@ export function SimulationConsole({
             try { const prepared = prepareCircuit(); cancelSimulation(); setAnalysisSource("schematic"); setNetlist(prepared.deck); if (prepared.probes) setProbeText(prepared.probes.join(", ")); setSimulation(null); setSimError(null); }
             catch (cause) { setSimError(cause instanceof Error ? cause.message : "Check the schematic before preparing analysis."); }
           }}>Use current schematic</button>}
-          <button className="icon-button" type="button" onClick={() => { cancelSimulation(); setNetlist(initialNetlist); setProbeText(initialProbeText); setSimulation(null); setGrade(null); setSimError(null); }} aria-label="Reset simulation"><RotateCcw size={16} /></button>
+          <button className="icon-button" type="button" onClick={() => { cancelSimulation(); submissionSequenceRef.current++; preparedGradeInvalidationRef.current = undefined; setSubmitting(false); setNetlist(initialNetlist); setProbeText(initialProbeText); setSimulation(null); setGrade(null); setSimError(null); }} aria-label="Reset simulation"><RotateCcw size={16} /></button>
           <button className="button button-small button-run" type="button" onClick={runSimulation} disabled={running}>
             {running ? <><span className="spinner" /> Running</> : <><Play size={15} fill="currentColor" /> Run simulation</>}
           </button>

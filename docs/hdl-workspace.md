@@ -1,6 +1,6 @@
 # HDL workspace
 
-`/hdl` is a separate coding practice track. The six original exercises cover a word multiplexer, saturating adder, enabled counter, flash-ADC thermometer encoder, PWM DAC and a 4-bit SAR controller. The playground opens a working counter example.
+`/hdl` is the Verilog and SystemVerilog practice track, reachable through **HDL Practice** in desktop/mobile navigation, the home page, and the practice-track switch above both problem libraries. Search, difficulty, topic and local pass-status filters help find an exercise. The six original exercises cover a word multiplexer, saturating adder, enabled counter, flash-ADC thermometer encoder, PWM DAC and a 4-bit SAR controller. The playground opens a working counter example.
 
 ## Execution and results
 
@@ -10,13 +10,17 @@ The adapter drives Icarus's actual `ivlpp`, `ivl` and `vvp` stages through their
 
 The compiler's statically linked system tasks produce the real VCD consumed by the unmodified VCDrom 1.6.0 viewer. The wrapper imports that data through VCDrom's own file input. It accepts messages only from its same-origin parent, applies a size cap, and has no analytics. The viewer has separate same-origin CSP; the application and login retain their nonce policy. CodeMirror styles carry the application's CSP nonce.
 
-Run executes the user's edited testbench. Check solution always uses the original provided testbench against the edited design; each exercise checks its own expected outputs and exits nonzero on failure. These are transparent **local practice checks**, not tamper-resistant or server-verified grading. No HDL score is written to account progress. Analog server grading remains separate and authoritative for its supported topology contracts.
+**Run** executes the user's edited testbench. **Submit** always uses the original provided testbench against the edited design, even if `tb.sv` has been changed. The read-only **Supplied tests** tab makes that contract inspectable. Each exercise checks its expected outputs and exits nonzero on failure. The result shows the final count, first passing examples and at most 20 failure details; this display limit never reduces the number of executed checks. Compiler diagnostics jump to the relevant source line. Each source editor keeps its undo history while switching tabs.
 
-The UI presents console and waveform tabs, a side-by-side layout and a stacked scroll layout. VCD exports can be opened in other viewers. Project export includes both source files, a Windows launcher, and Makefile targets for Icarus simulation, Yosys synthesis and GTKWave. Yosys is a local OSS CAD Suite integration in this release, not an in-browser synthesis claim.
+These are transparent **local practice checks**, not tamper-resistant or server-verified grading. The last completed submission is saved under `anacode-hdl-progress-v1` in browser storage and appears in the problem library. No HDL score is written to account progress. Analog server grading remains separate and authoritative for its supported topology contracts.
+
+The description sits beside the editor and results on desktop and stacks above them on mobile. Drag the dividers to resize, or focus one and use arrow keys; Home/End select its smallest/largest size. Console and waveform tabs also support a side-by-side layout and a stacked scroll layout. Ctrl/Command+Enter runs; adding Shift submits a challenge. Editing source or changing the language invalidates earlier results and cancels a running worker.
+
+VCD exports can be opened in other viewers. Project export includes both edited source files, a Windows launcher, and Makefile targets for Icarus simulation, Yosys synthesis and GTKWave. Yosys is a local OSS CAD Suite integration in this release, not an in-browser synthesis claim.
 
 ## Validation
 
-`tests/hdl.test.mts` executes all six reference solutions in the bundled Icarus engine, including all 65,536 8-bit addition pairs. It also verifies wrong logic rejection, compile diagnostics, real VCD generation and input limits. `tests/e2e/hdl.spec.ts` exercises the editor, fixed checks, draft restore, viewer import, repeat runs, layouts and interruption in Chromium. Worker/rendered-response tests check separation of the app and vendored tool CSP.
+`tests/hdl.test.mts` executes all six reference solutions in the bundled Icarus engine, including all 65,536 8-bit addition pairs. It also verifies wrong logic rejection (including every addition pair), bounded failure reporting, compile diagnostics, real VCD generation and input limits. `tests/hdl-practice.test.mts` covers diagnostic/result parsing and bounded progress restoration. Five cases in `tests/e2e/hdl.spec.ts` exercise fixed submission despite a modified testbench, draft restore, editor undo, diagnostic links, genuine viewer import, repeat runs, mobile discovery/filtering, keyboard/pointer resizing, both supported language modes and interruption in Chromium. Worker/rendered-response tests check separation of the app and vendored tool CSP.
 
 ## Attribution
 

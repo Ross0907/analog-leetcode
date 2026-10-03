@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   BarChart3,
+  Braces,
   Check,
   ChevronRight,
   CircuitBoard,
@@ -39,6 +40,7 @@ export default function Home() {
             <div className="hero-actions">
               <Link className="button button-primary" href="/problems/precision-voltage-divider">Solve your first circuit <ArrowRight size={18} /></Link>
               <Link className="button button-quiet" href="/problems">Browse problems</Link>
+              <Link className="button button-quiet" href="/hdl"><Braces size={17}/> Practice Verilog &amp; SystemVerilog</Link>
             </div>
             <div className="trust-row" aria-label="Platform highlights">
               <span><Check size={15} /> No install required</span>

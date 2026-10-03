@@ -221,6 +221,57 @@
       ],
       "variants": []
     },
+    "inductor-compact": {
+      "schemaVersion": 1,
+      "id": "inductor-compact",
+      "name": "Inductor",
+      "viewBox": {
+        "x": -10,
+        "y": -24,
+        "width": 20,
+        "height": 48
+      },
+      "pins": [
+        {
+          "name": "1",
+          "role": "passive",
+          "at": {
+            "x": 0,
+            "y": -20
+          },
+          "direction": "north",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "2",
+          "role": "passive",
+          "at": {
+            "x": 0,
+            "y": 20
+          },
+          "direction": "south",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "path",
+          "data": "M 0 -20 L 0 -19.4953 C 0 -19.4953 0 -19.4953 0 -18.2174 C 0 -16.9409 0 -14.3851 0 -13.1087 C 0 -11.8308 0 -11.8308 0 -11.8308 C 0 -11.8308 0 -11.8308 1.2452 -11.5749 C 2.4889 -11.319 4.9763 -10.8087 6.1873 -9.7867 C 7.3983 -8.7647 7.3313 -7.2323 4.8439 -6.2088 C 2.355 -5.1868 -2.5543 -4.6765 -5.009 -5.4427 C -7.4637 -6.2088 -7.4637 -8.2544 -4.9763 -8.7201 C -2.4874 -9.1872 2.4889 -8.0759 5.0209 -6.3874 C 7.5545 -4.6988 7.6422 -2.4331 5.1548 -0.9439 C 2.6659 0.5437 -2.3996 1.2549 -4.9317 0.5884 C -7.4637 -0.0781 -7.4637 -2.1222 -4.9317 -2.6325 C -2.3996 -3.1442 2.6659 -2.1222 5.1325 -0.456 C 7.5991 1.2102 7.4652 3.5206 4.9317 5.0544 C 2.3996 6.5867 -2.532 7.3425 -4.9986 6.6983 C -7.4637 6.0541 -7.4637 4.01 -4.9986 3.3763 C -2.532 2.744 2.3996 3.5206 4.8885 4.7985 C 7.3759 6.0764 7.4205 7.8542 6.1992 8.9983 C 4.9763 10.1423 2.4889 10.6525 1.2452 10.9084 C 0 11.1643 0 11.1643 0 11.1643 C 0 11.1643 0 11.1643 0 12.5523 C 0 13.9403 0 16.7178 0 18.1073 C 0 19.4953 0 19.4953 0 19.4953 L 0 20",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "round"
+          }
+        }
+      ],
+      "variants": []
+    },
     "diode": {
       "schemaVersion": 1,
       "id": "diode",
@@ -2180,6 +2231,176 @@
         }
       ],
       "variants": []
+    },
+    "opamp-wide": {
+      "schemaVersion": 1,
+      "id": "opamp-wide",
+      "name": "Op Amp Wide",
+      "viewBox": {
+        "x": -44,
+        "y": -34,
+        "width": 88,
+        "height": 68
+      },
+      "pins": [
+        {
+          "name": "IN+",
+          "role": "non-inverting-input",
+          "at": {
+            "x": -40,
+            "y": 20
+          },
+          "direction": "west",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "IN-",
+          "role": "inverting-input",
+          "at": {
+            "x": -40,
+            "y": -20
+          },
+          "direction": "west",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        },
+        {
+          "name": "OUT",
+          "role": "output",
+          "at": {
+            "x": 30,
+            "y": 0
+          },
+          "direction": "east",
+          "presentation": {
+            "visibility": "visible",
+            "leadLength": 10
+          }
+        }
+      ],
+      "primitives": [
+        {
+          "kind": "line",
+          "from": {
+            "x": -40,
+            "y": -20
+          },
+          "to": {
+            "x": -30,
+            "y": -20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -40,
+            "y": 20
+          },
+          "to": {
+            "x": -30,
+            "y": 20
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": 21.961524,
+            "y": 0
+          },
+          "to": {
+            "x": 30,
+            "y": 0
+          },
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "butt",
+            "lineJoin": "miter"
+          }
+        },
+        {
+          "kind": "path",
+          "data": "M -30 -30 L -30 30 L 21.961524 0 Z",
+          "bounds": {
+            "x": -30,
+            "y": -30,
+            "width": 51.961524,
+            "height": 60
+          },
+          "style": {
+            "strokeRole": "emphasis",
+            "lineCap": "butt",
+            "lineJoin": "miter",
+            "miterLimit": 4
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -23.75,
+            "y": 11
+          },
+          "to": {
+            "x": -23.75,
+            "y": 17
+          },
+          "part": "input-polarity",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "round",
+            "lineJoin": "round"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -26.75,
+            "y": 14
+          },
+          "to": {
+            "x": -20.75,
+            "y": 14
+          },
+          "part": "input-polarity",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "round",
+            "lineJoin": "round"
+          }
+        },
+        {
+          "kind": "line",
+          "from": {
+            "x": -26.75,
+            "y": -14
+          },
+          "to": {
+            "x": -20.75,
+            "y": -14
+          },
+          "part": "upright-input-polarity-negative",
+          "style": {
+            "strokeRole": "normal",
+            "lineCap": "round",
+            "lineJoin": "round"
+          }
+        }
+      ],
+      "variants": []
     }
   },
   "provenance": [
@@ -2361,6 +2582,39 @@
       "manualOnlyReason": "Evidence-exact textbook proportions; imported L elements take the scale-reconciled inductor-compact symbol."
     },
     {
+      "symbolId": "inductor-compact",
+      "name": "Inductor",
+      "category": "passive",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "1",
+        "2"
+      ],
+      "palette": true,
+      "automaticMappings": [
+        "spice:L"
+      ],
+      "assetPath": "inductor-compact.json",
+      "assetHash": "ea49a969428ddb0bdce0a567467e11295a1e39f15ba71d0eafd5d316a0cbc6ea",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/inductor-vector-source.json",
+          "fixtures/visual-reference/razavi-reference-v1/inductor-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/inductor-geometry.json"
+      },
+      "generation": {
+        "kind": "razavi-pdf-vector-reference",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePath": "fixtures/visual-reference/razavi-reference-v1/inductor-vector-source.json",
+        "converterPath": "scripts/generate-razavi-inductor-asset.mjs",
+        "converterVersion": 2,
+        "pinSpanScale": 0.666667
+      }
+    },
+    {
       "symbolId": "nmos",
       "name": "NMOS",
       "category": "transistor",
@@ -2452,6 +2706,37 @@
         "converterPath": "scripts/generate-razavi-opamp-asset.mjs",
         "converterVersion": 6,
         "bodyNormalization": "equilateral-triangle"
+      }
+    },
+    {
+      "symbolId": "opamp-wide",
+      "name": "Op Amp Wide",
+      "category": "analog-block",
+      "reviewStatus": "reviewed",
+      "pinOrder": [
+        "IN+",
+        "IN-",
+        "OUT"
+      ],
+      "palette": true,
+      "automaticMappings": [],
+      "manualOnlyReason": "Three-terminal textbook op-amp; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+      "assetPath": "opamp-wide.json",
+      "assetHash": "bdd2a3bd55046a1fd0e5df8a4b9171968c929738b196d29a803e6da61227d1d9",
+      "visualAuthority": {
+        "kind": "razavi-reference-v1",
+        "referenceManifestPath": "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+        "referencePaths": [
+          "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+          "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png"
+        ],
+        "calibrationPath": "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json"
+      },
+      "generation": {
+        "kind": "derived-wide-amplifier",
+        "sourceSymbolId": "opamp",
+        "converterPath": "scripts/generate-component-library.mjs",
+        "converterVersion": 1
       }
     },
     {

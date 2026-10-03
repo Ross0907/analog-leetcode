@@ -491,6 +491,19 @@ replace('SimulationManager.java', 'boolean delayWireProcessing = app.scopeManage
 replace('SimulationManager.java', '\t    app.onTimeStep();', '\t    anacodeBatchSteps++;\n\t    app.onTimeStep();');
 replace('SimulationManager.java', 'if ((timeStepCount-timeStepCountAtFrameStart)*1000 >= steprate*(tm-lastIterTime) || (tm-app.ui.lastFrameTime > frameTimeLimit))', 'if (anacodeBatch ? (anacodeBatchSteps >= anacodeBatchLimit || tm >= anacodeBatchDeadline) : ((timeStepCount-timeStepCountAtFrameStart)*1000 >= steprate*(tm-lastIterTime) || (tm-app.ui.lastFrameTime > frameTimeLimit)))');
 replace('JSInterface.java', '    String getTheme()', `    int stepSimulation(int steps, int milliseconds) { return app.sim.anacodeStepSimulation(steps, milliseconds); }
+    boolean anacodeEnsuringAnalysis;
+    String ensureAnalyzed() {
+        if (anacodeEnsuringAnalysis) return app.stopMessage;
+        anacodeEnsuringAnalysis = true;
+        try {
+            if (app.analyzeFlag || app.dcAnalysisFlag) { app.sim.analyzeCircuit(); app.analyzeFlag = false; }
+            // The upstream display-only analyze pass does not allocate nodes
+            // while paused. Use its ordinary pre-stamp path without stepping
+            // time or changing the user's running/paused state.
+            if (app.sim.needsStamp && !app.elmList.isEmpty()) app.sim.preStampAndStampCircuit();
+            app.repaint(); return app.stopMessage;
+        } finally { anacodeEnsuringAnalysis = false; }
+    }
     int getCircuitRevision() { return app.anacodeCircuitRevision; }
     int compactComponentLeads() {
         int changed = 0;
@@ -524,6 +537,7 @@ replace('JSInterface.java', '    String getTheme()', `    int stepSimulation(int
     String getTheme()`);
 replace('JSInterface.java', '\t$wnd.CircuitJS1 = {', `\t$wnd.CircuitJS1 = {
             stepSimulation: $entry(function(steps, milliseconds) { return that.@com.lushprojects.circuitjs1.client.JSInterface::stepSimulation(II)(steps, milliseconds); }),
+            ensureAnalyzed: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::ensureAnalyzed()(); }),
             getCircuitRevision: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::getCircuitRevision()(); }),
             compactComponentLeads: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::compactComponentLeads()(); }),
             dismissEditors: $entry(function() { that.@com.lushprojects.circuitjs1.client.JSInterface::dismissEditors()(); }),`);
@@ -609,6 +623,28 @@ replace('LabeledNodeElm.java', '\tif (n == 2) {\n\t    EditInfo ei = new EditInf
 \tif (n == 2) {\n\t    EditInfo ei = new EditInfo("", 0, -1, -1);`);
 replace('LabeledNodeElm.java', '    public void setEditValue(int n, EditInfo ei) {', `    public void setEditValue(int n, EditInfo ei) {
         if (n == 3) flags = ei.choice.getSelectedIndex() == 1 ? flags | FLAG_ANACODE_FLAG : flags & ~FLAG_ANACODE_FLAG;`);
+// A vertical label tether can visually cross an adjacent source-return ground
+// even though the label has just one electrical post. Offset its presentation
+// only; preserve authored endpoints, label identity and native wire closure.
+replace('LabeledNodeElm.java', '\tdrawThickLine(g, point1, lead1, (busWidth > 1) ? 5 : 3);', `        Point labelStart = point1, labelEnd = lead1;
+        if (point1.x == lead1.x && !isRotateText()) {
+            g.save(); g.setFont(valueFont);
+            int textWidth = (int)g.context.measureText(text).getWidth(); g.restore();
+            int top = Math.min(point1.y, lead1.y) - valueFontSize*2;
+            int bottom = Math.max(point1.y, lead1.y) + valueFontSize*2;
+            for (CircuitElm other : app.elmList) {
+                if (!(other instanceof GroundElm)) continue;
+                Point ground = other.getPost(0);
+                if (Math.abs(ground.x - point1.x) > textWidth/2+12 || ground.y+34 < top || ground.y > bottom) continue;
+                int shift = Math.max(28, textWidth/2+18);
+                labelStart = new Point(point1.x+shift, point1.y);
+                labelEnd = new Point(lead1.x+shift, lead1.y);
+                drawThickLine(g, point1, labelStart, (busWidth > 1) ? 5 : 3);
+                break;
+            }
+        }
+        drawThickLine(g, labelStart, labelEnd, (busWidth > 1) ? 5 : 3);`);
+replace('LabeledNodeElm.java', '\tdrawLabeledNode(g, text, point1, lead1);', '\tdrawLabeledNode(g, text, labelStart, labelEnd);');
 replace('CircuitElm.java', '    native void addJSMethods() /*-{', `    native com.google.gwt.core.client.JavaScriptObject anacodeWirePoint(int x, int y) /*-{
         return {x:x, y:y};
     }-*/;

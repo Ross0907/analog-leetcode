@@ -19,7 +19,7 @@ const editorTheme = EditorView.theme({
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': { backgroundColor: 'color-mix(in srgb, var(--accent) 22%, transparent)' },
 });
 
-export function HdlCodeEditor({ value, onChange, label }: { value: string; onChange: (value: string) => void; label: string }) {
+export function HdlCodeEditor({ value, onChange, label, reveal, readOnly=false }: { value: string; onChange: (value: string) => void; label: string; reveal?: { line: number; revision: number }; readOnly?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorView | null>(null);
   const callbackRef = useRef(onChange);
@@ -32,9 +32,10 @@ export function HdlCodeEditor({ value, onChange, label }: { value: string; onCha
       lineNumbers(), history(), drawSelection(), highlightActiveLine(), bracketMatching(),
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       StreamLanguage.define(verilog), syntaxHighlighting(defaultHighlightStyle), editorTheme,
+      EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly),
       EditorView.cspNonce.of(document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce ?? ''),
       theme.of(EditorView.theme({}, { dark: document.documentElement.dataset.theme === 'dark' })),
-      EditorView.contentAttributes.of({ 'aria-label': label, 'aria-multiline': 'true', 'role': 'textbox', spellcheck: 'false' }),
+      EditorView.contentAttributes.of({ 'aria-label': label, 'aria-multiline': 'true', 'aria-readonly': String(readOnly), 'role': 'textbox', spellcheck: 'false' }),
       EditorView.updateListener.of(update => { if (update.docChanged) callbackRef.current(update.state.doc.toString()); }),
     ] });
     const view = new EditorView({ state, parent: containerRef.current });
@@ -42,10 +43,14 @@ export function HdlCodeEditor({ value, onChange, label }: { value: string; onCha
     const observer = new MutationObserver(() => view.dispatch({ effects: theme.reconfigure(EditorView.theme({}, { dark: document.documentElement.dataset.theme === 'dark' })) }));
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => { observer.disconnect(); view.destroy(); editorRef.current = null; };
-  }, [label]);
+  }, [label,readOnly]);
   useEffect(() => {
     const view = editorRef.current;
     if (view && view.state.doc.toString() !== value) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
   }, [value]);
+  useEffect(() => {
+    const view=editorRef.current;
+    if(view && reveal){const line=view.state.doc.line(Math.max(1,Math.min(view.state.doc.lines,reveal.line)));view.dispatch({selection:{anchor:line.from},effects:EditorView.scrollIntoView(line.from,{y:'center'})});view.focus();}
+  },[reveal]);
   return <div ref={containerRef} style={{ height: '100%', minWidth: 0 }} />;
 }

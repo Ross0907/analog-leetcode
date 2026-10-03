@@ -17,8 +17,10 @@ module tb;
       checks=checks+1;
       if (condition !== 1'b1) begin
         failures=failures+1;
-        $display("FAIL: %0s at %0t", description, $time);
+        if(failures<=20) $display("FAIL: %0s at %0t (check %0d)", description, $time, checks);
+        if(failures==21) $display("Further failure details omitted; the final count includes every check.");
       end
+      else if(checks<=4) $display("PASS: %0s at %0t (check %0d)", description, $time, checks);
     end
   endtask
   initial begin

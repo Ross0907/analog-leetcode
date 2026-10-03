@@ -58,6 +58,8 @@ export function startCircuitJsAcquisition(api: CircuitJsApi, probes: CircuitJsPr
   restart?: boolean; record?: boolean; onComplete?: () => void;
 }) {
   const { duration } = options;
+  const connectionError = api.ensureAnalyzed?.();
+  if (connectionError) throw new Error('Fix the schematic before recording: ' + connectionError);
   if (!Number.isFinite(duration) || duration < 1e-9 || duration > 10) throw new Error('Choose a time window between 1 ns and 10 seconds.');
   const active = probes.filter((probe) => probe.enabled);
   const buffer = new AcquisitionBuffer(active.length, options.samples);

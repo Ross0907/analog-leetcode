@@ -191,6 +191,9 @@ export async function createKiCadRenderer() {
   theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
   analog.setTheme(theme);
   const select = (element) => {
+    // If the exact wide Analog Canvas amplifier cannot fit an unusually short
+    // authored span, retain native terminals/rendering rather than add doglegs.
+    if (element.getType() === 'OpAmpElm') return null;
     const definition = symbolDefinition(element);
     const asset = definition && assets.get(definition.source);
     const placement = asset && symbolPlacement(asset.symbol, definition, element);

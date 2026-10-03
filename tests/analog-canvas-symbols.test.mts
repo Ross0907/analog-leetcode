@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { analogPlacement, analogPrimitives, analogSymbolDefinition, drawAnalogPrimitive } from '../public/analog-canvas/renderer.js';
+import { analogPlacement, analogPrimitives, analogSymbolDefinition, drawAnalogPrimitive, drawSourceWaveform } from '../public/analog-canvas/renderer.js';
 
 const manifest = JSON.parse(readFileSync('public/analog-canvas/symbols.json', 'utf8'));
 test('textbook bodies retain exact pinned Analog Canvas source and license', () => {
@@ -10,7 +10,7 @@ test('textbook bodies retain exact pinned Analog Canvas source and license', () 
   assert.equal(manifest.revision, '85e6be67420a2395d5094325123b6debc1eb0286');
   assert.equal(hash('public/analog-canvas/source/razavi-catalog.generated.ts.txt'), '8a2aaf499ae19d33e28667951e633d36a3b765cf20974e465bce610c21985f49');
   assert.equal(hash('public/analog-canvas/LICENSE.md'), '0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0');
-  assert.equal(Object.keys(manifest.symbols).length, 15);
+  assert.equal(Object.keys(manifest.symbols).length, 17);
 });
 test('MOS uses actual upstream three-terminal arrows without circles or a dangling bulk pin', () => {
   for (const id of ['nmos', 'pmos', 'npn', 'pnp']) {
@@ -63,15 +63,46 @@ test('symbol-fitting scale cannot make artwork strokes thinner than native wires
   } finally { if(original)Object.assign(globalThis,{Path2D:original});else Reflect.deleteProperty(globalThis,'Path2D'); }
 });
 
-test('actual Analog Canvas op-amp retains signed inputs and outward output for every native rotation and flip', () => {
-  for (const flip of [1,-1]) for (const angle of [0,Math.PI/2,Math.PI,Math.PI*1.5]) {
-    const posts = [[0,-16*flip],[0,16*flip],[80,0]].map(([x,y]) => ({x:x*Math.cos(angle)-y*Math.sin(angle),y:x*Math.sin(angle)+y*Math.cos(angle)}));
+test('actual wide op-amp has straight signed input leads through rotation, flip and native span changes', () => {
+  for (const span of [64,80,128,240]) for (const flip of [1,-1]) for (const angle of [0,Math.PI/2,Math.PI,Math.PI*1.5]) {
+    const posts = [[0,-16*flip],[0,16*flip],[span,0]].map(([x,y]) => ({x:x*Math.cos(angle)-y*Math.sin(angle),y:x*Math.sin(angle)+y*Math.cos(angle)}));
     const element = {getType:()=> 'OpAmpElm',getPostCount:()=>3,getPostX:(p:number)=>posts[p].x,getPostY:(p:number)=>posts[p].y};
-    const definition=analogSymbolDefinition(element), placed=analogPlacement(manifest.symbols.opamp,definition,element);
+    const definition=analogSymbolDefinition(element), placed=analogPlacement(manifest.symbols[definition[0]],definition,element);
     assert(placed);
+    assert.equal(definition[0],'opamp-wide');
+    assert(Math.abs(Math.hypot(placed.matrix[0],placed.matrix[1])-.8)<1e-10);
     const drawn=placed.pins.map((pin:{x:number;y:number}) => ({x:placed.matrix[0]*pin.x+placed.matrix[2]*pin.y+placed.matrix[4],y:placed.matrix[1]*pin.x+placed.matrix[3]*pin.y+placed.matrix[5]}));
     assert(Math.hypot(drawn[0].x-posts[0].x,drawn[0].y-posts[0].y) < Math.hypot(drawn[0].x-posts[1].x,drawn[0].y-posts[1].y));
+    for(const index of [0,1]) {
+      const dx=drawn[index].x-posts[index].x,dy=drawn[index].y-posts[index].y;
+      assert(Math.abs(dx*Math.sin(angle)-dy*Math.cos(angle))<1e-10,'An input lead must stay on its real signed post axis.');
+    }
     const outputProjection=drawn[2].x*Math.cos(angle)+drawn[2].y*Math.sin(angle);
-    assert(outputProjection > 0 && outputProjection <= 80.00001);
+    assert(outputProjection > 0 && outputProjection <= span+1e-6);
   }
+});
+
+test('R/C/L/source body scale is fixed at canonical size with uniformly extended terminal spans',()=>{
+  for(const type of ['ResistorElm','CapacitorElm','InductorElm','VoltageElm','CurrentElm']) for(const span of [64,96,160,320]) for(const angle of [0,Math.PI/2,Math.PI/4]) {
+    const element={getType:()=>type,getWaveform:()=>1,getPostCount:()=>2,getPostX:(p:number)=>Math.cos(angle)*p*span,getPostY:(p:number)=>Math.sin(angle)*p*span};
+    const definition=analogSymbolDefinition(element),placed=analogPlacement(manifest.symbols[definition[0]],definition,element);
+    assert(placed);const m=placed.matrix;
+    assert(Math.abs(Math.hypot(m[0],m[1])-1)<1e-10);
+    assert(Math.abs(Math.hypot(m[2],m[3])-1)<1e-10);
+    assert(Math.abs(m[0]*m[2]+m[1]*m[3])<1e-10,'Aspect must remain orthonormal.');
+    assert.deepEqual(placed.posts,[{x:0,y:0},{x:Math.cos(angle)*span,y:Math.sin(angle)*span}]);
+    if(type==='InductorElm') assert.equal(definition[0],'inductor-compact');
+  }
+});
+
+test('source presentation distinguishes sine, square, PWL and single-cell DC',()=>{
+  for(const [waveform,id] of [[0,'battery'],[1,'voltage-source'],[2,'pulse-voltage-source'],[5,'pulse-voltage-source'],[-2,'voltage-source']] as const)
+    assert.equal(analogSymbolDefinition({getType:()=> 'VoltageElm',getWaveform:()=>waveform})[0],id);
+  const points:{x:number;y:number}[]=[],text:string[]=[];
+  const context={save(){},restore(){},translate(){},beginPath(){},stroke(){},moveTo(x:number,y:number){points.push({x,y});},lineTo(x:number,y:number){points.push({x,y});},fillText(value:string){text.push(value);}};
+  drawSourceWaveform(context,1,{x:0,y:0});
+  assert.equal(points.length,25);assert(Math.min(...points.map(p=>p.y))< -4);assert(Math.max(...points.map(p=>p.y))>4);
+  assert(Math.abs(points[0].y)<1e-10&&Math.abs(points.at(-1)!.y)<1e-10);
+  drawSourceWaveform(context,-2,{x:0,y:0});assert.deepEqual(text,['PWL']);
+  const size=points.length;drawSourceWaveform(context,0,{x:0,y:0});assert.equal(points.length,size,'Battery must not receive an AC indicator.');
 });

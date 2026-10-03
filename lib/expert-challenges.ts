@@ -1,6 +1,7 @@
 import type { Challenge } from './challenges';
 import { STANDARD_SPICE_MODELS } from './spice-model-library';
 import { stimulusPoints } from './native-stimulus';
+import type { NativeSourceOverride } from './circuitjs-analysis';
 
 const native = (body: string, step = 1e-7) => `$ 1 ${step} 10.2 50 5 50\n${body}\n`;
 const defaults = { difficulty: 'Expert', acceptance: null, attempts: 0, available: true, judge: null, starterMode: 'connected' } as const;
@@ -21,6 +22,13 @@ g 608 128 608 160 0
 const ladderDevices = 'RB2 dac b2 20k\nR1 dac n1 10k\nRB1 n1 b1 20k\nR2 n1 n0 10k\nRB0 n0 b0 20k\nRT n0 0 20k';
 const densitySource = {type:'bitstream',bits:'11101000',bitPeriodS:.0002,low:0,high:5,riseS:1e-6,repeat:true} as const;
 const densityPwl = stimulusPoints(densitySource,.04).map(point=>`${point.timeS.toExponential(9)} ${point.value}`).join(' ');
+const flashStimulus: NativeSourceOverride = { type:'pwl', repeatPeriodS:.002, points:[{timeS:0,value:1.99},{timeS:.001,value:1.99},{timeS:.001001,value:2.01},{timeS:.001999,value:2.01},{timeS:.002,value:1.99}] };
+const sarStimuli = Object.fromEntries([
+  [{timeS:0,value:0},{timeS:1e-6,value:0},{timeS:1.001e-6,value:5},{timeS:29e-6,value:5},{timeS:29.001e-6,value:0},{timeS:30e-6,value:0}],
+  [{timeS:0,value:0},{timeS:11e-6,value:0},{timeS:11.001e-6,value:5},{timeS:21e-6,value:5},{timeS:21.001e-6,value:0},{timeS:30e-6,value:0}],
+  [{timeS:0,value:0},{timeS:21e-6,value:0},{timeS:21.001e-6,value:5},{timeS:29e-6,value:5},{timeS:29.001e-6,value:0},{timeS:30e-6,value:0}],
+].map((points,index)=>[index,{type:'pwl',points,repeatPeriodS:30e-6}])) as Record<number, Extract<NativeSourceOverride,{type:'pwl'}>>;
+const pwlText = (source: Extract<NativeSourceOverride,{type:'pwl'}>, duration:number) => stimulusPoints(source,duration).map(point=>`${point.timeS.toExponential(9)} ${point.value}`).join(' ');
 
 export const expertChallenges: Challenge[] = [
   {
@@ -42,7 +50,7 @@ export const expertChallenges: Challenge[] = [
     constraints:['R=10 kΩ, 2R=20 kΩ; drivers remain 0–5 V.', 'The supplied 220 pF load is intentionally too slow; choose 10–220 pF.', 'An unloaded ladder has 10 kΩ output resistance; any buffer must be included in the circuit.'],
     nativeCircuit:native(`${ladder}\nc 128 128 128 16 0 2.2e-10 0\ng 128 16 96 16 0`,1e-9),
     starterNetlist:`VB2 b2 0 PWL(0 0 1u 0 1.001u 5)\nVB1 b1 0 PWL(0 0 1u 0 1.001u 5)\nVB0 b0 0 PWL(0 0 1u 0 1.001u 5)\n${ladderDevices}\nCL dac 0 220p\n.tran 10n 12u\n.end`,probe:'dac',recommendedProbes:['dac','b2','b1','b0'],preferredInstrument:'scope',
-    analysisDefaults:{type:'transient',duration:12e-6,samples:1200,sourceOverrides:Object.fromEntries([0,1,2].map(index=>[index,{type:'pwl' as const,points:[{timeS:0,value:0},{timeS:1e-6,value:0},{timeS:1.001e-6,value:5}]}]))},
+    analysisDefaults:{type:'transient',duration:12e-6,samples:32768,sourceOverrides:Object.fromEntries([0,1,2].map(index=>[index,{type:'pwl' as const,points:[{timeS:0,value:0},{timeS:1e-6,value:0},{timeS:1.001e-6,value:5}]}]))},
     designChecks:[{id:'settled',label:'Final-code settling at 8.001 µs',node:'dac',analysis:'transient',kind:'sample',at:8.001e-6,min:4.370,max:4.380,unit:'V'}],
   },
   {
@@ -50,10 +58,10 @@ export const expertChallenges: Challenge[] = [
     summary:'Replay real 100 → 110 → 101 DAC trials and verify the comparator decisions in time.',
     objective:'The PWL sources apply three trial codes to a resistor DAC while vin stays at 3.20 V. Wire the native comparator so its high output means “keep this trial”. Verify the high–low–high decision sequence, then save the comparator and ladder as reusable blocks for the next converter.',
     analysis:'Transient',topics:['SAR ADC','Trial timing','Comparator polarity','Mixed signal probing'],prerequisites:['r2r-dac-code','adc-comparator-polarity','sar-trial-residue'],recommendedBlocks:['R2R3','Comparator5V'],
-    constraints:['Trials change at 1, 11 and 21 µs; inspect decisions after each trial settles.', 'The comparator begins with its inputs reversed. Fix the two input labels/wires.', 'Stimulus replays the trial register; this circuit does not implement a clocked SAR controller.'],
+    constraints:['Trials change at 1, 11 and 21 µs of each 30 µs sequence; four sequences are captured by default.', 'The comparator begins with its inputs reversed. Fix the two input labels/wires.', 'Stimulus replays the trial register; this circuit does not implement a clocked SAR controller.'],
     nativeCircuit:native(`${ladder}\nR 160 432 96 432 0 0 40 3.2 0 0 .5\n207 160 432 160 496 0 vin\na 352 432 480 432 8 5 0 1000000 0 0 100000\n207 352 416 272 416 0 vin\n207 352 448 272 448 0 dac\n207 480 432 560 432 0 decision`,1e-9),
-    starterNetlist:`VB2 b2 0 PWL(0 0 1u 0 1.001u 5)\nVB1 b1 0 PWL(0 0 11u 0 11.001u 5 21u 5 21.001u 0)\nVB0 b0 0 PWL(0 0 21u 0 21.001u 5)\n${ladderDevices}\nVIN vin 0 3.2\nBDEC decision 0 V=max(0,min(5,100000*(V(dac)-V(vin))))\n.tran 20n 30u\n.end`,probe:'decision',recommendedProbes:['vin','dac','decision','b2','b1','b0'],preferredInstrument:'logic',
-    analysisDefaults:{type:'transient',duration:30e-6,samples:1500,sourceOverrides:{0:{type:'pwl',points:[{timeS:0,value:0},{timeS:1e-6,value:0},{timeS:1.001e-6,value:5}]},1:{type:'pwl',points:[{timeS:0,value:0},{timeS:11e-6,value:0},{timeS:11.001e-6,value:5},{timeS:21e-6,value:5},{timeS:21.001e-6,value:0}]},2:{type:'pwl',points:[{timeS:0,value:0},{timeS:21e-6,value:0},{timeS:21.001e-6,value:5}]}}},
+    starterNetlist:`VB2 b2 0 PWL(${pwlText(sarStimuli[0],120e-6)})\nVB1 b1 0 PWL(${pwlText(sarStimuli[1],120e-6)})\nVB0 b0 0 PWL(${pwlText(sarStimuli[2],120e-6)})\n${ladderDevices}\nVIN vin 0 3.2\nBDEC decision 0 V=max(0,min(5,100000*(V(dac)-V(vin))))\n.tran 4n 120u\n.end`,probe:'decision',recommendedProbes:['vin','dac','decision','b2','b1','b0'],preferredInstrument:'logic',
+    analysisDefaults:{type:'transient',duration:120e-6,samples:32768,sourceOverrides:sarStimuli},
     designChecks:[{id:'msb',label:'Keep 100',node:'decision',analysis:'transient',kind:'sample',at:5e-6,min:4.9,max:5.1,unit:'V'},{id:'middle',label:'Clear 110 middle bit',node:'decision',analysis:'transient',kind:'sample',at:15e-6,min:-.1,max:.1,unit:'V'},{id:'lsb',label:'Keep 101',node:'decision',analysis:'transient',kind:'sample',at:25e-6,min:4.9,max:5.1,unit:'V'},{id:'dac',label:'Final trial level',node:'dac',analysis:'transient',kind:'sample',at:25e-6,min:3.12,max:3.13,unit:'V'}],
   },
   {
@@ -64,7 +72,7 @@ export const expertChallenges: Challenge[] = [
     constraints:['This is a reconstruction stage driven by a deterministic density sequence, not a noise-shaped modulator.', 'Bit period = 200 µs; rise/fall time = 1 µs; R=10 kΩ.', 'Start with C=220 nF and choose 220 nF–1 µF; verify both ripple and settling.'],
     nativeCircuit:native('v 128 320 128 128 0 2 5000 2.5 2.5 0 .5\nr 128 128 352 128 0 10000\nc 352 128 352 320 0 2.2e-7 0\ng 128 320 128 352 0\ng 352 320 352 352 0\n207 128 128 128 64 0 bits\n207 352 128 432 128 0 out',1e-6),
     starterNetlist:`VB bits 0 PWL(${densityPwl})\nR1 bits out 10k\nC1 out 0 220n\n.tran 20u 40m\n.end`,probe:'out',recommendedProbes:['bits','out'],preferredInstrument:'scope',
-    analysisDefaults:{type:'transient',duration:.04,samples:2000,sourceOverrides:{0:densitySource}},
+    analysisDefaults:{type:'transient',duration:.04,samples:65536,sourceOverrides:{0:densitySource}},
     designChecks:[{id:'mean',label:'Reconstructed mean over five words',node:'out',analysis:'transient',kind:'mean',from:.032,to:.04,min:2.4,max:2.6,unit:'V'},{id:'ripple',label:'Output ripple',node:'out',analysis:'transient',kind:'peak-to-peak',from:.032,to:.04,min:0,max:.22,unit:'Vpp'}],
   },
   {
@@ -82,10 +90,10 @@ export const expertChallenges: Challenge[] = [
     summary:'Locate a comparator threshold error with programmed inputs and remove its offset.',
     objective:'A three-comparator flash front end uses ideal 1, 2 and 3 V ladder taps. The middle comparator has an explicit 20 mV reference-path offset. Apply the 1.99 V and 2.01 V PWL plateaus, trim that offset so the middle decision brackets 2 V, and verify neighboring comparators stay correct.',
     analysis:'Transient',topics:['Flash ADC','Offset calibration','Thermometer code','PWL test vectors'],prerequisites:['flash-adc-thermometer','adc-comparator-polarity'],recommendedBlocks:['Comparator5V'],
-    constraints:['Keep all four ladder resistors at 10 kΩ and the reference at 4 V.', 'Trim the explicit VOFF source; input and reference ladder must remain unchanged.', 'An ideal comparator bank is used to isolate static offset. Delay and metastability are outside this check.'],
+    constraints:['Keep all four ladder resistors at 10 kΩ and the reference at 4 V.', 'Trim the explicit VOFF source; input and reference ladder must remain unchanged.', 'The 1.99 / 2.01 V input repeats every 2 ms; the default record shows four cycles. The middle output initially stays low; correcting its offset must make it alternate.', 'An ideal comparator bank is used to isolate static offset. Delay and metastability are outside this check.'],
     nativeCircuit:native('R 96 496 32 496 0 0 40 1.99 0 0 .5\n207 96 496 176 496 0 vin\nR 128 96 64 96 0 0 40 4 0 0 .5\nr 128 96 128 176 0 10000\nr 128 176 128 256 0 10000\nr 128 256 128 336 0 10000\nr 128 336 128 416 0 10000\ng 128 416 128 448 0\n207 128 176 192 176 0 ref3\n207 128 256 192 256 0 ref2\n207 128 336 192 336 0 ref1\na 384 160 512 160 8 5 0 1000000 0 0 100000\n207 384 144 304 144 0 ref3\n207 384 176 304 176 0 vin\n207 512 160 592 160 0 t3\na 384 304 512 304 8 5 0 1000000 0 0 100000\nv 240 288 384 288 0 0 40 .02 0 0 .5\n207 240 288 240 240 0 ref2\n207 384 320 304 320 0 vin\n207 512 304 592 304 0 t2\na 384 448 512 448 8 5 0 1000000 0 0 100000\n207 384 432 304 432 0 ref1\n207 384 464 304 464 0 vin\n207 512 448 592 448 0 t1',1e-7),
-    starterNetlist:'VIN vin 0 PWL(0 1.99 1m 1.99 1.001m 2.01 2m 2.01)\nVREF ref 0 4\nR3 ref ref3 10k\nR2 ref3 ref2 10k\nR1 ref2 ref1 10k\nR0 ref1 0 10k\nVOFF ref2c ref2 .02\nB1 t1 0 V=max(0,min(5,100000*(V(vin)-V(ref1))))\nB2 t2 0 V=max(0,min(5,100000*(V(vin)-V(ref2c))))\nB3 t3 0 V=max(0,min(5,100000*(V(vin)-V(ref3))))\n.tran 1u 2m\n.end',
-    probe:'t2',recommendedProbes:['vin','t1','t2','t3'],preferredInstrument:'logic',analysisDefaults:{type:'transient',duration:.002,samples:2000,sourceOverrides:{0:{type:'pwl',points:[{timeS:0,value:1.99},{timeS:.001,value:1.99},{timeS:.001001,value:2.01},{timeS:.002,value:2.01}]}}},
+    starterNetlist:`VIN vin 0 PWL(${pwlText(flashStimulus,.008)})\nVREF ref 0 4\nR3 ref ref3 10k\nR2 ref3 ref2 10k\nR1 ref2 ref1 10k\nR0 ref1 0 10k\nVOFF ref2c ref2 .02\nB1 t1 0 V=max(0,min(5,100000*(V(vin)-V(ref1))))\nB2 t2 0 V=max(0,min(5,100000*(V(vin)-V(ref2c))))\nB3 t3 0 V=max(0,min(5,100000*(V(vin)-V(ref3))))\n.tran 250n 8m\n.end`,
+    probe:'t2',recommendedProbes:['vin','t1','t2','t3'],preferredInstrument:'logic',analysisDefaults:{type:'transient',duration:.008,samples:32768,sourceOverrides:{0:flashStimulus}},
     designChecks:[{id:'below',label:'Middle threshold rejects 1.99 V',node:'t2',analysis:'transient',kind:'sample',at:.0005,min:-.1,max:.1,unit:'V'},{id:'above',label:'Middle threshold accepts 2.01 V',node:'t2',analysis:'transient',kind:'sample',at:.0015,min:4.9,max:5.1,unit:'V'},{id:'lower',label:'Lower comparator remains high',node:'t1',analysis:'transient',kind:'sample',at:.0015,min:4.9,max:5.1,unit:'V'},{id:'upper',label:'Upper comparator remains low',node:'t3',analysis:'transient',kind:'sample',at:.0015,min:-.1,max:.1,unit:'V'}],
   },
 ];

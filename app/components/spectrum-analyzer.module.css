@@ -11,4 +11,5 @@
 .metrics { display: flex; flex-wrap: wrap; gap: 24px; margin: 0; padding: 12px; background: var(--surface-soft); }
 .metrics dt { color: var(--muted); font-size: 11px; margin-bottom: 6px; }
 .metrics dd { margin: 0; font: 13px ui-monospace, monospace; color: var(--ink); }
+.captureNotice{margin:10px 0;padding:10px 12px;border:1px solid var(--line-strong);border-left:3px solid var(--amber-dark);border-radius:6px;background:var(--surface-soft);color:var(--ink-soft);font-size:12px;line-height:1.5}.captureNotice p{margin:0 0 6px}.captureNotice button{padding:6px 10px;border:1px solid var(--line-strong);border-radius:5px;background:var(--surface);color:var(--ink);cursor:pointer}
 .panel[hidden]{display:none}.heading button{padding:6px 10px;border:1px solid var(--line-strong);border-radius:5px;background:var(--surface-soft);color:var(--ink);font:inherit;cursor:pointer}

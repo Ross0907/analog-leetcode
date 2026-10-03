@@ -13,7 +13,7 @@ export function stimulusPoints(source: Extract<NativeSourceOverride, { type: 'pw
       const point = points[i];
       if (!Number.isFinite(point.timeS) || point.timeS < 0 || point.timeS > 1e9 || !Number.isFinite(point.value) || Math.abs(point.value) > 1e6 || (i > 0 && point.timeS <= points[i - 1].timeS)) throw new Error('PWL times must increase strictly; times and values must be finite.');
     }
-    return points;
+    return source.repeatPeriodS === undefined ? points : repeatPwlPoints(points, source.repeatPeriodS, duration);
   }
   const { bits, bitPeriodS, low, high, riseS, delayS = 0 } = source;
   if (!/^[01]{1,256}$/.test(bits)) throw new Error('A bitstream must contain 1–256 binary digits.');

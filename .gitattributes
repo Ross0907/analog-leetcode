@@ -18,3 +18,4 @@ public/analog-canvas/** -text -whitespace linguist-vendored
 public/analog-canvas/renderer.js linguist-vendored=false
 public/spice-models/** -text -whitespace linguist-vendored
 scripts/patch-circuitjs-stimulus.mjs -text
+vendor/braces/** -text -whitespace linguist-vendored

@@ -24,6 +24,7 @@ export function applyNativeSource(api: CircuitJsApi, index: number, source: Nati
   } else {
     kind = 'pwl';
     if (source.type === 'bitstream' && source.repeat) repeatPeriod = source.bitPeriodS * source.bits.length;
+    if (source.type === 'pwl' && source.repeatPeriodS !== undefined) repeatPeriod = source.repeatPeriodS;
     data = stimulusPoints(source, repeatPeriod || duration).flatMap(point => [point.timeS, point.value]).join(' ');
   }
   const error = advanced.setSourceWaveform(index, kind, data, repeatPeriod);

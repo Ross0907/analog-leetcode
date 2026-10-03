@@ -110,3 +110,57 @@ test('palette sources place vertically with a real grounded return and preserve 
   await page.keyboard.press('Control+z');
   await expect.poll(()=>page.evaluate(()=> (window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1.getElements().filter(e=>e.getType()==='GroundElm').length)).toBe(4);
 });
+
+test('sine source has visible interior waveform ink and PWL uses an explicit arbitrary-waveform mark',async({page})=>{
+  await open(page,divider.replace('0 0 40 10','0 1 40 10'));
+  await page.evaluate(()=> (window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1.setTheme('light'));
+  await expect.poll(()=>page.evaluate(()=>{
+    const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1,canvas=document.querySelector('canvas')!,ctx=canvas.getContext('2d')!,ratio=canvas.width/canvas.getBoundingClientRect().width;
+    // Strictly inside the unchanged circle: an empty circle has no dark pixels here.
+    const x=Math.round(api.screenX(90)*ratio),y=Math.round(api.screenY(155)*ratio),w=Math.max(1,Math.round((api.screenX(102)-api.screenX(90))*ratio)),h=Math.max(1,Math.round((api.screenY(165)-api.screenY(155))*ratio));
+    const pixels=ctx.getImageData(x,y,w,h).data;let count=0;
+    for(let i=0;i<pixels.length;i+=4)if(pixels[i]<90&&pixels[i+1]<90&&pixels[i+2]<90)count++;
+    return count;
+  })).toBeGreaterThan(8);
+  await page.evaluate(()=>{
+    const win=window as unknown as {CircuitJS1:AdvancedCircuitJsApi;pwlMark?:boolean},ctx=document.querySelector('canvas')!.getContext('2d')!,original=ctx.fillText.bind(ctx);
+    ctx.fillText=(text:string,x:number,y:number,maxWidth?:number)=>{if(text==='PWL')win.pwlMark=true;if(maxWidth===undefined)original(text,x,y);else original(text,x,y,maxWidth);};
+    win.CircuitJS1.setSourceWaveform(0,'pwl','0 0 .001 6 .002 0',.002);
+  });
+  await expect.poll(()=>page.evaluate(()=>Boolean((window as unknown as {pwlMark?:boolean}).pwlMark))).toBe(true);
+});
+
+test('paused analysis resolves native nodes immediately without advancing time or replacing elements',async({page})=>{
+  await open(page);
+  const result=await page.evaluate(()=>{
+    const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;
+    api.setSimRunning(false);api.importCircuit('$ 4 .000001 10 50 5 50\nv 96 240 96 80 0 0 40 10 0 0 .5\nr 96 80 320 80 0 1000\nc 320 80 320 240 0 .000001 0\nw 320 240 96 240 0\ng 96 240 96 272 0',false);
+    const before=api.getElements(),time=api.getTime();let hooks=0;api.onanalyze=()=>{hooks++;};
+    const initial=api.ensureAnalyzed!(),nodes=before.map(e=>Array.from({length:e.getPostCount()},(_,p)=>e.getNodeId(p)));
+    before.find(e=>e.getType()==='ResistorElm')!.setEditableValue('2000');const edited=api.ensureAnalyzed!();
+    return {initial,edited,nodes,time,afterTime:api.getTime(),running:api.isRunning(),identities:before.every((e,i)=>e===api.getElements()[i]),hooks};
+  });
+  expect(result.initial).toBeNull();expect(result.edited).toBeNull();expect(result.nodes.flat().every(id=>id>=0)).toBe(true);expect(result.afterTime).toBe(result.time);expect(result.running).toBe(false);expect(result.identities).toBe(true);expect(result.hooks).toBe(2);
+  const invalid=await page.evaluate(()=>{
+    const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;
+    api.importCircuit('$ 4 .000001 10 50 5 50\nL 96 160 96 80 0 1 false 5 0\ng 96 160 96 192 0',false);
+    return {error:api.ensureAnalyzed!(),nativeError:api.getStopMessage(),time:api.getTime(),running:api.isRunning()};
+  });
+  expect(invalid.error).toBeTruthy();expect(invalid.error).toBe(invalid.nativeError);expect(invalid.time).toBe(0);expect(invalid.running).toBe(false);
+});
+
+test('vertical global label moves its text clear of adjacent ground without changing its electrical post',async({page})=>{
+  await open(page);
+  await page.evaluate(()=>{
+    const win=window as unknown as {CircuitJS1:CircuitJsApi;labelDraw?:{x:number;y:number}},ctx=document.querySelector('canvas')!.getContext('2d')!,original=ctx.fillText.bind(ctx);
+    ctx.fillText=(text:string,x:number,y:number,maxWidth?:number)=>{if(text==='b0')win.labelDraw={x,y};if(maxWidth===undefined)original(text,x,y);else original(text,x,y,maxWidth);};
+    win.CircuitJS1.importCircuit('$ 4 .000001 10 50 5 50\nv 160 208 160 160 0 0 40 5 0 0 .5\ng 160 208 160 240 0\n207 160 160 160 224 0 b0\nr 160 160 256 160 0 1000\nw 256 160 256 208 0\nw 256 208 160 208 0',false);
+    win.CircuitJS1.ensureAnalyzed!();
+  });
+  await expect.poll(()=>page.evaluate(()=> (window as unknown as {labelDraw?:{x:number;y:number}}).labelDraw?.x??0)).toBeGreaterThan(174);
+  const label=await page.evaluate(()=>{
+    const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1,e=api.getElements().find(e=>e.getType()==='LabeledNodeElm')!;
+    return {post:[e.getPostX(0),e.getPostY(0)],node:e.getNodeId(0),sourceNode:api.getElements()[0].getNodeId(1),name:e.getLabelName(),xml:e.exportElement()};
+  });
+  expect(label.post).toEqual([160,160]);expect(label.node).toBe(label.sourceNode);expect(label.name).toBe('b0');expect(label.xml).toContain('160 160 160 224');
+});
