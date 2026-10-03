@@ -41,6 +41,29 @@ test('unsupported models and unconnected graphs fail instead of substituting a r
   assert.throws(() => circuitJsAnalysis(api([element('ResistorElm', [1, 2], 'r="1000"')]), settings));
 });
 
+test('unconnected diagnostics identify the actual pin, while unloaded ideal outputs are legal', () => {
+  assert.throws(() => circuitJsAnalysis(api([element('VoltageElm',[0,1],'wf="0" maxv="1"'), element('ResistorElm',[1,2],'r="1000"')]), settings), /R1.*not connected|R1.*unconnected/i);
+  const comparator = api([element('VoltageElm',[0,1],'wf="0" maxv="1"'), element('OpAmpElm',[0,1,2],'ga="100000" ma="5" mi="0"')]);
+  assert.match(circuitJsAnalysis(comparator,settings).deck,/B_U1 node2 0/);
+});
+
+test('native switch parameters and capacitor ESR are retained without changing their terminal graph', () => {
+  const switched = api([element('VoltageElm',[0,1],'wf="0" maxv="2"'),element('VoltageElm',[0,3],'wf="0" maxv="5"'),element('AnalogSwitchElm',[1,2,3],'f="0" ron="10" roff="1e10" th="2.5"'),element('CapacitorElm',[2,0],'c="1e-8" iv="2" sr="0.1"'),element('ResistorElm',[2,0],'r="1e6"')]);
+  const deck = circuitJsAnalysis(switched,settings).deck;
+  assert.match(deck,/S1 node1 node2 node3 0 AC_SWITCH_S1/);
+  assert.match(deck,/SW\(RON=1e1 ROFF=1e10 VT=2\.5e0 VH=0\)/);
+  assert.match(deck,/C1 node2 node1000004 1e-8/);
+  assert.match(deck,/R1 node1000004 0 1e-1/);
+});
+
+test('educational BJT beta edits reach SPICE while named manufacturer models retain their parameters', () => {
+  const transistor = (beta: number) => api([element('VoltageElm',[0,1],'wf="0" maxv="5"'),element('ResistorElm',[1,2],'r="1000"'),element('ResistorElm',[1,3],'r="100000"'),element('TransistorElm',[3,2,0],`pn="1" be="${beta}"`)]);
+  assert.match(circuitJsAnalysis(transistor(80),settings).deck,/BF=8e1/);
+  assert.match(circuitJsAnalysis(transistor(240),settings).deck,/BF=2\.4e2/);
+  const named = circuitJsAnalysis(transistor(80),{...settings,models:{3:'bc546b'}}).deck;
+  assert.match(named,/BF=480/); assert.doesNotMatch(named,/AC_EDUCATIONAL/);
+});
+
 test('native opamp pins and declared output limits survive conversion; LM741 power pins remain explicit', () => {
   const input = element('VoltageElm',[0,1],'wf="0" maxv="0.1"');
   const opamp = element('OpAmpElm',[2,0,3],'ga="1000000" ma="15" mi="-15"');

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { analogPlacement, analogPrimitives, analogSymbolDefinition } from '../public/analog-canvas/renderer.js';
+import { analogPlacement, analogPrimitives, analogSymbolDefinition, drawAnalogPrimitive } from '../public/analog-canvas/renderer.js';
 
 const manifest = JSON.parse(readFileSync('public/analog-canvas/symbols.json', 'utf8'));
 test('textbook bodies retain exact pinned Analog Canvas source and license', () => {
@@ -35,9 +35,32 @@ test('BJT artwork leaves clearance at collector/emitter while native posts remai
   const point = (x: number, y: number) => { const m = placement.matrix; return { x: m[0] * x + m[2] * y + m[4], y: m[1] * x + m[3] * y + m[5] }; };
   // Exact upstream collector elbow and emitter arrow tip have built-in lead clearance.
   const collector = point(0, -13.379732), emitter = point(0, 13.377859);
-  assert(Math.hypot(collector.x - 64, collector.y + 16) >= 4.9);
-  assert(Math.hypot(emitter.x - 64, emitter.y - 16) >= 4.9);
+  assert(Math.hypot(collector.x - 64, collector.y + 16) >= 8.4);
+  assert(Math.hypot(emitter.x - 64, emitter.y - 16) >= 8.4);
   assert.deepEqual(placement.posts, [{x:0,y:0}, {x:64,y:-16}, {x:64,y:16}]);
+});
+
+test('ground bars always face downward without moving their electrical post', () => {
+  for (const [x,y] of [[0,32],[0,-32],[32,0],[-32,0]]) {
+    const elm={getType:()=> 'GroundElm',getPostCount:()=>1,getPostX:()=>200,getPostY:()=>160,getEndpointX:()=>200+x,getEndpointY:()=>160+y};
+    const placement=analogPlacement(manifest.symbols.ground,analogSymbolDefinition(elm),elm);
+    assert(placement); assert.equal(Math.abs(placement.matrix[1]),0); assert.equal(Math.abs(placement.matrix[2]),0);
+    assert(placement.matrix[3]>0); assert.deepEqual(placement.posts,[{x:200,y:160}]);
+    assert.equal(placement.matrix[5]+placement.matrix[3]*-10,160);
+  }
+});
+
+test('symbol-fitting scale cannot make artwork strokes thinner than native wires', () => {
+  const original=globalThis.Path2D;
+  class Path { moveTo() {} lineTo() {} }
+  Object.assign(globalThis,{Path2D:Path});
+  try {
+    for(const scale of [.25,.56,1,1.25]) {
+      const context={lineWidth:0,stroke(){},fill(){}};
+      drawAnalogPrimitive(context,{kind:'line',from:{x:0,y:0},to:{x:20,y:0},style:{strokeRole:'emphasis'}},scale);
+      assert.equal(context.lineWidth*scale,2);
+    }
+  } finally { if(original)Object.assign(globalThis,{Path2D:original});else Reflect.deleteProperty(globalThis,'Path2D'); }
 });
 
 test('actual Analog Canvas op-amp retains signed inputs and outward output for every native rotation and flip', () => {

@@ -23,7 +23,7 @@ test("six converter worked answers agree with real ngspice, including switch hol
     if (result.dataType !== "real") throw new Error("Expected real data");
     const voltage = result.data.find((series) => series.name.toLowerCase() === `v(${check.node})`);
     assert.ok(voltage, `${challenge.slug}: missing voltage vector`);
-    let measured = voltage.values[0];
+    let measured = check.sumNodes ? check.sumNodes.reduce((sum, name) => sum + (result.data.find(series => series.name.toLowerCase() === `v(${name})`)?.values[0] ?? Number.NaN), 0) : voltage.values[0];
     if (check.kind === "transient") {
       const axis = result.data.find((series) => series.name === "time");
       assert.ok(axis, `${challenge.slug}: missing time`);

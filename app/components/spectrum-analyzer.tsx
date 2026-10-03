@@ -6,9 +6,12 @@ import { computeSpectrum, type WindowFunction } from "../../lib/waveform-analysi
 import { formatEngineering } from "../../lib/engineering";
 import { BrowserOscilloscope } from "./browser-oscilloscope";
 import styles from "./spectrum-analyzer.module.css";
+import { availableFftLength } from "../../lib/instrument-interactions";
+import { useInstrumentPanel } from "./instrument-state";
 
 export function SpectrumAnalyzer({ time, traces }: { time: number[]; traces: Trace[] }) {
   const id = useId();
+  const panel = useInstrumentPanel('spectrum');
   const [selectedId, setSelectedId] = useState(traces[0]?.id ?? "");
   const [length, setLength] = useState(() => Math.max(64, Math.min(1024, 2 ** Math.floor(Math.log2(Math.max(1, time.length))))));
   const [windowName, setWindowName] = useState<WindowFunction>("hann");
@@ -18,6 +21,8 @@ export function SpectrumAnalyzer({ time, traces }: { time: number[]; traces: Tra
   const [start, setStart] = useState(0);
   const [stop, setStop] = useState(0);
   const [marker, setMarker] = useState(0);
+  const [autoVersion, setAutoVersion] = useState(0);
+  const autoSet = () => { setLength(availableFftLength(time)); setWindowName("hann"); setRemoveDc(true); setLogFrequency(false); setDb(true); setStart(0); setStop(0); setMarker(0); setAutoVersion(version => version + 1); };
   const trace = traces.find((candidate) => candidate.id === selectedId) ?? traces[0];
   const result = useMemo(() => {
     if (!trace) return { spectrum: null, error: "Add a waveform probe and capture samples first." };
@@ -33,8 +38,8 @@ export function SpectrumAnalyzer({ time, traces }: { time: number[]; traces: Tra
   const markerIndex = spectrum ? Math.max(0, Math.min(spectrum.frequencies.length - 1, Math.round(marker / spectrum.binWidth))) : 0;
   const display = (value: number | null | undefined, unit: string) => value === null || value === undefined ? "Unavailable" : formatEngineering(value, unit);
 
-  return <section className={styles.panel} aria-label="Spectrum analyzer">
-    <div className={styles.heading}><strong>Spectrum analyzer</strong><span>Spectrum of measured samples</span></div>
+  return <section className={styles.panel} aria-label="Spectrum analyzer" hidden={panel.hidden} data-instrument-maximized={panel.maximized}>
+    <div className={styles.heading}><strong>Spectrum analyzer</strong><span>Spectrum of measured samples</span>{(!spectrum || filtered.x.length < 2) && <button type="button" onClick={autoSet}>Auto set</button>}</div>
     <div className={styles.controls}>
       <label htmlFor={`${id}-channel`}>Channel<select id={`${id}-channel`} value={trace?.id ?? ""} onChange={(event) => setSelectedId(event.currentTarget.value)}>{traces.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}</select></label>
       <label htmlFor={`${id}-length`}>FFT samples<select id={`${id}-length`} value={length} onChange={(event) => setLength(Number(event.currentTarget.value))}>{[64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
@@ -47,7 +52,7 @@ export function SpectrumAnalyzer({ time, traces }: { time: number[]; traces: Tra
     </div>
     {result.error && <p role="status" className={styles.note}>{result.error}</p>}
     {spectrum && trace && <>
-      {filtered.x.length > 1 ? <BrowserOscilloscope x={filtered.x} traces={[{ ...trace, id: `spectrum:${trace.id}`, values: filtered.values, unit: db ? "dB" : trace.unit }]} title="FFT spectrum" domain="frequency" xScale={logFrequency ? "log" : "linear"} xLabel="Frequency" xUnit="Hz" yLabel="Peak amplitude" yUnit={db ? "dB" : trace.unit} height={300} /> : <p className={styles.note}>Select a frequency span containing at least two bins.</p>}
+      {filtered.x.length > 1 ? <BrowserOscilloscope key={autoVersion} instrumentId="spectrum" onAutoSet={autoSet} x={filtered.x} traces={[{ ...trace, id: `spectrum:${trace.id}`, values: filtered.values, unit: db ? "dB" : trace.unit }]} title="FFT spectrum" domain="frequency" xScale={logFrequency ? "log" : "linear"} xLabel="Frequency" xUnit="Hz" yLabel="Peak amplitude" yUnit={db ? "dB" : trace.unit} height={300} /> : <p className={styles.note}>Select a frequency span containing at least two bins.</p>}
       <div className={styles.controls}>
         <label htmlFor={`${id}-marker`}>Marker / Hz<input id={`${id}-marker`} type="number" min="0" max={spectrum.sampleRate / 2} step={spectrum.binWidth} value={marker} onChange={(event) => setMarker(Math.max(0, Number(event.currentTarget.value)))} /></label>
         <output>Marker: {display(spectrum.frequencies[markerIndex], "Hz")} · {display((db ? spectrum.decibels : spectrum.amplitudes)[markerIndex], db ? "dB" : trace.unit)}</output>

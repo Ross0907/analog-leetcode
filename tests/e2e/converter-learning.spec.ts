@@ -6,7 +6,7 @@ test("parts-only practice cannot simulate or submit an unwired reference solutio
   for (const slug of ["wire-adc-reference", "wire-antialias-filter"]) {
     await page.goto(`/problems/${slug}`);
     const workspace = page.getByRole("region", { name: "CircuitJS schematic and simulation workspace", exact: true });
-    await expect(workspace.locator('p[role="status"]')).toContainText("Editor ready", { timeout: 45_000 });
+    await expect(workspace.locator('p[role="status"]')).toContainText(/Editor ready|Captured/, { timeout: 45_000 });
     await workspace.getByText("Wiring guide", { exact: true }).click();
     await expect(workspace.getByText(/ground symbols|source −/).first()).toBeVisible();
     await workspace.getByRole("button", { name: "SPICE & grading", exact: true }).click();
@@ -27,7 +27,7 @@ test("converter lesson connects its block explanation to named comparator probes
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/problems/flash-adc-thermometer");
   const workspace = page.getByRole("region", { name: "CircuitJS schematic and simulation workspace", exact: true });
-  await expect(workspace.locator('p[role="status"]')).toContainText("Editor ready", { timeout: 45_000 });
+  await expect(workspace.locator('p[role="status"]')).toContainText(/Editor ready|Captured/, { timeout: 45_000 });
   const blocks = page.getByRole("figure", { name: "Parallel conversion" });
   await expect(blocks).toBeVisible();
   await expect(blocks.getByText("Encoder", { exact: true })).toBeVisible();

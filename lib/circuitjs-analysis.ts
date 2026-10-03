@@ -1,4 +1,4 @@
-import { circuitDocumentSchema, type CircuitAnalysis, type CircuitComponent, type CircuitDocument, type ConnectionPoint } from './circuit-document';
+import { CircuitDocumentError, circuitDocumentSchema, type CircuitAnalysis, type CircuitComponent, type CircuitDocument, type ConnectionPoint } from './circuit-document';
 import { generateSpiceDeckFromCircuitDocument } from './circuit-spice';
 import type { CircuitJsApi, CircuitJsElement } from './circuitjs';
 import { circuitJsElementName } from './circuitjs';
@@ -70,8 +70,8 @@ export function circuitJsAnalysisOptions(api: CircuitJsApi): { sources: NativeAn
         modelChoice('lm741', 'Replace with LM741 · Texas Instruments', 'Explicit replacement for this SPICE analysis; the native live circuit keeps its original IC. LM741 and LM324 behavior and supply requirements differ.'),
       ];
     }
-    if (['DiodeElm', 'LEDElm', 'ZenerElm'].includes(nativeType)) choices = [modelChoice('1n4148', '1N4148 · ngspice model collection', 'Published switching-diode model; not an LED or zener substitute.'), modelChoice('generic-silicon', 'Generic silicon diode', 'Educational silicon-diode parameter set.')];
-    if (/^(?:[NP])?TransistorElm$/.test(nativeType)) choices = Number(attrs.get('pn')) === -1 || nativeType === 'PTransistorElm' ? [modelChoice('generic-pnp', 'Generic PNP', 'Educational PNP model.'), modelChoice('bc556b', 'BC556B · Philips model', 'Published small-signal PNP model from the ngspice collection.')] : [modelChoice('generic-npn', 'Generic NPN', 'Educational NPN model.'), modelChoice('bc546b', 'BC546B · Philips model', 'Published small-signal NPN model from the ngspice collection.')];
+    if (['DiodeElm', 'LEDElm', 'ZenerElm'].includes(nativeType)) choices = [modelChoice('1n4148', '1N4148 · ngspice model collection', 'Published switching-diode model; not an LED or zener substitute.'), modelChoice('generic-silicon', 'Generic silicon diode', 'Educational silicon-diode parameter set.'), modelChoice('rectifier', 'Educational rectifier', 'Rectifier parameter set with junction charge and breakdown; not a manufacturer part.')];
+    if (/^(?:[NP])?TransistorElm$/.test(nativeType)) choices = Number(attrs.get('pn')) === -1 || nativeType === 'PTransistorElm' ? [modelChoice('generic-pnp', 'Generic PNP', 'Educational PNP model with beta from the native transistor; published part models retain their own parameters.'), modelChoice('bc556b', 'BC556B · Philips model', 'Published small-signal PNP model from the ngspice collection.')] : [modelChoice('generic-npn', 'Generic NPN', 'Educational NPN model with beta from the native transistor; published part models retain their own parameters.'), modelChoice('bc546b', 'BC546B · Philips model', 'Published small-signal NPN model from the ngspice collection.')];
     if (/^(?:[NP])?MosfetElm$/.test(nativeType)) choices = (Number(attrs.get('f')) & 1) || nativeType === 'PMosfetElm' ? [modelChoice('native-pmos', 'P-channel · level 1', 'Uses native threshold and beta in the standard SPICE level-1 model; no native parasitic extensions.'), modelChoice('irfp9240', 'IRFP9240 · power MOSFET', 'Published VDMOS model with capacitance and resistance; body must be tied to source.'), modelChoice('generic-pmos-90nm', 'CMOS90 PMOS', 'Bundled BSIM model, W=2µm L=90nm.')] : [modelChoice('native-nmos', 'N-channel · level 1', 'Uses native threshold and beta in the standard SPICE level-1 model; no native parasitic extensions.'), modelChoice('irfp240', 'IRFP240 · power MOSFET', 'Published VDMOS model with capacitance and resistance; body must be tied to source.'), modelChoice('generic-nmos-90nm', 'CMOS90 NMOS', 'Bundled BSIM model, W=1µm L=90nm.')];
     if (choices) models.push({ ...base, defaultModel: choices[0].id, choices });
   });
@@ -137,8 +137,17 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
     } else if (type === 'ResistorElm') {
       components.push({ ...base, reference: reference('R'), kind: 'resistor', parameters: { resistanceOhm: value('r') } }); terminal(element, id, ['a', 'b']);
     } else if (type === 'CapacitorElm' || type === 'PolarCapacitorElm') {
-      if (value('sr', 0) !== 0) throw new Error('SPICE conversion currently supports capacitors without series resistance. Use live measurements for this model.');
-      components.push({ ...base, reference: reference('C'), kind: 'capacitor', parameters: { capacitanceF: value('c'), initialVoltageV: value('iv', 0) } }); terminal(element, id, ['a', 'b']);
+      const seriesResistance = value('sr', 0);
+      if (seriesResistance < 0) throw new Error('Capacitor series resistance cannot be negative.');
+      components.push({ ...base, reference: reference('C'), kind: 'capacitor', parameters: { capacitanceF: value('c'), initialVoltageV: value('iv', 0) } });
+      if (seriesResistance === 0) terminal(element, id, ['a', 'b']);
+      else {
+        const internalNode = 1_000_000 + components.length;
+        const resistorId = id + '-esr';
+        components.push({ id: resistorId, reference: reference('R'), kind: 'resistor', position: base.position, rotation: 0, parameters: { resistanceOhm: seriesResistance } });
+        bind(element.getNodeId(0), id, 'a'); bind(internalNode, id, 'b'); bind(internalNode, resistorId, 'a'); bind(element.getNodeId(1), resistorId, 'b');
+        notes.push('Capacitor series resistance is retained as a series resistor in the SPICE circuit.');
+      }
     } else if (type === 'InductorElm') {
       if (value('isat', 0) !== 0) throw new Error('SPICE conversion currently supports unsaturated inductors. Use live measurements for this model.');
       components.push({ ...base, reference: reference('L'), kind: 'inductor', parameters: { inductanceH: value('l'), initialCurrentA: value('ic', 0) } }); terminal(element, id, ['a', 'b']);
@@ -185,6 +194,10 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
       if (settings.sourceOverrides?.[elementIndex]) throw new Error('Programmed waveforms currently apply to voltage sources. Use a voltage source and transconductance stage for programmed current.');
       components.push({ ...base, reference: reference('I'), kind: 'current-source', parameters: { dcA: value('cu'), ...(settings.acSource === elementIndex ? { ac: { magnitude: settings.acMagnitude ?? 1, phaseDeg: settings.acPhaseDeg ?? 0 } } : {}) } }); terminal(element, id, ['positive', 'negative']);
       sourceIds.set(elementIndex, id);
+    } else if (type === 'AnalogSwitchElm') {
+      if ((value('f', 0) & 2) !== 0) throw new Error('Disable the analog switch’s pull-down option for SPICE analysis; this option has a different leakage circuit.');
+      components.push({ ...base, reference: reference('S'), kind: 'voltage-controlled-switch', parameters: { onResistanceOhm: value('ron'), offResistanceOhm: value('roff'), thresholdV: value('th'), inverted: (value('f', 0) & 1) !== 0 } });
+      terminal(element, id, ['a', 'b', 'controlPositive']); bind(0, id, 'controlNegative');
     } else if (type === 'OpAmpElm' || type === 'OpAmpRealElm') {
       if (model === 'native-ideal') {
         components.push({ ...base, reference: reference('U'), kind: 'op-amp-ideal', parameters: { openLoopGain: value('ga', 100000), outputMinV: value('mi', -15), outputMaxV: value('ma', 15) } });
@@ -204,11 +217,11 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
       }
     } else if (['DiodeElm', 'LEDElm', 'ZenerElm'].includes(type)) {
       if (type !== 'DiodeElm' && settings.models?.[elementIndex] === undefined) throw new Error('Select an explicit SPICE diode model; an LED or zener is not automatically replaced with a silicon diode.');
-      components.push({ ...base, reference: reference('D'), kind: 'diode', parameters: { model: model as '1n4148' | 'generic-silicon', area: 1 } }); terminal(element, id, ['anode', 'cathode']);
+      components.push({ ...base, reference: reference('D'), kind: 'diode', parameters: { model: model as '1n4148' | 'generic-silicon' | 'rectifier', area: 1 } }); terminal(element, id, ['anode', 'cathode']);
     } else if (/^(?:[NP])?TransistorElm$/.test(type)) {
       const pnp = value('pn', type === 'PTransistorElm' ? -1 : 1) === -1;
-      if (pnp) components.push({ ...base, reference: reference('Q'), kind: 'bjt-pnp', parameters: { model: model as 'generic-pnp' | 'bc556b', area: 1 } });
-      else components.push({ ...base, reference: reference('Q'), kind: 'bjt-npn', parameters: { model: model as 'generic-npn' | 'bc546b', area: 1 } });
+      if (pnp) components.push({ ...base, reference: reference('Q'), kind: 'bjt-pnp', parameters: { model: model as 'generic-pnp' | 'bc556b', area: 1, ...(model === 'generic-pnp' ? { beta: value('be', 100) } : {}) } });
+      else components.push({ ...base, reference: reference('Q'), kind: 'bjt-npn', parameters: { model: model as 'generic-npn' | 'bc546b', area: 1, ...(model === 'generic-npn' ? { beta: value('be', 120) } : {}) } });
       terminal(element, id, ['base', 'collector', 'emitter']);
     } else if (/^(?:[NP])?MosfetElm$/.test(type)) {
       const pmos = (value('f', 0) & 1) !== 0 || type === 'PMosfetElm';
@@ -259,6 +272,11 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
       analysis = { ...common, type: 'transient', stepS: settings.duration / (settings.samples - 1), stopS: settings.duration, startS: 0 };
   }
   const document = circuitDocumentSchema.parse({ version: 1, id: 'native-analysis', title: 'Current CircuitJS schematic', revision: 0, components, junctions: [], wires, netLabels, probes, analyses: [analysis], settings: { gridSize: 16, snapToGrid: true } });
-  const generated = generateSpiceDeckFromCircuitDocument(document);
+  let generated: ReturnType<typeof generateSpiceDeckFromCircuitDocument>;
+  try { generated = generateSpiceDeckFromCircuitDocument(document); }
+  catch (error) {
+    if (error instanceof CircuitDocumentError) throw new Error(error.diagnostics.filter(item => item.severity === 'error').slice(0, 4).map(item => item.message).join(' ') || error.message, { cause: error });
+    throw error;
+  }
   return { document, deck: generated.deck, probes: Object.values(generated.probeExpressions), modelAssignments, notes };
 }

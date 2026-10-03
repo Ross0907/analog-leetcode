@@ -43,6 +43,19 @@ export function patchCircuitJsStimulus(client) {
   replace('VoltageElm.java', '\tinternalResistance = xml.parseDoubleAttr("ir", 0);', `\tinternalResistance = xml.parseDoubleAttr("ir", 0);
         setAnacodePwl(xml.parseStringAttr("pwl", null), xml.parseDoubleAttr("pwlr", 0));`);
   replace('VoltageElm.java', '    public void setEditValue(int n, EditInfo ei) {', '    public void setEditValue(int n, EditInfo ei) {\n        setAnacodePwl(null, 0);');
+  replace('VoltageElm.java', '    void getInfo(String arr[]) {', `    void getInfo(String arr[]) {
+        if (anacodePwlTimes != null) {
+            arr[0] = "PWL voltage source";
+            arr[1] = "I = " + getCurrentText(getCurrent());
+            arr[2] = "V = " + getVoltageText(getVoltage());
+            arr[3] = anacodePwlTimes.length + " programmed points";
+            arr[4] = anacodePwlRepeat > 0 ? "Repeat = " + getUnitText(anacodePwlRepeat, "s") : "Single sequence";
+            return;
+        }`);
+  replace('VoltageElm.java', '\tint xc2;\n\tswitch (waveform)', '\tint xc2;\n\tswitch (anacodePwlTimes != null ? WF_PULSE : waveform)');
+  replace('VoltageElm.java', '\t    if (s != null) {\n\t\tint hs', '\t    if (anacodePwlTimes != null && showValues()) s = anacodePwlRepeat > 0 ? "PWL " + getShortUnitText(anacodePwlRepeat, "s") : "PWL";\n\t    if (s != null) {\n\t\tint hs');
+  replace('VoltageElm.java', '\t    if (s != null)\n\t\tdrawValues(g, s, circleSize);', '\t    if (anacodePwlTimes != null && showValues()) s = anacodePwlRepeat > 0 ? "PWL " + getShortUnitText(anacodePwlRepeat, "s") : "PWL";\n\t    if (s != null)\n\t\tdrawValues(g, s, circleSize);');
+  replace('CircuitElm.java', 'int getWaveformJS() { return this instanceof VoltageElm ? ((VoltageElm) this).waveform : -1; }', 'int getWaveformJS() { return this instanceof VoltageElm ? (((VoltageElm)this).anacodePwlTimes != null ? -2 : ((VoltageElm)this).waveform) : -1; }');
   replace('DataInputElm.java', '\tdouble getVoltage() {', '\tdouble getVoltage() {\n            if (anacodePwlTimes != null) return getAnacodePwlVoltage();');
   replace('MosfetElm.java', '\t    XMLSerializer.dumpAttr(elem, "mo", modelName);', '\t    XMLSerializer.dumpAttr(elem, "mo", modelName);\n            XMLSerializer.dumpAttr(elem, "vt", vt);\n            XMLSerializer.dumpAttr(elem, "be", beta);');
   replace('JSInterface.java', '    native void setupJSInterface() /*-{', `    String setSourceWaveform(int index, String kind, String data, double repeat) {

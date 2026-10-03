@@ -7,20 +7,23 @@ import { parseEngineeringNumber } from '../../lib/engineering';
 import { stimulusPoints } from '../../lib/native-stimulus';
 import styles from './circuitjs-workbench.module.css';
 
-export function NativeAnalysisControls({ api, settings, onChange, onApplySource }: {
+export function NativeAnalysisControls({ api, settings, onChange, onApplySource, section = 'all' }: {
+  section?: 'all' | 'analysis' | 'sources';
   api: CircuitJsApi | null; settings: NativeAnalysisSettings; onChange: (settings: NativeAnalysisSettings) => void;
   onApplySource: (index: number, source: NativeSourceOverride | undefined) => void;
 }) {
   const options = api ? circuitJsAnalysisOptions(api) : { sources: [], models: [] };
   const [sourceIndex, setSourceIndex] = useState<number | undefined>();
+  const [sweepOpen, setSweepOpen] = useState(section === 'all');
   const waveformSources = options.sources.filter(source => source.nativeType !== 'CurrentElm');
   const selected = waveformSources.find(source => source.index === sourceIndex) ?? waveformSources[0];
   const update = (patch: Partial<NativeAnalysisSettings>) => onChange({ ...settings, ...patch });
-  return <div className={styles.analysisSettings}>
-    <label>Analysis<select aria-label="Schematic analysis type" value={settings.type} onChange={event => update({ type: event.target.value as NativeAnalysisSettings['type'] })}>
+  return <div className={`${styles.analysisSettings} ${section === 'analysis' ? styles.quickAnalysis : ''}`}>
+    {section !== 'sources' && <>
+    <label>Analysis<select aria-label="Schematic analysis type" value={settings.type} onChange={event => { update({ type: event.target.value as NativeAnalysisSettings['type'] }); setSweepOpen(true); }}>
       <option value="transient">Transient waveform</option><option value="operating-point">DC operating point</option><option value="ac-sweep">AC frequency response</option><option value="dc-sweep">DC source sweep</option>
     </select></label>
-    {settings.type === 'ac-sweep' && <>
+    {settings.type === 'ac-sweep' && <details className={styles.sweepSettings} open={sweepOpen} onToggle={event => setSweepOpen(event.currentTarget.open)}><summary>AC sweep settings</summary><div className={styles.sweepFields}>
       <label>Excitation<select aria-label="AC excitation source" value={settings.acSource ?? options.sources[0]?.index ?? ''} onChange={event => update({ acSource: Number(event.target.value) })}>{options.sources.map(source => <option key={source.index} value={source.index}>{source.label}</option>)}</select></label>
       <label>Start (Hz)<input aria-label="AC start frequency" type="number" min="0.001" value={settings.startHz} onChange={event => update({ startHz: Number(event.target.value) })}/></label>
       <label>Stop (Hz)<input aria-label="AC stop frequency" type="number" min="0.001" value={settings.stopHz} onChange={event => update({ stopHz: Number(event.target.value) })}/></label>
@@ -28,14 +31,15 @@ export function NativeAnalysisControls({ api, settings, onChange, onApplySource 
       <label>{settings.acScale === 'linear' ? 'Total points' : 'Points per interval'}<input aria-label="AC sweep points" type="number" min="2" max="2000" value={settings.acPoints ?? 100} onChange={event => update({ acPoints: Number(event.target.value) })}/></label>
       <label>Magnitude<input aria-label="AC excitation magnitude" type="number" step="any" value={settings.acMagnitude ?? 1} onChange={event => update({ acMagnitude: Number(event.target.value) })}/></label>
       <label>Phase (°)<input aria-label="AC excitation phase" type="number" step="any" value={settings.acPhaseDeg ?? 0} onChange={event => update({ acPhaseDeg: Number(event.target.value) })}/></label>
-    </>}
-    {settings.type === 'dc-sweep' && <>
+    </div></details>}
+    {settings.type === 'dc-sweep' && <details className={styles.sweepSettings} open={sweepOpen} onToggle={event => setSweepOpen(event.currentTarget.open)}><summary>DC sweep settings</summary><div className={styles.sweepFields}>
       <label>Source<select aria-label="DC sweep source" value={settings.dcSource ?? options.sources[0]?.index ?? ''} onChange={event => update({ dcSource: Number(event.target.value) })}>{options.sources.map(source => <option key={source.index} value={source.index}>{source.label}</option>)}</select></label>
       {(['dcStart', 'dcStop', 'dcStep'] as const).map((key, index) => <label key={key}>{['Start', 'Stop', 'Step'][index]}<input aria-label={`DC sweep ${['start', 'stop', 'step'][index]}`} type="number" step="any" value={settings[key]} onChange={event => update({ [key]: Number(event.target.value) })}/></label>)}
+    </div></details>}
+    {section === 'all' && settings.type === 'transient' && <p>Uses the capture duration and sample count. Capture starts at time zero unless Current state is selected.</p>}
     </>}
-    {settings.type === 'transient' && <p>Uses the capture duration and sample count. SPICE begins from its operating point; live capture follows the running circuit.</p>}
-    {options.models.length > 0 && <fieldset className={styles.modelFields}><legend>Device models · SPICE</legend>{options.models.map(device => <label key={device.index}>{device.label}<select aria-label={`SPICE model for ${device.label}`} title={device.choices.find(choice => choice.id === (settings.models?.[device.index] ?? device.defaultModel))?.description} value={settings.models?.[device.index] ?? device.defaultModel} onChange={event => update({ models: { ...settings.models, [device.index]: event.target.value } })}>{device.choices.map(choice => <option key={choice.id} value={choice.id}>{choice.label}</option>)}</select></label>)}<small>These models apply to SPICE analysis. The live editor uses its own device models.</small></fieldset>}
-    {selected && <fieldset className={styles.modelFields}><legend>Source waveform</legend>
+    {section !== 'analysis' && options.models.length > 0 && <fieldset className={styles.modelFields}><legend>Device models · SPICE</legend>{options.models.map(device => <label key={device.index}>{device.label}<select aria-label={`SPICE model for ${device.label}`} title={device.choices.find(choice => choice.id === (settings.models?.[device.index] ?? device.defaultModel))?.description} value={settings.models?.[device.index] ?? device.defaultModel} onChange={event => update({ models: { ...settings.models, [device.index]: event.target.value } })}>{device.choices.map(choice => <option key={choice.id} value={choice.id}>{choice.label}</option>)}</select></label>)}<small>These models apply to SPICE analysis. The live editor uses its own device models.</small></fieldset>}
+    {section !== 'analysis' && selected && <fieldset className={styles.modelFields}><legend>Source waveform</legend>
       <label>Source<select aria-label="Waveform source" value={selected.index} onChange={event => setSourceIndex(Number(event.target.value))}>{waveformSources.map(source => <option key={source.index} value={source.index}>{source.label}</option>)}</select></label>
       <SourceEditor key={`${selected.index}:${JSON.stringify(settings.sourceOverrides?.[selected.index])}`} initial={settings.sourceOverrides?.[selected.index]} duration={settings.duration} onApply={source => onApplySource(selected.index, source)}/>
     </fieldset>}

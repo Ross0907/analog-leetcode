@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import type { CircuitJsApi } from '../../lib/circuitjs';
 
 async function nativeEditor(page: Page): Promise<Frame> {
+  await expect(page.locator('p[role="status"]')).toContainText('Captured', { timeout: 45000 });
   await expect(page.getByRole('button', { name: 'Capture all probes' })).toBeEnabled({ timeout: 30_000 });
   const frame = await (await page.locator('iframe[title="CircuitJS schematic editor"]').elementHandle())?.contentFrame();
   if (!frame) throw new Error('The native editor frame is missing.');
@@ -27,6 +28,8 @@ test('native branching splits a wire, preserves its electrical node, and support
   await page.goto('/problems/precision-voltage-divider');
   const frame = await nativeEditor(page);
   await page.getByLabel('Workspace layout', { exact: true }).selectOption('tabs');
+  await page.getByRole('button', { name: 'Schematic', exact: true }).click();
+  await page.getByRole('button', { name: 'Run', exact: true }).click();
   await frame.locator('canvas').scrollIntoViewIfNeeded();
   await frame.locator('canvas').focus();
   // Focus/scroll and the layout change must settle before projecting native coordinates.
@@ -67,11 +70,14 @@ test('native probes can be placed on the schematic and saved with an interoperab
   await page.goto('/problems/sallen-key-q');
   const frame = await nativeEditor(page);
   await page.getByRole('button', { name: 'Voltage probe', exact: true }).click();
-  const target = await point(page, frame, 560, 224);
+  const initialCount = await page.getByRole('button', { name: /^Move probe / }).count();
+  const ground = await frame.evaluate(() => { const element = (window as unknown as { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().find(element => element.getType() === 'GroundElm')!; return {x:element.getPostX(0),y:element.getPostY(0)}; });
+  const target = await point(page, frame, ground.x, ground.y);
+  const addedProbeName = `Probe ${initialCount + 1} name`;
   await page.mouse.move(target.x, target.y); await page.mouse.click(target.x, target.y);
   await showProbeSettings(page);
-  await expect(page.getByRole('textbox', { name: 'Probe 3 name' })).toBeVisible();
-  await page.getByRole('textbox', { name: 'Probe 3 name' }).fill('Filter output');
+  await expect(page.getByRole('textbox', { name: addedProbeName })).toBeVisible();
+  await page.getByRole('textbox', { name: addedProbeName }).fill('Ground reference');
   await page.getByLabel('Capture duration in seconds').fill('0.02');
   await page.getByLabel('Capture target samples').selectOption('4096');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -85,7 +91,7 @@ test('native probes can be placed on the schematic and saved with an interoperab
   expect(Buffer.concat(chunks).toString('utf8')).toMatch(/^<cir[\s>]/);
   await page.reload(); await nativeEditor(page);
   await showProbeSettings(page);
-  await expect(page.getByRole('textbox', { name: 'Probe 3 name' })).toHaveValue('Filter output');
+  await expect(page.getByRole('textbox', { name: addedProbeName })).toHaveValue('Ground reference');
   await expect(page.getByLabel('Capture duration in seconds')).toHaveValue('0.02');
   await expect(page.getByLabel('Capture target samples')).toHaveValue('4096');
 });

@@ -187,6 +187,9 @@ export async function createKiCadRenderer() {
     ]);
     assets.set(id, { symbol, normal, selected, light, lightSelected });
   }));
+  // The native app may change theme while the symbol assets are loading.
+  theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  analog.setTheme(theme);
   const select = (element) => {
     const definition = symbolDefinition(element);
     const asset = definition && assets.get(definition.source);
@@ -202,6 +205,8 @@ export async function createKiCadRenderer() {
       catch { return false; }
     },
     draw(context, element, selected) {
+      const currentTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+      if (currentTheme !== theme) { theme = currentTheme; analog.setTheme(theme); }
       if (analog.canDraw(element)) return analog.draw(context, element, selected);
       let entry;
       try { entry = select(element); }
@@ -211,7 +216,7 @@ export async function createKiCadRenderer() {
       context.save();
       try {
         context.strokeStyle = theme === 'light' ? (selected ? '#a96809' : '#252b32') : (selected ? '#e4b568' : '#d2d8df');
-        context.lineWidth = 1.5;
+        context.lineWidth = 2;
         context.lineCap = 'round';
         context.beginPath();
         placement.posts.forEach((post, index) => {
@@ -233,7 +238,7 @@ export async function createKiCadRenderer() {
 }
 
 if (typeof window !== 'undefined') {
-  createKiCadRenderer().then((renderer) => { window.AnaCodeKiCad = renderer; }).catch((error) => {
+  createKiCadRenderer().then((renderer) => { renderer.setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'); window.AnaCodeKiCad = renderer; }).catch((error) => {
     // Keep the complete upstream editor usable if a display asset fails to load.
     window.AnaCodeKiCadError = error.message;
     console.error('KiCad symbol presentation could not load:', error.message);

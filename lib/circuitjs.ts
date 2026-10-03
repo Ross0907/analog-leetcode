@@ -16,7 +16,13 @@ export interface CircuitJsElement {
   getEditableValue(): { name: string; text: string; value: number } | null;
   /** Applies the upstream numeric editor and returns a validation error, or null. */
   setEditableValue(text: string): string | null;
+  getLabelStyle?(): 'plain' | 'flag' | null;
+  setLabelStyle?(style: 'plain' | 'flag'): string | null;
+  /** The actual native wire polyline, from post0 to post1; null for non-wires. */
+  getWirePath?(): { x: number; y: number }[] | null;
 }
+
+export type CircuitJsHit = { element: CircuitJsElement; post: number; x: number; y: number; distance: number; wire: boolean; pathFraction: number | null };
 
 export interface CircuitJsApi {
   addElement(nativeType: string): void;
@@ -25,6 +31,12 @@ export interface CircuitJsApi {
   setTheme(theme: 'light' | 'dark'): void;
   getTheme(): 'light' | 'dark';
   dismissEditors?(): void;
+  /** Canvas-local CSS coordinates; returns a real terminal or scalar wire attachment. */
+  hitTest?(x: number, y: number): CircuitJsHit | null;
+  /** Starts native globally connected label placement; returns validation error or null. */
+  addNetLabel?(name: string, style: 'plain' | 'flag'): string | null;
+  /** Resets native time/device history, retaining component identity and run/pause state. */
+  resetSimulation?(): void;
   /** Advance the existing native solver, yielding after this many steps or milliseconds. */
   stepSimulation?(maxSteps: number, budgetMs: number): number;
   getCircuitRevision?(): number;
@@ -59,6 +71,10 @@ export type CircuitJsProbe = {
   post: number;
   color: string;
   enabled: boolean;
+  /** Actual attachment along the native wire path. */
+  anchorFraction?: number;
+  /** Independent probe grip position in CSS pixels. */
+  markerOffset?: { x: number; y: number };
 };
 
 export const CIRCUITJS_PROBE_COLORS = ['#fbbf24', '#38bdf8', '#c084fc', '#34d399', '#fb7185', '#fb923c', '#a3e635', '#e879f9'];
@@ -124,6 +140,7 @@ export function neutralCircuitJsPresentation(text: string) {
 export type CircuitJsCaptureProgress = { samples: number; target: number; time: number; elapsedMs: number };
 export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], duration: number, requestedSamples: number, options: {
   onProgress?: (progress: CircuitJsCaptureProgress) => void;
+  restart?: boolean;
 } = {}) {
   if (!(duration >= 1e-9 && duration <= 10) || !Number.isFinite(duration)) throw new Error('Capture duration must be between 1 ns and 10 seconds.');
   if (!Number.isInteger(requestedSamples) || requestedSamples < 128 || requestedSamples > 131072) throw new Error('Choose between 128 and 131,072 samples.');
@@ -131,6 +148,11 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
   if (!active.length || active.length > MAX_CIRCUITJS_PROBES) throw new Error('Enable between 1 and 32 probes before capturing.');
   const elements = api.getElements();
   if (active.some((probe) => !elements.includes(probe.element) || probe.post < 0 || probe.post >= probe.element.getPostCount())) throw new Error('A probed component was removed. Refresh the probe selection.');
+  if (options.restart) {
+    if (!api.resetSimulation) throw new Error('Reload the editor to enable capture from time zero.');
+    api.setSimRunning(false);
+    api.resetSimulation();
+  }
   const revision = api.getCircuitRevision?.();
   const started = performance.now();
   const initialTime = api.getTime();
@@ -184,7 +206,7 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
       previousHook?.(current);
       if (revision !== undefined && current.getCircuitRevision?.() !== revision) return fail('Circuit changed during capture. Start a new capture of the edited circuit.');
       const time = current.getTime() - initialTime;
-      if (time < 0) return fail('Circuit was reset during capture. Start a new capture.');
+      if (time < 0 || (x.length && time < x[x.length - 1])) return fail('Circuit was reset during capture. Start a new capture.');
       if (x.length && time <= x[x.length - 1]) return;
       for (let index = 0; index < active.length; index++) {
         const value = readCircuitJsProbe(active[index]);

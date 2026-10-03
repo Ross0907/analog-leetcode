@@ -2,11 +2,11 @@ import type { Challenge } from "./challenges";
 
 export type PracticeSolution = {
   quantity: string; value: number; unit: string; tolerance: number; explanation: string;
-  verification: { kind: "op" | "transient" | "ac"; node: string; at?: number; scale?: number; offset?: number };
+  verification: { kind: "op" | "transient" | "ac"; node: string; sumNodes?: string[]; at?: number; scale?: number; offset?: number };
 };
 
 // These strings are documents in CircuitJS's native format, not a new editor or solver.
-const native = (body: string) => `$ 1 .000001 10.2 50 5 50\n${body.trim()}\n`;
+const native = (body: string) => `$ 1 .000001 10.2 50 5 50\n${body.trim().replace(/^O (.+) 0$/gm, '207 $1 0 out')}\n`;
 const supply = "v 96 320 96 128 0 0 40 5 0 0 .5\ng 96 320 96 352 0";
 const sine = "v 96 320 96 128 0 1 1000 1 0 0 .5\ng 96 320 96 352 0";
 const pulse = "v 96 320 96 128 0 2 50 2.5 2.5 0 .5\ng 96 320 96 352 0";

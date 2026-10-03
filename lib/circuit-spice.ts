@@ -170,6 +170,12 @@ function renderComponent(
     }
     case "bjt-npn":
     case "bjt-pnp": {
+      if (component.parameters.beta !== undefined) {
+        if (component.parameters.model !== 'generic-npn' && component.parameters.model !== 'generic-pnp') throw new Error('Published transistor model parameters cannot be overridden by the educational beta setting.');
+        const model = `AC_EDUCATIONAL_${component.reference}`;
+        const definition = MODEL_DECKS[component.parameters.model].line.replace(MODEL_DECKS[component.parameters.model].name, model).replace(/BF=\S+/, `BF=${spiceNumber(component.parameters.beta)}`);
+        return `${component.reference} ${node(component, "collector")} ${node(component, "base")} ${node(component, "emitter")} ${model} AREA=${spiceNumber(component.parameters.area)}\n${definition}`;
+      }
       models.add(component.parameters.model);
       const model = MODEL_DECKS[component.parameters.model].name;
       return `${component.reference} ${node(component, "collector")} ${node(component, "base")} ${node(component, "emitter")} ${model} AREA=${spiceNumber(component.parameters.area)}`;
@@ -202,6 +208,13 @@ function renderComponent(
     case "op-amp-model":
       models.add(component.parameters.model);
       return `X_${component.reference} ${node(component, 'nonInverting')} ${node(component, 'inverting')} ${node(component, 'positiveSupply')} ${node(component, 'negativeSupply')} ${node(component, 'output')} ${MODEL_DECKS[component.parameters.model].name}`;
+    case "voltage-controlled-switch": {
+      const { onResistanceOhm, offResistanceOhm, thresholdV, inverted } = component.parameters;
+      const controlPositive = node(component, inverted ? 'controlNegative' : 'controlPositive');
+      const controlNegative = node(component, inverted ? 'controlPositive' : 'controlNegative');
+      const model = `AC_SWITCH_${component.reference}`;
+      return `${component.reference} ${node(component, 'a')} ${node(component, 'b')} ${controlPositive} ${controlNegative} ${model}\n.model ${model} SW(RON=${spiceNumber(onResistanceOhm)} ROFF=${spiceNumber(offResistanceOhm)} VT=${spiceNumber(inverted ? -thresholdV : thresholdV)} VH=0)`;
+    }
   }
 }
 

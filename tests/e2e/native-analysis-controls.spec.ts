@@ -6,7 +6,8 @@ import { parseEngineeringNumber } from '../../lib/engineering';
 async function openLab(page: Page) {
   await page.goto('/lab');
   const workspace = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
-  await expect(workspace.locator('p[role="status"]')).toContainText('Editor ready', { timeout: 45_000 });
+  await expect(workspace.locator('p[role="status"]')).toContainText(/Editor ready|Captured/, { timeout: 45_000 });
+  await expect(workspace.getByRole('button', { name: 'Capture all probes', exact: true })).toBeEnabled({ timeout: 45_000 });
   return workspace;
 }
 
@@ -82,7 +83,9 @@ test('default 65536-point SPICE capture follows native PWL and bitstream source 
   await workspace.getByRole('button', { name: 'Run simulation', exact: true }).click();
   await expectMeasuredResult(workspace, 65536);
   const logic = workspace.getByRole('region', { name: 'Logic analyzer', exact: true });
-  await expect(logic, 'Bitstream analysis should choose the logic view without a manual view change').toBeVisible();
+  await expect(workspace.getByRole('region', { name: 'Oscilloscope', exact: true }), 'The general default remains the oscilloscope for programmed sources').toBeVisible();
+  await workspace.getByRole('button', { name: 'Logic analyzer', exact: true }).click();
+  await expect(logic).toBeVisible();
   await expect(workspace.getByRole('button', { name: 'Logic analyzer', exact: true })).toHaveAttribute('aria-pressed', 'true');
   const inputTrace = logic.getByRole('img', { name: 'V(vin) digital waveform', exact: true }).locator('path');
   await expect(inputTrace).toHaveAttribute('d', /V9/);

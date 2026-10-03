@@ -122,7 +122,7 @@ for (const element of ['ce', 'stopHighlightElm', 'mouse.dragElm']) {
 
 // Match the native wires and fallback symbols to the official artwork without
 // changing terminal positions, hit tolerances, bus widths or scope plots.
-replace('Graphics.java', '\t\t  context.setLineWidth(width);', `                  context.setLineWidth(anacodeSchematicDrawing && width == 3.0 ? 1.5 : width);`);
+replace('Graphics.java', '\t\t  context.setLineWidth(width);', `                  context.setLineWidth(anacodeSchematicDrawing && width == 3.0 ? 2.0 : width);`);
 for (const file of ['CircuitElm.java', 'ResistorElm.java', 'VoltageElm.java', 'SweepElm.java', 'FuseElm.java', 'LDRElm.java', 'ThermistorNTCElm.java']) {
   replace(file, 'g.context.setLineWidth(3.0);', 'g.setLineWidth(3.0);');
 }
@@ -186,7 +186,10 @@ replace('UIManager.java', '    void setGrid() {', `    // Draw only a presentati
     void setGrid() {`);
 // The component palette delegates directly to the same upstream Draw command.
 replace('JSInterface.java', '    String getStopMessage() { return app.stopMessage; }', `    String getStopMessage() { return app.stopMessage; }
-    void addElement(String type) { app.commands.menuPerformed("main", type); }
+    void addElement(String type) {
+        app.commands.menuPerformed("main", type);
+        app.mouse.anacodeGroundSources = type.equals("DCVoltageElm") || type.equals("ACVoltageElm") || type.equals("BatteryElm") || type.equals("CurrentElm");
+    }
     void zoomCircuit(int direction) { app.commands.menuPerformed("zoom", direction > 0 ? "zoomin" : "zoomout"); }`);
 replace('JSInterface.java', '\t$wnd.CircuitJS1 = {', `\t$wnd.CircuitJS1 = {
             zoomCircuit: $entry(function(direction) { that.@com.lushprojects.circuitjs1.client.JSInterface::zoomCircuit(I)(direction); }),
@@ -322,7 +325,8 @@ replace('MouseManager.java', '    public void onMouseUp(MouseUpEvent e) {', `   
             return;
         }`);
 replace('UIManager.java', '    void setMouseMode(int mode) {', `    void setMouseMode(int mode) {
-        mouse.anacodeCancelWire();`);
+        mouse.anacodeCancelWire();
+        mouse.anacodeGroundSources = false;`);
 replace('UIManager.java', `    \t\t\tfor (int i = 0; i != elmList.size(); i++) {
     \t\t\t    CircuitElm ce = elmList.get(i);
     \t\t\t    if (ce.isSelected())
@@ -546,5 +550,159 @@ replaceSection('CircuitElm.java', '    void drawPosts(Graphics g) {', '    void 
 `);
 replace('CircuitElm.java', 'g.fillOval(pt.x-3, pt.y-3, 7, 7);', 'g.fillOval(pt.x-2, pt.y-2, 4, 4);');
 replace('UIManager.java', 'CircuitElm.lightGrayColor = new Color(anacodeLight ? "#56616e" : "#aab2bf");', 'CircuitElm.lightGrayColor = CircuitElm.whiteColor;');
+// Palette source placement is a native source plus native ground, grouped in
+// the same upstream undo operation. Imported/floating sources remain untouched.
+replace('MouseManager.java', '    boolean anacodeWireActive;', '    boolean anacodeWireActive;\n    boolean anacodeGroundSources;');
+replace('MouseManager.java', '\t    dragElm = sim.constructElement(ui.mouseModeStr, x0, y0);', '\t    dragElm = sim.constructElement(ui.mouseModeStr, x0, y0);\n            if (dragElm != null) dragElm.anacodeGroundSource = anacodeGroundSources && dragElm.getPostCount() == 2 && (dragElm instanceof VoltageElm || dragElm instanceof CurrentElm);');
+replace('CircuitElm.java', '    void drag(int xx, int yy) {', `    boolean anacodeGroundSource;
+    void drag(int xx, int yy) {
+        if (anacodeGroundSource) { xx = x; if (Math.abs(yy-y) < 32) yy = y-64; }`);
+replace('CircuitElm.java', '    void draggingDone() {}', `    void draggingDone() {
+        if (!anacodeGroundSource) return;
+        anacodeGroundSource = false;
+        // Voltage post1 is positive; current post1 receives the source current.
+        // Put both above the grounded return at post0 for newly placed sources.
+        if (y < y2) { int previous = y; y = y2; y2 = previous; }
+        x2 = x; setPoints();
+        for (CircuitElm element : app.elmList) {
+            if (element instanceof GroundElm && element.getPost(0).x == x && element.getPost(0).y == y) return;
+        }
+        GroundElm ground = new GroundElm(x, y); ground.x2=x; ground.y2=y+32; ground.setPoints();
+        app.elmList.addElement(ground);
+    }`);
+
+// Labels retain upstream electrical name matching and XML/text serialization.
+// The unused flag bit changes presentation only; it never creates a new netlist.
+replace('LabeledNodeElm.java', '    final int FLAG_ESCAPE = 4;', `    final int FLAG_ESCAPE = 4;
+    static final int FLAG_ANACODE_FLAG = 16;
+    static String anacodeLastName = "label";
+    static boolean anacodeLastFlag;
+    boolean anacodeFlag() { return (flags & FLAG_ANACODE_FLAG) != 0; }`);
+replace('LabeledNodeElm.java', '\ttext = "label";', '\ttext = anacodeLastName;\n        if (anacodeLastFlag) flags |= FLAG_ANACODE_FLAG;');
+replace('LabeledNodeElm.java', '    void drawLabeledNode(Graphics g, String str, Point pt1, Point pt2) {', `    void drawLabeledNode(Graphics g, String str, Point pt1, Point pt2) {
+        if (anacodeFlag()) {
+            g.save();
+            g.setFont(valueFont);
+            int width = (int)g.context.measureText(str).getWidth() + 16;
+            int height = valueFontSize + 8;
+            int dir = pt2.x < pt1.x ? -1 : 1;
+            int left = dir > 0 ? pt2.x + 7 : pt2.x - width - 7;
+            int right = left + width, top = pt2.y - height/2, bottom = top + height;
+            g.setLineWidth(3);
+            g.context.beginPath();
+            g.context.moveTo(pt2.x, pt2.y);
+            g.context.lineTo(dir > 0 ? left : right, top);
+            g.context.lineTo(dir > 0 ? right : left, top);
+            g.context.lineTo(dir > 0 ? right : left, bottom);
+            g.context.lineTo(dir > 0 ? left : right, bottom);
+            g.context.closePath(); g.context.stroke();
+            g.context.setTextBaseline("middle");
+            g.drawString(str, left + 8, pt2.y);
+            adjustBbox(Math.min(left, pt2.x), top, Math.max(right, pt2.x), bottom);
+            g.restore(); return;
+        }`);
+replace('LabeledNodeElm.java', '\tif (n == 2) {\n\t    EditInfo ei = new EditInfo("", 0, -1, -1);', `        if (n == 3) {
+            EditInfo ei = new EditInfo("Label style", 0);
+            ei.choice = new Choice(); ei.choice.add("Plain label"); ei.choice.add("Flag");
+            ei.choice.select(anacodeFlag() ? 1 : 0); return ei;
+        }
+\tif (n == 2) {\n\t    EditInfo ei = new EditInfo("", 0, -1, -1);`);
+replace('LabeledNodeElm.java', '    public void setEditValue(int n, EditInfo ei) {', `    public void setEditValue(int n, EditInfo ei) {
+        if (n == 3) flags = ei.choice.getSelectedIndex() == 1 ? flags | FLAG_ANACODE_FLAG : flags & ~FLAG_ANACODE_FLAG;`);
+replace('CircuitElm.java', '    native void addJSMethods() /*-{', `    native com.google.gwt.core.client.JavaScriptObject anacodeWirePoint(int x, int y) /*-{
+        return {x:x, y:y};
+    }-*/;
+    com.google.gwt.core.client.JsArray<com.google.gwt.core.client.JavaScriptObject> getWirePathJS() {
+        if (!(this instanceof WireElm) || getPostCount() != 2) return null;
+        com.google.gwt.core.client.JsArray<com.google.gwt.core.client.JavaScriptObject> result = com.google.gwt.core.client.JavaScriptObject.createArray().cast();
+        if (this instanceof RoutedWireElm && ((RoutedWireElm)this).routePoints != null) {
+            for (Point point : ((RoutedWireElm)this).routePoints) result.push(anacodeWirePoint(point.x, point.y));
+        } else { result.push(anacodeWirePoint(x,y)); result.push(anacodeWirePoint(x2,y2)); }
+        return result;
+    }
+    String getLabelStyleJS() {
+        return this instanceof LabeledNodeElm ? (((LabeledNodeElm)this).anacodeFlag() ? "flag" : "plain") : null;
+    }
+    String setLabelStyleJS(String style) {
+        if (!(this instanceof LabeledNodeElm)) return "Select a net label.";
+        if (!style.equals("plain") && !style.equals("flag")) return "Choose plain or flag.";
+        app.undoManager.pushUndo();
+        flags = style.equals("flag") ? flags | LabeledNodeElm.FLAG_ANACODE_FLAG : flags & ~LabeledNodeElm.FLAG_ANACODE_FLAG;
+        app.unsavedChanges = true; app.needAnalyze(); app.repaint(); return null;
+    }
+    native void addJSMethods() /*-{`);
+replace('CircuitElm.java', '        var that = this;\n', `        var that = this;
+        this.getWirePath = $entry(function() { return that.@com.lushprojects.circuitjs1.client.CircuitElm::getWirePathJS()(); });
+        this.getLabelStyle = $entry(function() { return that.@com.lushprojects.circuitjs1.client.CircuitElm::getLabelStyleJS()(); });
+        this.setLabelStyle = $entry(function(style) { return that.@com.lushprojects.circuitjs1.client.CircuitElm::setLabelStyleJS(Ljava/lang/String;)(style); });
+`);
+replace('GroundElm.java', '\tvoid draw(Graphics g) {', `        void setPoints() {
+            // Only the non-electrical endpoint is normalized. The ground post
+            // and its existing wire/node identity stay exactly where authored.
+            x2 = x; y2 = y + Math.max(24, Math.abs(y2-y)); super.setPoints();
+        }
+\tvoid draw(Graphics g) {`);
+replace('JSInterface.java', '    native void setupJSInterface() /*-{', `    String addNetLabel(String name, String style) {
+        if (name == null || !name.matches("[A-Za-z_][A-Za-z0-9_.$:/-]{0,63}")) return "Use a label beginning with a letter or underscore, followed by up to 63 letters, digits, underscores, dots, slashes, colons or hyphens.";
+        if (!style.equals("plain") && !style.equals("flag")) return "Choose plain or flag.";
+        LabeledNodeElm.anacodeLastName = name; LabeledNodeElm.anacodeLastFlag = style.equals("flag");
+        app.commands.menuPerformed("main", "LabeledNodeElm"); return null;
+    }
+    void resetSimulation() {
+        boolean running = app.simIsRunning();
+        app.resetAction(); app.setSimRunning(running);
+    }
+    native JavaScriptObject makeHit(JavaScriptObject element, int post, double x, double y, double distance, boolean wire, double fraction) /*-{
+        return { element: element, post: post, x: x, y: y, distance: distance, wire: wire, pathFraction: wire ? fraction : null };
+    }-*/;
+    JavaScriptObject hitTest(double sx, double sy) {
+        if (Double.isNaN(sx) || Double.isNaN(sy) || Double.isInfinite(sx) || Double.isInfinite(sy) || !app.circuitArea.contains((int)sx, (int)sy)) return null;
+        double scale = Math.abs(app.transform[0]);
+        if (!(scale > 0)) return null;
+        double gx = (sx-app.transform[4])/app.transform[0], gy = (sy-app.transform[5])/app.transform[3];
+        CircuitElm closest = null;
+        int post = 0;
+        double px = 0, py = 0, fraction = 0, distance = 12*12/(scale*scale);
+        // Real posts take priority; no component-body click invents a voltage node.
+        for (CircuitElm element : app.elmList) {
+            if (element instanceof GraphicElm) continue;
+            for (int n = 0; n < element.getPostCount(); n++) {
+                Point p = element.getPost(n);
+                double d = (p.x-gx)*(p.x-gx)+(p.y-gy)*(p.y-gy);
+                if (d <= distance) { distance=d; closest=element; post=n; px=p.x; py=p.y; }
+            }
+        }
+        if (closest != null) { closest.addJSMethods(); return makeHit(closest.getJavaScriptObject(), post, px, py, Math.sqrt(distance)*scale, closest instanceof WireElm, post == 0 ? 0 : 1); }
+        for (CircuitElm element : app.elmList) {
+            if (!(element instanceof WireElm) || element.getPostCount() != 2) continue;
+            // Native segment-distance code chooses the same wire the editor sees.
+            if (element.getMouseDistance((int)Math.round(gx), (int)Math.round(gy)) > distance) continue;
+            java.util.ArrayList<Point> points = new java.util.ArrayList<Point>();
+            if (element instanceof RoutedWireElm && ((RoutedWireElm)element).routePoints != null) points = ((RoutedWireElm)element).routePoints;
+            else { points.add(element.getPost(0)); points.add(element.getPost(1)); }
+            double total = 0, walked = 0;
+            for (int n=1; n<points.size(); n++) {
+                double dx=points.get(n).x-points.get(n-1).x, dy=points.get(n).y-points.get(n-1).y;
+                total += Math.sqrt(dx*dx+dy*dy);
+            }
+            if (!(total > 0)) continue;
+            for (int n = 1; n < points.size(); n++) {
+                Point a=points.get(n-1), b=points.get(n);
+                double dx=b.x-a.x, dy=b.y-a.y, length=dx*dx+dy*dy;
+                if (!(length > 0)) continue;
+                double t=Math.max(0, Math.min(1, ((gx-a.x)*dx+(gy-a.y)*dy)/length));
+                double x=a.x+t*dx, y=a.y+t*dy, d=(x-gx)*(x-gx)+(y-gy)*(y-gy);
+                if (d <= distance) { closest=element; distance=d; px=x; py=y; fraction=(walked+t*Math.sqrt(length))/total; }
+                walked += Math.sqrt(length);
+            }
+        }
+        if (closest == null) return null;
+        closest.addJSMethods(); return makeHit(closest.getJavaScriptObject(), 0, px, py, Math.sqrt(distance)*scale, true, fraction);
+    }
+    native void setupJSInterface() /*-{`);
+replace('JSInterface.java', '\t$wnd.CircuitJS1 = {', `\t$wnd.CircuitJS1 = {
+            hitTest: $entry(function(x, y) { return that.@com.lushprojects.circuitjs1.client.JSInterface::hitTest(DD)(x, y); }),
+            addNetLabel: $entry(function(name, style) { return that.@com.lushprojects.circuitjs1.client.JSInterface::addNetLabel(Ljava/lang/String;Ljava/lang/String;)(name, style); }),
+            resetSimulation: $entry(function() { that.@com.lushprojects.circuitjs1.client.JSInterface::resetSimulation()(); }),`);
 patchCircuitJsStimulus(client);
 console.log('Applied CircuitJS native editing, bounded solver acquisition and attributed symbol presentation.');

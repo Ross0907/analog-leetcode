@@ -3,6 +3,8 @@ import { converterChallenges, wiringChallenges } from "./converter-challenges";
 import type { NativeAnalysisSettings } from "./circuitjs-analysis";
 import type { DesignCheck } from "./design-checks";
 import { expertChallenges } from "./expert-challenges";
+import { applyCurriculumDefaults } from "./curriculum-defaults";
+import { dynamicChallenges } from "./dynamic-challenges";
 
 export type Difficulty = "Foundation" | "Intermediate" | "Advanced" | "Expert";
 export type Domain = "DC" | "AC" | "Semiconductors" | "Op-amps" | "Digital";
@@ -35,7 +37,8 @@ export type Challenge = {
   reusableBlock?: { name: string; ports: string[]; description: string };
   recommendedBlocks?: string[];
   analysisDefaults?: Partial<NativeAnalysisSettings>;
-  preferredInstrument?: 'scope' | 'logic';
+  preferredInstrument?: 'scope' | 'logic' | 'dc';
+  acquisitionMode?: 'restart-record' | 'live';
   designChecks?: DesignCheck[];
   blocks?: {
     title: string;
@@ -128,14 +131,15 @@ export const challenges: Challenge[] = [
     difficulty: "Intermediate",
     domain: "Semiconductors",
     summary: "Size a reservoir capacitor for ripple without hiding diode peak-current stress.",
-    objective: "Hold ripple below 250 mV at the target load and keep diode surge current inside the stated envelope.",
+    objective: "For the 12 V peak, 50 Hz half-wave rectifier driving 1 kΩ through a 10 Ω source resistance, hold settled ripple below 250 mV and peak diode current below 3 A. Measure ripple during 400–500 ms, after startup. Start with 220 µF and increase the reservoir capacitor as needed.",
     analysis: "Transient",
     acceptance: null,
     attempts: 0,
     xp: 240,
     topics: ["Diodes", "Charge balance", "Ripple"],
-    constraints: ["C1 ≤ 2200 µF", "Ripple ≤ 250 mV", "Peak diode current ≤ 3 A"],
-    starterNetlist: `VS in 0 SIN(0 12 50)\nD1 in out DMOD\nC1 out 0 1000u\nRL out 0 100\n.model DMOD D(IS=1e-14 N=1.8)\n.tran 100u 100m\n.end`,
+    constraints: ["220 µF ≤ C1 ≤ 2200 µF", "Settled ripple ≤ 250 mV at a 1 kΩ load", "Peak diode current ≤ 3 A; retain the 10 Ω source resistance", "Use the selected educational rectifier model in SPICE; native live diode parameters differ"],
+    starterNetlist: `VS in 0 SIN(0 12 50)\nRS in anode 10\nD1 anode out DMOD\nC1 out 0 220u\nRL out 0 1k\n.model DMOD D(IS=1e-14 N=1.8 RS=.04 CJO=35p TT=2u BV=100 IBV=5u)\n.tran 20u 500m\n.end`,
+    designChecks: [{ id: 'ripple', label: 'Settled output ripple', node: 'out', analysis: 'transient', kind: 'peak-to-peak', from: .4, to: .5, min: 0, max: .25, unit: 'Vpp' }],
     probe: "out",
     judge: null,
     available: true,
@@ -218,7 +222,8 @@ export const challenges: Challenge[] = [
   },
 ];
 
-challenges.push(...practiceChallenges, ...converterChallenges, ...wiringChallenges, ...expertChallenges);
+challenges.push(...practiceChallenges, ...converterChallenges, ...wiringChallenges, ...expertChallenges, ...dynamicChallenges);
+challenges.forEach((challenge, index) => { challenges[index] = applyCurriculumDefaults(challenge); });
 
 export function getChallenge(slug: string) {
   return challenges.find((challenge) => challenge.slug === slug);

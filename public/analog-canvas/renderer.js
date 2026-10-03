@@ -10,7 +10,7 @@ const definitions = {
 export function analogSymbolDefinition(element) {
   const type = element.getType();
   if (type === 'BatteryElm') return ['battery', '-', '+'];
-  if (['VoltageElm', 'DCVoltageElm', 'ACVoltageElm'].includes(type)) return [element.getWaveform?.() === 0 ? 'battery' : element.getWaveform?.() === 2 ? 'pulse-voltage-source' : 'voltage-source', '-', '+'];
+  if (['VoltageElm', 'DCVoltageElm', 'ACVoltageElm'].includes(type)) return [element.getWaveform?.() === 0 ? 'battery' : [2, 5, -2].includes(element.getWaveform?.()) ? 'pulse-voltage-source' : 'voltage-source', '-', '+'];
   if (type === 'MosfetElm') return definitions[(element.getFlags() & 1) ? 'PMosfetElm' : 'NMosfetElm'];
   if (type === 'TransistorElm') return definitions[/\(pnp\)$/i.test(element.getInfo()[0] ?? '') ? 'PTransistorElm' : 'NTransistorElm'];
   return definitions[type];
@@ -25,9 +25,8 @@ export function analogPlacement(symbol, definition, element) {
   const posts = pins.map((_, index) => ({ x: element.getPostX(index), y: element.getPostY(index) }));
   const [a, b] = pins.length === 3 && symbol.id !== 'opamp' ? [1, 2] : [0, 1];
   if (pins.length === 1) {
-    const dx = element.getEndpointX(1) - posts[0].x, dy = element.getEndpointY(1) - posts[0].y;
-    const angle = Math.atan2(dy, dx) - Math.PI / 2, scale = 0.9;
-    const c = Math.cos(angle) * scale, s = Math.sin(angle) * scale;
+    // Ground is an absolute reference, so its bars always face down the page.
+    const c = 1, s = 0;
     return { matrix: [c, s, -s, c, posts[0].x - c * pins[0].x + s * pins[0].y, posts[0].y - s * pins[0].x - c * pins[0].y], pins, posts };
   }
   const length = (p, q) => Math.hypot(q.x - p.x, q.y - p.y);
@@ -41,18 +40,31 @@ export function analogPlacement(symbol, definition, element) {
     const sc = cross(pins[a], pins[b], pins[other]), tc = cross(posts[a], posts[b], posts[other]);
     reflection = sc * tc < 0 ? -1 : 1;
     scale = Math.min(scale, Math.abs(tc / targetLength) / Math.abs(sc / sourceLength));
-    // Upstream transistor artwork already includes the collector/emitter and
-    // source/drain leads. Retain that clearance without shrinking its body twice.
+    if (symbol.id === 'npn' || symbol.id === 'pnp') scale *= 0.7;
+    if (symbol.id === 'opamp') {
+      const depth = Math.abs(tc / targetLength), sourceDepth = Math.abs(sc / sourceLength);
+      scale = Math.min(scale, Math.max(depth * 0.5, depth - 16) / sourceDepth);
+    }
+    // The upstream transistor geometry is unchanged; fitting reserves visible
+    // clearance between its collector/emitter elbow and the actual native post.
   }
   const angle = Math.atan2(posts[b].y - posts[a].y, posts[b].x - posts[a].x) - Math.atan2((pins[b].y - pins[a].y) * reflection, pins[b].x - pins[a].x);
   const c = Math.cos(angle) * scale, s = Math.sin(angle) * scale;
   const center = { x: (pins[a].x + pins[b].x) / 2, y: (pins[a].y + pins[b].y) / 2 };
   const target = { x: (posts[a].x + posts[b].x) / 2, y: (posts[a].y + posts[b].y) / 2 };
   const matrix = [c, s, -s * reflection, c * reflection, target.x - c * center.x + s * center.y * reflection, target.y - s * center.x - c * center.y * reflection];
+  if (symbol.id === 'opamp') {
+    // Center its three-pin envelope between the real input and output posts.
+    // This leaves room for input lead bends outside the triangular body.
+    matrix[4] += (posts[2].x - (matrix[0] * pins[2].x + matrix[2] * pins[2].y + matrix[4])) / 2;
+    matrix[5] += (posts[2].y - (matrix[1] * pins[2].x + matrix[3] * pins[2].y + matrix[5])) / 2;
+  }
   return { matrix, pins, posts };
 }
-export function drawAnalogPrimitive(context, primitive) {
-  context.lineWidth = primitive.style?.strokeRole === 'emphasis' ? 2.2 : primitive.style?.strokeRole === 'ground' ? 2 : 1.5;
+export function drawAnalogPrimitive(context, primitive, symbolScale = 1) {
+  // Compensate for the symbol fit, retaining the same world-space pen weight
+  // as native wires. Viewport zoom still scales the entire drawing normally.
+  context.lineWidth = 2 / symbolScale;
   context.lineCap = primitive.style?.lineCap ?? 'butt'; context.lineJoin = primitive.style?.lineJoin ?? 'miter';
   context.miterLimit = primitive.style?.miterLimit ?? 10;
   const path = primitive.kind === 'path' ? new Path2D(primitive.data) : new Path2D();
@@ -80,7 +92,7 @@ export async function createAnalogCanvasRenderer() {
   if (!response.ok) throw new Error('Analog Canvas symbol catalog unavailable.');
   const manifest = await response.json();
   if (manifest.revision !== '85e6be67420a2395d5094325123b6debc1eb0286') throw new Error('Unexpected Analog Canvas revision.');
-  let theme = 'light';
+  let theme = globalThis.document?.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
   const select = (element) => { const definition = analogSymbolDefinition(element); const symbol = definition && manifest.symbols[definition[0]]; const placement = symbol && analogPlacement(symbol, definition, element); return placement ? { symbol, placement } : null; };
   return { setTheme(value) { theme = value; }, canDraw(element) { return Boolean(select(element)); }, draw(context, element, selected) {
     const entry = select(element); if (!entry) return false;
@@ -88,12 +100,19 @@ export async function createAnalogCanvasRenderer() {
     context.save();
     try {
       context.strokeStyle = context.fillStyle = theme === 'light' ? selected ? '#a96809' : '#252b32' : selected ? '#e4b568' : '#d2d8df';
-      context.lineWidth = 1.5; context.beginPath();
+      context.lineWidth = 2; context.beginPath();
       pins.forEach((pin, index) => {
         const x = matrix[0] * pin.x + matrix[2] * pin.y + matrix[4], y = matrix[1] * pin.x + matrix[3] * pin.y + matrix[5], post = posts[index];
-        context.moveTo(post.x, post.y); if (Math.abs(x - post.x) > 0.1 && Math.abs(y - post.y) > 0.1) context.lineTo(x, post.y); context.lineTo(x, y);
+        context.moveTo(post.x, post.y);
+        if (symbol.id === 'opamp' && index < 2) {
+          const norm = Math.hypot(matrix[0], matrix[1]), ux = matrix[0] / norm, uy = matrix[1] / norm;
+          const along = (x - post.x) * ux + (y - post.y) * uy;
+          context.lineTo(post.x + ux * along / 2, post.y + uy * along / 2);
+          context.lineTo(x - ux * along / 2, y - uy * along / 2);
+        } else if (Math.abs(x - post.x) > 0.1 && Math.abs(y - post.y) > 0.1) context.lineTo(x, post.y);
+        context.lineTo(x, y);
       }); context.stroke(); context.transform(...matrix);
-      analogPrimitives(symbol).forEach((primitive) => drawAnalogPrimitive(context, primitive));
+      analogPrimitives(symbol).forEach((primitive) => drawAnalogPrimitive(context, primitive, Math.hypot(matrix[0], matrix[1])));
       return true;
     } finally { context.restore(); }
   } };

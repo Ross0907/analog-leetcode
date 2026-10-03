@@ -3,7 +3,7 @@ import { challenges } from "../../lib/challenges";
 
 test("problem panel modes persist and a worked answer updates searchable progress", async ({ page }) => {
   await page.goto("/problems/loaded-divider");
-  await expect(page.locator('p[role="status"]')).toContainText("Editor ready", { timeout: 40_000 });
+  await expect(page.locator('p[role="status"]')).toContainText(/Editor ready|Captured/, { timeout: 40_000 });
   await page.getByRole("button", { name: "Compact description", exact: true }).click();
   await expect(page.locator(".challenge-workspace")).toHaveAttribute("data-problem-mode", "compact");
   await page.getByRole("button", { name: "Hide description", exact: true }).click();
@@ -32,7 +32,7 @@ test("problem panel modes persist and a worked answer updates searchable progres
 test("collapsed description leaves a usable schematic viewport on a narrow screen", async ({ page }) => {
   await page.setViewportSize({ width: 600, height: 900 });
   await page.goto("/problems/noninverting-feedback");
-  await expect(page.locator('p[role="status"]')).toContainText("Editor ready", { timeout: 40_000 });
+  await expect(page.locator('p[role="status"]')).toContainText(/Editor ready|Captured/, { timeout: 40_000 });
   await page.getByRole("button", { name: "Hide description", exact: true }).click();
   await expect(page.locator("#problem-description-pane")).toBeHidden();
   const frame = page.getByTitle("CircuitJS schematic editor", { exact: true });

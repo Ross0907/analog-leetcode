@@ -55,6 +55,7 @@ export class AcquisitionBuffer {
 
 export function startCircuitJsAcquisition(api: CircuitJsApi, probes: CircuitJsProbe[], options: {
   duration: number; samples: number; onError?: (message: string) => void;
+  restart?: boolean; record?: boolean; onComplete?: () => void;
 }) {
   const { duration } = options;
   if (!Number.isFinite(duration) || duration < 1e-9 || duration > 10) throw new Error('Choose a time window between 1 ns and 10 seconds.');
@@ -63,18 +64,27 @@ export function startCircuitJsAcquisition(api: CircuitJsApi, probes: CircuitJsPr
   const elements = api.getElements();
   if (active.some((probe) => !elements.includes(probe.element) || probe.post < 0 || probe.post >= probe.element.getPostCount())) throw new Error('A probed component was removed. Choose its replacement before starting.');
   const interval = duration / (buffer.capacity - 1);
+  if (options.restart) {
+    if (!api.resetSimulation) throw new Error('Reload the editor to enable acquisition from time zero.');
+    api.setSimRunning(false);
+    api.resetSimulation();
+  }
+  let origin = api.getTime();
   const previousHook = api.ontimestep;
   const previousMaxStep = api.getMaxTimeStep();
   const revision = api.getCircuitRevision?.();
-  const acquisitionStep = Math.min(previousMaxStep > 0 ? previousMaxStep : interval, interval);
+  const acquisitionStep = interval;
   const started = performance.now();
   const readings = new Float64Array(active.length);
   let stopped = false;
   let lastTime = -Infinity;
   let resets = 0;
+  let lastRecorded = -Infinity;
+  let pumpTimer: ReturnType<typeof setTimeout> | undefined;
   function stop() {
     if (stopped) return;
     stopped = true;
+    clearTimeout(pumpTimer);
     if (api.ontimestep === hook) api.ontimestep = previousHook;
     // Preserve an explicit timestep change made by the user during acquisition.
     if (api.getMaxTimeStep() === acquisitionStep) api.setMaxTimeStep(previousMaxStep);
@@ -85,11 +95,20 @@ export function startCircuitJsAcquisition(api: CircuitJsApi, probes: CircuitJsPr
     try {
       previousHook?.(current);
       if (revision !== undefined && current.getCircuitRevision?.() !== revision) throw new Error('Circuit changed. Start acquisition again to use the edited circuit.');
-      const time = current.getTime();
-      if (time < lastTime) { buffer.clear(); lastTime = -Infinity; resets++; }
-      // Keep every actual accepted step, including adaptive convergence steps.
+      const nativeTime = current.getTime();
+      if (nativeTime < lastTime) { buffer.clear(); lastRecorded = -Infinity; origin = nativeTime; resets++; }
+      lastTime = nativeTime;
+      const time = nativeTime - origin;
       for (let index = 0; index < active.length; index++) readings[index] = readCircuitJsProbe(active[index]!);
-      if (buffer.append(time, readings)) lastTime = time;
+      // The display samples accepted solver states at the requested interval.
+      // Adaptive convergence steps must not evict the entire requested time window.
+      for (const reading of readings) if (!Number.isFinite(reading)) throw new Error('The circuit returned an invalid sample. Check its connections and component values.');
+      if (time - lastRecorded >= interval * (1 - 1e-9) || (options.record && time >= duration)) {
+        if (buffer.append(time, readings)) lastRecorded = time;
+      }
+      if (options.record && time >= duration * (1 - 1e-9)) {
+        stop(); current.setSimRunning(false); options.onComplete?.();
+      }
     } catch (cause) {
       stop();
       options.onError?.(cause instanceof Error ? cause.message : 'Acquisition stopped.');
@@ -98,8 +117,23 @@ export function startCircuitJsAcquisition(api: CircuitJsApi, probes: CircuitJsPr
   api.setMaxTimeStep(acquisitionStep);
   api.ontimestep = hook;
   api.setSimRunning(true);
+  function pump() {
+    if (stopped) return;
+    try {
+      if (api.getStopMessage()) throw new Error(api.getStopMessage()!);
+      if (api.isRunning()) api.stepSimulation?.(1024, 6);
+    } catch (cause) { stop(); options.onError?.(cause instanceof Error ? cause.message : 'Acquisition stopped.'); }
+    if (!stopped) pumpTimer = setTimeout(pump, 16);
+  }
+  if (api.stepSimulation) pumpTimer = setTimeout(pump, 0);
   return {
     stop,
+    updateAppearance(next: CircuitJsProbe[]) {
+      for (let index = 0; index < active.length; index++) {
+        const updated = next.find(probe => probe.id === active[index].id);
+        if (updated) active[index] = { ...active[index], name: updated.name, color: updated.color };
+      }
+    },
     get stopped() { return stopped; },
     get count() { return buffer.count; },
     get totalSamples() { return buffer.totalSamples; },

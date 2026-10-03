@@ -35,6 +35,17 @@ objects, values, direction and ordering, then requests native analysis once.
 Saved user documents and file imports retain their authored coordinates. Unsupported
 artwork retains the separately attributed KiCad or native CircuitJS rendering.
 
+The fitted Analog Canvas bodies use the same two-world-unit stroke as native
+wires; the adapter compensates for symbol-fit scale while normal viewport zoom
+continues to scale everything together. BJT fitting reserves extra clearance
+at collector and emitter posts. Op-amp input bends remain outside the body,
+with exactly two input leads and one output. Ground always faces down the page;
+only its non-electrical endpoint is normalized, preserving its connected post.
+The renderer reads the latest editor theme after asynchronous assets finish
+loading, so dark paper cannot retain light-theme ink. Programmed voltage
+sources use the pulse-source artwork and a PWL/period annotation instead of
+the dormant native sine-frequency label.
+
 Finite acquisition uses the existing native solver loop with animation-rate
 throttling disabled only during a bounded batch (at most 2,048 requested steps,
 8 ms per call). The event loop runs between batches. Every accepted timestep
@@ -46,5 +57,5 @@ Progress reports contain actual collected samples and simulated time. A native
 convergence stop or cancellation clears the acquisition callback and restores
 the previous timestep unless the user explicitly changed it in the meantime.
 
-Live acquisition also retains every accepted step in its bounded ring. Ring
+Live acquisition samples accepted solver states at the requested record interval in its bounded ring; adaptive convergence steps do not evict the requested time span. Ring
 capacity limits retained history and does not fabricate or interpolate values.

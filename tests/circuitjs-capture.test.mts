@@ -7,6 +7,7 @@ function simulator() {
   const element = { getPostCount: () => 2, getVoltage: () => Math.sin(time * 1000), getCurrent: () => time / 1000, getNodeId: () => 1 } as unknown as CircuitJsElement;
   const api = {
     getElements: () => [element], getTime: () => time, getMaxTimeStep: () => maxStep,
+    resetSimulation: () => { time = 0; },
     setMaxTimeStep: (step: number) => { maxStep = step; }, getCircuitRevision: () => revision,
     setSimRunning: (value: boolean) => { running = value; }, isRunning: () => running, getStopMessage: () => null,
     stepSimulation: (limit: number) => { let count = 0; while (running && count < limit) { time += maxStep; steps++; count++; api.ontimestep?.(api as unknown as CircuitJsApi); } return count; },
@@ -53,4 +54,23 @@ test('capture preserves user timestep edits and reports native convergence stops
   api.getStopMessage = () => 'Singular matrix';
   await assert.rejects(capture.result, /Singular matrix/);
   assert.equal(api.getMaxTimeStep(), 0.2);
+});
+
+test('restart captures begin at time zero without replacing probe elements', async () => {
+  const { api, probe } = simulator();
+  await captureCircuitJs(api, [probe], .001, 128).result;
+  assert.ok(api.getTime() >= .001);
+  const restarted = await captureCircuitJs(api, [probe], .001, 128, { restart: true }).result;
+  assert.equal(api.getElements()[0], probe.element);
+  assert.ok(api.getTime() < .00101);
+  restarted.x.forEach((time, index) => assert.equal(restarted.traces[0].values[index], Math.sin(time * 1000)));
+});
+
+test('a native reset during a record rejects mixed histories even when capture began at zero', async () => {
+  const { api, probe } = simulator();
+  const capture = captureCircuitJs(api, [probe], .01, 128, { restart: true });
+  api.stepSimulation!(10, 8);
+  api.resetSimulation!();
+  api.stepSimulation!(1, 8);
+  await assert.rejects(capture.result, /reset during capture/);
 });
