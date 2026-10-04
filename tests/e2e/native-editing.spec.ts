@@ -69,7 +69,7 @@ g 64 304 64 352 0`);
 
 test('component value text edits inline, validates, and updates the actual native solution', async ({ page }) => {
   await open(page); await expect.poll(() => output(page)).toBeCloseTo(5, 6);
-  const value = await point(page, 240, 60); await page.mouse.click(value.x, value.y);
+  const value = await point(page, 240, 60); await page.mouse.dblclick(value.x, value.y);
   const input = page.getByRole('textbox', { name: 'Resistance (ohms)', exact: true });
   await expect(input).toBeVisible(); await input.fill('0'); await input.press('Enter');
   await expect(page.getByRole('alert')).toContainText('greater than zero');
@@ -83,7 +83,7 @@ test('light and dark themes apply to the native canvas and inline editor', async
   await expect(page.locator('canvas')).toHaveCSS('background-color', 'rgb(250, 251, 252)');
   await page.evaluate(() => window.CircuitJS1.setTheme('dark'));
   await expect(page.locator('canvas')).toHaveCSS('background-color', 'rgb(23, 25, 29)');
-  const value = await point(page, 240, 60); await page.mouse.click(value.x, value.y);
+  const value = await point(page, 240, 60); await page.mouse.dblclick(value.x, value.y);
   const input = page.getByRole('textbox', { name: 'Resistance (ohms)', exact: true });
   await expect(input).toBeVisible(); await expect(input).toHaveCSS('color', 'rgb(210, 216, 223)');
   await expect(input).toHaveCSS('background-color', 'rgb(23, 25, 29)');
@@ -113,13 +113,13 @@ test('wire placement supports empty-space endpoints and Escape cancels an unfini
 
 test('source labels edit their displayed voltage or frequency using native fields', async ({ page }) => {
   await open(page); await expect.poll(() => output(page)).toBeCloseTo(5, 6);
-  let value = await point(page, 64, 160); await page.mouse.click(value.x, value.y);
+  let value = await point(page, 64, 160); await page.mouse.dblclick(value.x, value.y);
   let input = page.getByRole('textbox', { name: 'Voltage', exact: true });
   await expect(input).toBeVisible(); await input.fill('8'); await input.press('Enter');
   await expect.poll(() => output(page)).toBeCloseTo(4, 6);
   await page.evaluate((text) => window.CircuitJS1.importCircuit(text, false), divider.replace('0 0 40 10 0 0 0.5', '0 1 1000 10 0 0 0.5'));
   await expect.poll(() => page.evaluate(() => window.CircuitJS1.getElements()[0].getEditableValue()?.name)).toBe('Frequency (Hz)');
-  value = await point(page, 64, 160); await page.mouse.click(value.x, value.y);
+  value = await point(page, 64, 160); await page.mouse.dblclick(value.x, value.y);
   input = page.getByRole('textbox', { name: 'Frequency (Hz)', exact: true });
   await expect(input).toBeVisible(); await input.fill('2k'); await input.press('Enter');
   await expect.poll(() => page.evaluate(() => window.CircuitJS1.getElements()[0].getEditableValue()?.value)).toBe(2000);
@@ -165,7 +165,7 @@ test('native batch solver records 65,536 real samples without animation throttli
 
 test('outside clicks dismiss inline values and native properties without leaving stale modal state', async ({ page }) => {
   await open(page); await expect.poll(() => output(page)).toBeCloseTo(5, 6);
-  const value = await point(page, 240, 60); await page.mouse.click(value.x, value.y);
+  const value = await point(page, 240, 60); await page.mouse.dblclick(value.x, value.y);
   const input = page.getByRole('textbox', { name: 'Resistance (ohms)', exact: true });
   await expect(input).toBeVisible(); await input.fill('2k'); await page.mouse.click(20, 80); await expect(input).toBeHidden();
   await expect.poll(() => output(page)).toBeCloseTo(10 / 3, 5);
@@ -174,7 +174,7 @@ test('outside clicks dismiss inline values and native properties without leaving
   await expect(page.locator('.gwt-DialogBox')).toBeHidden();
   await page.mouse.dblclick(body.x, body.y); await expect(page.locator('.gwt-DialogBox')).toBeVisible();
   await page.evaluate(() => window.CircuitJS1.dismissEditors?.()); await expect(page.locator('.gwt-DialogBox')).toBeHidden();
-  await page.mouse.click(value.x, value.y); await expect(input).toBeVisible(); await input.fill('0');
+  await page.mouse.dblclick(value.x, value.y); await expect(input).toBeVisible(); await input.fill('0');
   await page.evaluate(() => window.CircuitJS1.dismissEditors?.()); await expect(input).toBeHidden();
   await expect.poll(() => output(page)).toBeCloseTo(10 / 3, 5);
 });

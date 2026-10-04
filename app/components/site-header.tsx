@@ -4,10 +4,10 @@ import { BrandMark } from "./brand-mark";
 import { ThemeToggle } from "./theme-toggle";
 import { getUser } from "../auth";
 
-export async function SiteHeader({ active }: { active?: "problems" | "learn" | "lab" | "hdl" }) {
+export async function SiteHeader({ active, compact = false }: { active?: "problems" | "learn" | "lab" | "hdl"; compact?: boolean }) {
   const user = await getUser();
   return (
-    <header className="site-header">
+    <header className={`site-header${compact ? ' site-header-compact' : ''}`}>
       <div className="header-inner">
         <Link href="/" className="brand-link" aria-label="AnaCode home">
           <BrandMark />
@@ -21,7 +21,7 @@ export async function SiteHeader({ active }: { active?: "problems" | "learn" | "
         <div className="header-actions">
           <ThemeToggle />
           <Link className="text-button desktop-only" href={user ? "/profile" : "/login"}>{user ? "Your profile" : "Sign in"}</Link>
-          <Link className="button button-small button-dark desktop-only" href="/problems/precision-voltage-divider">Start solving</Link>
+          {!compact && <Link className="button button-small button-dark desktop-only" href="/problems/precision-voltage-divider">Start solving</Link>}
           <details className="mobile-menu">
             <summary aria-label="Open navigation"><Menu size={20} /></summary>
             <nav aria-label="Mobile navigation">

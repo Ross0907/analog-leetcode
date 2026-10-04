@@ -19,6 +19,18 @@ test('MOS uses actual upstream three-terminal arrows without circles or a dangli
     assert(primitives.some((item: {kind: string}) => item.kind === 'polygon'));
   }
 });
+test('requested equal MOS bars are a presentation derivative without modifying source pins or artwork', () => {
+  for (const id of ['nmos', 'pmos']) {
+    const source = manifest.symbols[id], original = JSON.stringify(source);
+    const rendered = analogPrimitives(source);
+    const bars = rendered.filter((item: { part: string }) => item.part === 'gate-bar');
+    assert.equal(bars.length, 2);
+    for (const bar of bars) assert.deepEqual([...new Set(bar.points.map((point: { y: number }) => point.y))].sort((a,b) => Number(a)-Number(b)), [-12.5,12.5]);
+    assert.equal(JSON.stringify(source), original);
+    const originalOther = source.primitives.filter((item: {part: string}) => item.part !== 'gate-bar' && !source.variants[0].hiddenPrimitiveParts.includes(item.part));
+    for (const primitive of originalOther) assert(rendered.includes(primitive));
+  }
+});
 test('DC source is a single-cell battery with native positive terminal preserved', () => {
   const element = { getType: () => 'VoltageElm', getWaveform: () => 0, getPostCount: () => 2, getPostX: () => 0, getPostY: (post: number) => post * 64 };
   const definition = analogSymbolDefinition(element);

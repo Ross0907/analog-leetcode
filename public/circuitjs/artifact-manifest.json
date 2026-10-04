@@ -82,8 +82,8 @@
     },
     {
       "path": "build-circuitjs.ps1",
-      "bytes": 4417,
-      "sha256": "9141491856433713a5ac6ead9075b36d8bec6c7c8b805d7040bde0b656577b1c"
+      "bytes": 5968,
+      "sha256": "9d7d627ce537bc08eed7ab427e8176c44a697ac367fa905b9b867cd471a9d99c"
     },
     {
       "path": "canvas2svg.js",
@@ -96,14 +96,14 @@
       "sha256": "37b6403fdc1cf6bdb84af3dc62e0f64e818586659d1e6dddca9143f0b46a475f"
     },
     {
-      "path": "circuitjs1/8788FD5117A57A3F27DB7CEC1033982D.cache.js",
-      "bytes": 1016473,
-      "sha256": "78eb384d038338c798d9c336aa144cd6559ee8ce1266223b0b51c66b13153f1b"
+      "path": "circuitjs1/0798A75658E81B842898F89AAB6480BA.cache.js",
+      "bytes": 1013827,
+      "sha256": "1e5709bb7016d6e5e8a3bc0fdce956db60339c1096f22ef33a67d5eb20635f15"
     },
     {
-      "path": "circuitjs1/FC86B1FFC9F1673882E976ADBF393E94.cache.js",
-      "bytes": 1016089,
-      "sha256": "abdbb9d2f2c45846929dc24743ef378e0a55e2c0931d0e76025eeb0608ce9c1c"
+      "path": "circuitjs1/35F8505FBF5FE957E9A6FFCFF15F0865.cache.js",
+      "bytes": 1013518,
+      "sha256": "f1cd84d664bd9c3af615e5460b406f37b1b0d9df288ced02f8bc78d4bc17bf34"
     },
     {
       "path": "circuitjs1/circuitjs1.devmode.js",
@@ -113,7 +113,7 @@
     {
       "path": "circuitjs1/circuitjs1.nocache.js",
       "bytes": 7116,
-      "sha256": "d67a706ecca2450cae8349b7c904069ef6fe8091293e5459b562c5d72784ee4d"
+      "sha256": "d7ecb53132e3b1183440c155cce0b4de49d8e1bbce55c840e4a46a4daa354e61"
     },
     {
       "path": "circuitjs1/circuits/3-cgand.txt",
@@ -1988,7 +1988,7 @@
     {
       "path": "circuitjs1/compilation-mappings.txt",
       "bytes": 142,
-      "sha256": "751751c4187a37b3a1cbbfd505e3b52da9759928322a9b9f4a1ae03f8aa485d6"
+      "sha256": "74a2f02b53c53f5d8a7acf82b676f9430f4a6fb069b6af9a9a5de57d60217e0e"
     },
     {
       "path": "circuitjs1/gwt/clean/clean.css",
@@ -2317,8 +2317,8 @@
     },
     {
       "path": "patch-circuitjs-api.mjs",
-      "bytes": 50546,
-      "sha256": "30d84967f8967259196dc8b74a4a358a30de5561be4057b7e7e38f6fc48d6848"
+      "bytes": 60736,
+      "sha256": "fa46239f948fcb8d902d00844e1f4d3993ab4a77136b92dbf424fcc57c271b44"
     },
     {
       "path": "patch-circuitjs-stimulus.mjs",

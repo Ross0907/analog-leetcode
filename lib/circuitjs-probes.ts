@@ -73,10 +73,13 @@ export function probeNodeName(api: CircuitJsApi, element: CircuitJsElement, post
   return label || `node ${id}`;
 }
 
-/** Read a native branch only when the click is on that component, independent of prior hover state. */
+/** Resolve actual scalar wires first; a routed wire must never be picked along its diagonal chord. */
 export function currentProbeElementAt(api: CircuitJsApi, x: number, y: number) {
+  const hit = api.hitTest?.(x, y);
+  if (hit && hit.distance <= 14 && supportsCircuitJsCurrent(hit.element)) return hit.element;
   let closest: CircuitJsElement | null = null, distance = 14;
   for (const element of api.getElements().filter(supportsCircuitJsCurrent)) {
+    if (isProbeWire(element)) continue;
     const ax = api.screenX(element.getPostX(0)), ay = api.screenY(element.getPostY(0));
     const dx = api.screenX(element.getPostX(1)) - ax, dy = api.screenY(element.getPostY(1)) - ay;
     const length2 = dx * dx + dy * dy;

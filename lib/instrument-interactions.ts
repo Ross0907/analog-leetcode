@@ -24,6 +24,27 @@ export function availableFftLength(time: readonly number[], maximum = 131072) {
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value));
 
+/** Plain wheel and Shift-only wheel remain scrolling gestures. */
+export function instrumentWheelGesture(event: { ctrlKey: boolean; shiftKey: boolean; altKey: boolean; deltaY: number; deltaMode?: number }, pagePixels = 800) {
+  if ((!event.ctrlKey && !event.altKey) || !Number.isFinite(event.deltaY) || event.deltaY === 0) return null;
+  const pixels = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? pagePixels : 1);
+  return { factor: Math.exp(clamp(pixels, -600, 600) * 0.002), x: event.ctrlKey, y: event.altKey || (event.ctrlKey && !event.shiftKey) };
+}
+
+/** Bounds may be logarithmic coordinates. The cursor's axis value stays fixed until a record edge is reached. */
+export function zoomPlotBounds(bounds: PlotBounds, fraction: number, factor: number, limits?: PlotBounds): PlotBounds {
+  const span = bounds.maximum - bounds.minimum;
+  if (!(span > 0) || !Number.isFinite(span) || !(factor > 0) || !Number.isFinite(factor)) return bounds;
+  const minSpan = Math.max(Number.EPSILON * Math.max(1, Math.abs(bounds.minimum), Math.abs(bounds.maximum)) * 8, (limits ? limits.maximum - limits.minimum : span) * 1e-9);
+  const maxSpan = limits ? limits.maximum - limits.minimum : 1e18;
+  if (!(maxSpan >= minSpan)) return bounds;
+  const nextSpan = clamp(span * factor, minSpan, maxSpan), ratio = clamp(fraction, 0, 1);
+  const anchor = bounds.minimum + ratio * span;
+  let minimum = anchor - ratio * nextSpan;
+  if (limits) minimum = clamp(minimum, limits.minimum, limits.maximum - nextSpan);
+  return { minimum, maximum: minimum + nextSpan };
+}
+
 /** xBounds are already transformed for logarithmic axes; interpolation stays in screen space. */
 export function rectangleView(start: PlotPoint, end: PlotPoint, plot: PlotRectangle, xBounds: PlotBounds, yBounds: PlotBounds, minimumPixels = 6) {
   if (!(plot.width > 0 && plot.height > 0)) return null;

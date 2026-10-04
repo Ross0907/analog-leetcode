@@ -37,6 +37,34 @@ if (Test-Path -LiteralPath $circuitPrivateOutput) {
 Get-ChildItem -LiteralPath "$circuitSource/war" | Where-Object { $_.Name -notin @('WEB-INF','service-worker.js','service-worker.orig','update-service-worker.sh','manifest.json','shortrelay.php') } | Copy-Item -Destination $circuitOutput -Recurse -Force
 Copy-Item -LiteralPath "$circuitSource/COPYING.txt" -Destination "$circuitOutput/COPYING.txt"
 Copy-Item -LiteralPath "$circuitSdk/COPYING" -Destination "$circuitOutput/GWT-COPYING.txt"
+# These MIT dependencies are bundled by upstream without a standalone combined
+# notice in war/. Generate it for clean/staged builds instead of relying on an
+# older public output directory to retain the required permission text.
+$circuitMitNotice = @'
+LZ-String: Copyright (c) 2013 Pieroxy.
+Canvas2SVG: Copyright (c) 2014 Gliffy Inc. Author: Kerry Liu.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+'@
+[IO.File]::WriteAllText((Join-Path $circuitOutput 'MIT-dependencies.txt'), $circuitMitNotice.Replace("`r`n", "`n") + "`n", [Text.UTF8Encoding]::new($false))
 Copy-Item -LiteralPath "$circuitBuild/source.zip" -Destination "$circuitOutput/upstream-source.zip"
 Copy-Item -LiteralPath 'scripts/patch-circuitjs-api.mjs','scripts/patch-circuitjs-stimulus.mjs','scripts/build-circuitjs.ps1' -Destination $circuitOutput
 $circuitHtml = Get-Content -LiteralPath "$circuitOutput/circuitjs.html" -Raw

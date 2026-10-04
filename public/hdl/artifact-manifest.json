@@ -162,13 +162,13 @@
     },
     {
       "path": "viewer/bridge.js",
-      "bytes": 1706,
-      "sha256": "30b4f0c53adeaccbcf3d8b6ba49c927bf838bcbe501ebff9fb0516f9c6fa3670"
+      "bytes": 3768,
+      "sha256": "ea04c5aa7094a1009424a04331f272e166687de6a9e619e24e6f6b58267b61cd"
     },
     {
       "path": "viewer/index.html",
-      "bytes": 405,
-      "sha256": "3eef38c089b9359109a9ea9fa40905b9742985427ef32ceab277e724e111f314"
+      "bytes": 903,
+      "sha256": "3d02bebd1154ed82db1d37d748ce0d8377df9e3a4d5698b69fd6b2ea6aff819c"
     },
     {
       "path": "viewer/package-provenance.json",
@@ -187,8 +187,8 @@
     },
     {
       "path": "viewer/viewer.css",
-      "bytes": 332,
-      "sha256": "068a6896752fce10f23d0d624aba71187f919be5a8e91f4ebb19b5ea2e4c6262"
+      "bytes": 1936,
+      "sha256": "aed2d81ac710f39836e7c09778a5f78b8eda1c43e8aab00e4d1309ad11075f42"
     }
   ]
 }

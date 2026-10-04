@@ -916,3 +916,17 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 @media (prefers-reduced-motion: reduce) {
   .schematic-flow-handle > span { transition: none; }
 }
+
+/* Workspaces use the window; reading and catalog pages keep their wider gutters. */
+.site-header.site-header-compact{height:44px;position:relative;flex:none}
+.site-header-compact .header-inner{width:100%;padding:0 12px;gap:24px}
+.site-header-compact .brand-word{font-size:15px}.site-header-compact .brand-mark{transform:scale(.8);margin:-3px}
+.site-header-compact .desktop-nav{gap:20px}.site-header-compact .nav-link{font-size:12px}
+.site-header-compact .header-actions{gap:12px}.site-header-compact .text-button{font-size:12px}
+.site-header-compact .theme-toggle,.site-header-compact .mobile-menu summary{width:30px;height:30px;min-height:30px}
+.lab-studio{height:calc(100dvh - 44px);display:flex;flex-direction:column;min-width:0;overflow:hidden;background:var(--paper)}
+.lab-studio-title{height:32px;flex:none;display:flex;align-items:center;gap:7px;padding:0 10px;border-bottom:1px solid var(--line);color:var(--muted)}
+.lab-studio-title h1{font-size:12px;margin:0;color:var(--ink);font-weight:650}.lab-studio-title span{font-size:11px;margin-left:8px}
+.lab-studio>.visual-lab{margin:0;padding:0;border:0;border-radius:0;min-height:0;flex:1;display:flex;flex-direction:column}
+@media(min-width:721px){html:has(.lab-studio),body:has(.lab-studio){overflow:hidden;overscroll-behavior:none}}
+@media(max-width:720px){.site-header-compact .header-inner{padding:0 8px;gap:12px}.lab-studio{height:auto;min-height:calc(100dvh - 44px);overflow:visible}.lab-studio-title span{font-size:10px}}

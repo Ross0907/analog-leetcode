@@ -76,6 +76,23 @@ export type Spectrum = {
   warnings: string[]; metricsReason: string | null;
 };
 
+/** A display-only band enclosing 99.9% of non-DC spectral power, with room around resolved peaks. */
+export function spectrumSignalStop(spectra: readonly Spectrum[]): number | null {
+  if (!spectra.length) return null;
+  let stop = 0;
+  const nyquist = Math.max(...spectra.map(spectrum => spectrum.sampleRate / 2));
+  for (const spectrum of spectra) {
+    const power = spectrum.amplitudes.map((value, index) => index ? value ** 2 * (index === spectrum.amplitudes.length - 1 ? 2 : 1) : 0);
+    const total = power.reduce((sum, value) => sum + value, 0);
+    if (total < 1e-24) continue;
+    if (spectrum.dominantFrequency === null) return null;
+    let cumulative = 0, last = power.length - 1;
+    for (let index = 1; index < power.length; index++) { cumulative += power[index]!; if (cumulative >= total * .999) { last = index; break; } }
+    stop = Math.max(stop, spectrum.frequencies[last]! * 2, spectrum.dominantFrequency * 3, spectrum.binWidth * 8);
+  }
+  return stop > 0 && stop < nyquist * .75 ? stop : null;
+}
+
 export function computeSpectrum(time: ArrayLike<number>, values: ArrayLike<number>, options: {
   length: number; window: WindowFunction; removeDc: boolean;
 }): Spectrum {

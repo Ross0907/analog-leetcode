@@ -1,9 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { probePosition, probeAttachment, clearProbeAttachment, spiceProbeMatches, spiceProbePayloadAppearance } from '../lib/circuitjs-probes';
+import { probePosition, probeAttachment, clearProbeAttachment, currentProbeElementAt, spiceProbeMatches, spiceProbePayloadAppearance } from '../lib/circuitjs-probes';
+import { supportsCircuitJsCurrent } from '../lib/circuitjs';
 import type { CircuitJsApi, CircuitJsElement, CircuitJsProbe } from '../lib/circuitjs';
 import type { SimulationPayload } from '../lib/simulator-contract';
 function wire() { return { getType:()=> 'RoutedWireElm', getNodeId:()=> 2, getPostCount:()=>2, getPostX:(i:number)=>i ? 100 : 0, getPostY:(i:number)=>i ? 100 : 0, getWirePath:()=>[{x:0,y:0},{x:100,y:0},{x:100,y:100}] } as unknown as CircuitJsElement; }
+test('current probes choose the actual scalar wire, exclude buses and ignore routed diagonal chords',()=>{
+ const element=wire();
+ const api={getElements:()=>[element],screenX:(x:number)=>x,screenY:(y:number)=>y,hitTest:()=>null} as unknown as CircuitJsApi;
+ assert.equal(supportsCircuitJsCurrent(element),true);
+ assert.equal(currentProbeElementAt(api,50,50),null);
+ api.hitTest=()=>({element,post:0,x:50,y:0,distance:0,wire:true,pathFraction:.25});
+ assert.equal(currentProbeElementAt(api,50,0),element);
+ element.getBusWidth=()=>8;
+ assert.equal(supportsCircuitJsCurrent(element),false);
+ assert.equal(currentProbeElementAt(api,50,0),null);
+});
 test('probe tips follow the actual routed native path as geometry moves',()=>{
  const element=wire();
  const probe={element,post:0,anchorFraction:.75} as CircuitJsProbe;

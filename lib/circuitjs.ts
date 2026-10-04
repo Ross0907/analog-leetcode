@@ -18,6 +18,9 @@ export interface CircuitJsElement {
   setEditableValue(text: string): string | null;
   getLabelStyle?(): 'plain' | 'flag' | null;
   setLabelStyle?(style: 'plain' | 'flag'): string | null;
+  getLabelAngle?(): number | null;
+  setLabelAngle?(degrees: number): string | null;
+  getBusWidth?(): number;
   /** The actual native wire polyline, from post0 to post1; null for non-wires. */
   getWirePath?(): { x: number; y: number }[] | null;
 }
@@ -89,7 +92,7 @@ export function circuitJsElementName(element: CircuitJsElement, index: number) {
 }
 
 export function supportsCircuitJsCurrent(element: CircuitJsElement) {
-  return element.getPostCount() === 2 && !['WireElm', 'RoutedWireElm', 'GraphicElm', 'ProbeElm'].includes(element.getType());
+  return element.getPostCount() === 2 && (element.getBusWidth?.() ?? 1) === 1 && !['GraphicElm', 'ProbeElm'].includes(element.getType());
 }
 
 /** The native solver's node IDs, never geometric line crossings, define probe association. */

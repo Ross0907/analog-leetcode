@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Download, Maximize2, Minimize2 } from 'lucide-react';
 import { formatEngineering } from '../../lib/engineering';
 import { heldSampleIndex, logicState, logicWord, logicPath } from '../../lib/logic-analysis';
 import type { SimulationPayload } from '../../lib/simulator-contract';
 import { probeColor } from '../../lib/probe-colors';
-import { instrumentTraceColor, fitTimeWindow, type TimeWindowMode } from '../../lib/instrument-interactions';
+import { instrumentTraceColor, fitTimeWindow, instrumentWheelGesture, zoomPlotBounds, type TimeWindowMode } from '../../lib/instrument-interactions';
 import { useInstrumentTheme, useTraceAppearance, useInstrumentPanel, useTraceSelection } from './instrument-state';
 import { TraceContextMenu } from './trace-context-menu';
 import { exportInstrumentPng, instrumentPlots } from './instrument-export';
@@ -38,6 +38,20 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
   const bounds = fitTimeWindow({ minimum: recordedStart, maximum: recordedEnd }, timeWindow, recordDuration);
   const start = bounds.minimum, end = bounds.maximum;
   const visibleStart = start + view.start * (end - start), visibleEnd = start + view.end * (end - start);
+  useEffect(() => {
+    const root = rootRef.current; if (!root) return;
+    const wheel = (event: WheelEvent) => {
+      const target = event.target instanceof Element ? event.target.closest('svg[role="img"]') : null;
+      const gesture = instrumentWheelGesture(event);
+      if (!target || !gesture) return;
+      const bounds = target.getBoundingClientRect(); if (!(bounds.width > 0)) return;
+      event.preventDefault();
+      const next = zoomPlotBounds({ minimum: view.start, maximum: view.end }, (event.clientX - bounds.left) / bounds.width, gesture.factor, { minimum: 0, maximum: 1 });
+      setView({ start: next.minimum, end: next.maximum });
+    };
+    root.addEventListener('wheel', wheel, { passive: false });
+    return () => root.removeEventListener('wheel', wheel);
+  }, [view]);
   const cursorTime = visibleStart + cursor * (visibleEnd - visibleStart);
   const index = cursorTime < recordedStart || cursorTime > recordedEnd ? -1 : heldSampleIndex(payload.x, cursorTime);
   const selected = channels.filter((trace) => busIds.includes(trace.id)).slice(0, 16);
@@ -124,7 +138,7 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
         {selection && <rect className={styles.logicSelection} x={1000 * Math.min(selection.start, selection.end)} y="0" width={1000 * Math.abs(selection.end - selection.start)} height="46"/>}
       </svg>}
       <div className={styles.logicAxis}><span>{formatEngineering(visibleStart, 's')}</span><span>{formatEngineering(visibleEnd, 's')}</span></div>
-      <p className={styles.note}>Auto set chooses thresholds at 20% and 80% of the captured voltage range. For a constant record it keeps valid thresholds or restores 0.8 V / 2 V. Drag across a lane to zoom · Double-click to reset · Right-click a trace to style. Select up to 16 channels for a bus; the first selected channel in the list is bit 0. Voltages between thresholds display X.</p>
+      <p className={styles.note}>Auto set chooses thresholds at 20% and 80% of the captured voltage range. For a constant record it keeps valid thresholds or restores 0.8 V / 2 V. Drag across a lane or Ctrl/Alt+wheel to zoom time · Double-click to reset · Right-click a trace to style. Select up to 16 channels for a bus; the first selected channel in the list is bit 0. Voltages between thresholds display X.</p>
       {selected.length > 0 && <output className={styles.bus} aria-label="Logic bus value">{word.hex} <span>{word.binary}</span></output>}
     </>}
     {exportError && <p role="alert">{exportError}</p>}

@@ -15,6 +15,7 @@ function inventory(directory) {
 }
 const files = inventory(root);
 assert.ok(!files.some((file) => file.path.startsWith('WEB-INF/')), 'GWT server/debug metadata must not be publicly distributed.');
+assert.equal(files.find((file) => file.path === 'MIT-dependencies.txt')?.sha256, 'a37177d538fee2097e2390848af24445bd2ad2409795308bdedbbe1e006f3d85', 'The complete bundled LZ-String/Canvas2SVG MIT notice must survive clean and staged builds.');
 if (process.argv.includes('--record')) {
   writeFileSync(manifestPath, JSON.stringify({ project: 'CircuitJS1', repository: 'https://github.com/pfalstad/circuitjs1', revision: '5bdb1296ce6a82f79515f4f1dd1b9a86e03236f7', license: 'GPL-2.0-or-later', sourceArchiveSha256: 'd1a16f7aa89d39ece858238040b0cdf867f2058731d79e90ef13609045c971e5', build: { gwt: '2.12.2', gwtArchiveSha256: '32c17bbc8e98548c0be433aab36a3b8ba7428cfc70a26c41c4af4e0d6ecff1e1', java: 'Eclipse Adoptium OpenJDK 21.0.4+7', sourceLevel: '17', style: 'OBF', optimize: 9, localWorkers: 2, script: 'scripts/build-circuitjs.ps1' }, files }, null, 2) + '\n');
 } else {

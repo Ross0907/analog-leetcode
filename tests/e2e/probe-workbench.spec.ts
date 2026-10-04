@@ -1,6 +1,63 @@
 import { expect, test } from '@playwright/test';
 import type { CircuitJsApi } from '../../lib/circuitjs';
 
+test('Lab fills the viewport and places a real current probe on a wire with one click', async ({ page }) => {
+  await page.goto('/lab');
+  const work = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
+  await expect(work.getByRole('button', {name:'Capture all probes',exact:true})).toBeEnabled({timeout:45000});
+  const bounds = await work.boundingBox();
+  expect(bounds!.x).toBeLessThan(2);
+  expect(bounds!.width).toBeGreaterThan(page.viewportSize()!.width-20);
+  expect(bounds!.y+bounds!.height).toBeLessThanOrEqual(page.viewportSize()!.height+1);
+  await expect(page.locator('footer')).toHaveCount(0);
+  const native = page.frameLocator('iframe[title="CircuitJS schematic editor"]');
+  const canvas = native.locator('canvas').first();
+  const branch = await native.locator('body').evaluate(() => {
+    const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;
+    const resistor=api.getElements().find(el=>el.getType()==='ResistorElm')!;
+    const wire=api.getElements().find(el=>el.getType()==='WireElm' && [0,1].some(i=>el.getPostX(i)===resistor.getPostX(0) && el.getPostY(i)===resistor.getPostY(0)))!;
+    return {x:api.screenX((wire.getPostX(0)+wire.getPostX(1))/2),y:api.screenY((wire.getPostY(0)+wire.getPostY(1))/2),index:api.getElements().indexOf(wire),circuit:api.exportCircuit()};
+  });
+  await work.getByRole('button',{name:'Current probe',exact:true}).click();
+  await canvas.hover({position:branch});
+  await expect(canvas).toHaveCSS('cursor',/data:image\/svg\+xml/);
+  await canvas.click({position:branch});
+  const grip=work.getByRole('button',{name:/Move probe 3 I\(Wire/});
+  await expect(grip).toBeVisible();
+  await work.getByRole('button',{name:'Edit',exact:true}).click();
+  await grip.press('r');
+  await work.getByRole('button',{name:'Capture all probes',exact:true}).click();
+  await expect(work.locator('p[role="status"]')).toContainText('across 3 probes',{timeout:45000});
+  await expect(work.getByRole('button',{name:/Select I\(Wire/})).toBeVisible();
+  await work.getByRole('button',{name:'Save',exact:true}).click();
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('anacode:circuitjs:lab')!));
+  expect(saved.probes[2].elementIndex).toBe(branch.index);
+  expect(saved.probes[2].anchorFraction).toBeCloseTo(.5,1);
+  expect(saved.probes[2].markerOffset).toBeDefined();
+  const actual=await native.locator('body').evaluate((_body,{index})=>{
+    const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;
+    return {wire:api.getElements()[index].getCurrent(),resistor:api.getElements().find(el=>el.getType()==='ResistorElm')!.getCurrent(),circuit:api.exportCircuit()};
+  },branch);
+  expect(Math.abs(actual.wire)).toBeCloseTo(Math.abs(actual.resistor),8);
+  expect(actual.circuit).toBe(branch.circuit);
+  const labelPoint=await native.locator('body').evaluate(()=>{
+    const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;
+    const label=api.getElements().find(el=>el.getType()==='LabeledNodeElm')!;
+    // The starter's vertical vin label ends at its native lead, with text to its right.
+    return {x:api.screenX(label.getPostX(0)+34),y:api.screenY(label.getPostY(0)-15)};
+  });
+  await canvas.hover({position:labelPoint});
+  await expect.poll(()=>native.locator('body').evaluate(()=>(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1.getHoveredElement()?.getType())).toBe('LabeledNodeElm');
+  await canvas.press('r');
+  await expect(work.locator('p[role="status"]')).toContainText('Net label rotated');
+  await expect.poll(()=>native.locator('body').evaluate(()=>(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1.getElements().find(el=>el.getType()==='LabeledNodeElm')!.getLabelAngle!())).toBe(90);
+  await work.getByLabel('Workspace layout',{exact:true}).selectOption('tabs');
+  await work.getByRole('button',{name:'Schematic',exact:true}).click();
+  await expect(canvas).toBeVisible();
+  await work.getByLabel('Workspace layout',{exact:true}).selectOption('stacked');
+  await expect(work.getByRole('button',{name:'Capture all probes',exact:true})).toBeEnabled();
+});
+
 test('one-click probes and independent grips preserve the native circuit', async ({ page }) => {
   await page.goto('/lab');
   const work = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });

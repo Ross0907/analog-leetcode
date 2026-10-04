@@ -16,7 +16,7 @@ import {
 import { Activity, Download, Eye, EyeOff, Layers, Maximize2, Minimize2, RotateCcw, SlidersHorizontal, Zap } from "lucide-react";
 import { crossings, interpolateWaveform, measureWaveform } from "../../lib/waveform-analysis";
 import { probeColor } from "../../lib/probe-colors";
-import { rectangleView, nearestPlotTrace, instrumentTraceColor, fitTimeWindow, stackedTraceOffsets, type PlotPoint, type TimeWindowMode } from "../../lib/instrument-interactions";
+import { rectangleView, nearestPlotTrace, instrumentTraceColor, fitTimeWindow, stackedTraceOffsets, instrumentWheelGesture, zoomPlotBounds, type PlotPoint, type TimeWindowMode } from "../../lib/instrument-interactions";
 import { useInstrumentTheme, useTraceAppearance, useInstrumentPanel, useTraceSelection } from "./instrument-state";
 import { TraceContextMenu } from "./trace-context-menu";
 import { exportInstrumentPng } from "./instrument-export";
@@ -260,6 +260,27 @@ function OscilloscopePlot({
     const padding = rawSpan * 0.1;
     return { minimum: minimum - padding, maximum: maximum + padding };
   }, [preparedTraces, yPerDivision, yCenter]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const wheel = (event: WheelEvent) => {
+      const plot = plotRectRef.current, bounds = canvas.getBoundingClientRect();
+      const gesture = instrumentWheelGesture(event, plot?.height);
+      if (!gesture || !plot) return;
+      const px = event.clientX - bounds.left, py = event.clientY - bounds.top;
+      if (px < plot.left || px > plot.left + plot.width || py < plot.top || py > plot.top + plot.height) return;
+      event.preventDefault();
+      if (gesture.x) {
+        const next = zoomPlotBounds(xView, (px - plot.left) / plot.width, gesture.factor, { minimum: xBounds.transformedMin, maximum: xBounds.transformedMax });
+        setXCenter((next.minimum + next.maximum) / 2); setXPerDivision((next.maximum - next.minimum) / HORIZONTAL_DIVISIONS);
+      }
+      // Keep the current vertical view when zooming only the time/frequency axis.
+      const nextY = gesture.y ? zoomPlotBounds(yBounds, 1 - (py - plot.top) / plot.height, gesture.factor) : yBounds;
+      setYCenter((nextY.minimum + nextY.maximum) / 2); setYPerDivision((nextY.maximum - nextY.minimum) / VERTICAL_DIVISIONS);
+    };
+    canvas.addEventListener('wheel', wheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', wheel);
+  }, [xView, yBounds, xBounds.transformedMin, xBounds.transformedMax]);
 
   const effectiveTriggerChannel = activeTraces.some((trace) => trace.id === triggerChannel)
     ? triggerChannel
@@ -522,7 +543,8 @@ function OscilloscopePlot({
   const menuTrace = activeTraces.find((trace) => trace.id === traceMenu?.id);
   const visibleCount = preparedTraces.length;
   const totalSamples = Math.min(x.length, sampleLimit);
-  const scopeSummary = `${title}. ${yLabel} against ${effectiveXLabel}. ${visibleCount} visible ${visibleCount === 1 ? "channel" : "channels"}; ${totalSamples.toLocaleString()} samples. Cursor delta ${formatQuantity(cursorReadout.deltaX, effectiveXUnit)}.`;
+  const pointLabel = domain === 'time' ? 'samples' : 'plotted points';
+  const scopeSummary = `${title}. ${yLabel} against ${effectiveXLabel}. ${visibleCount} visible ${visibleCount === 1 ? "channel" : "channels"}; ${totalSamples.toLocaleString()} ${pointLabel}. Cursor delta ${formatQuantity(cursorReadout.deltaX, effectiveXUnit)}.`;
 
   return (
     <section className={["anacode-scope", className].filter(Boolean).join(" ")} style={styles.scope} aria-label={title} hidden={panel.hidden} data-instrument-maximized={panel.maximized} data-display-offsets={hasOffsets} data-theme={theme} data-x-min={inverseTransformX(xView.minimum, effectiveXScale)} data-x-max={inverseTransformX(xView.maximum, effectiveXScale)} data-y-min={yBounds.minimum} data-y-max={yBounds.maximum}>
@@ -531,7 +553,7 @@ function OscilloscopePlot({
           <span style={styles.titleIcon} aria-hidden="true"><Activity size={17} /></span>
           <div>
             <strong style={styles.title}>{title}</strong>
-            <span style={styles.subtitle}>{effectiveXLabel} domain · {yLabel} · {totalSamples.toLocaleString()} samples</span>
+            <span style={styles.subtitle}>{effectiveXLabel} domain · {yLabel} · {totalSamples.toLocaleString()} {pointLabel}</span>
           </div>
         </div>
         <div className="anacode-scope__controls" style={styles.controls}>
@@ -591,7 +613,7 @@ function OscilloscopePlot({
       </div>
       {hasOffsets && <p style={styles.interactionHint}>Display offsets separate traces. The readout table uses actual values; axis cursors use display coordinates. <button type="button" style={styles.iconButton} onClick={() => { setAppearances(current => ({ ...current, ...Object.fromEntries(activeTraces.map(trace => [trace.id, { ...current[trace.id], offset: 0 }])) })); setYPerDivision(null); setYCenter(null); }}>Clear offsets</button></p>}
       {exportError && <p role="alert" style={styles.interactionHint}>{exportError}</p>}
-      <p style={styles.interactionHint}>Drag a rectangle to zoom · Shift-drag to pan · Alt-drag cursors · Right-click a trace to style · Double-click to reset</p>
+      <p style={styles.interactionHint}>Drag to zoom · Ctrl+wheel: both axes · Ctrl+Shift+wheel: horizontal · Alt+wheel: vertical · Shift-drag to pan · Right-click a trace to style · Double-click to reset</p>
       <details className="anacode-scope__details"><summary style={styles.detailsSummary}>Measurements, cursors{domain === 'time' ? ' & trigger' : ''}</summary>
       <div style={{ ...styles.controls, padding: "10px 12px" }}>
           <button type="button" style={styles.iconButton} onClick={() => setXPerDivision((xView.maximum - xView.minimum) / 20)} aria-label="Zoom in waveform">Zoom +</button>
