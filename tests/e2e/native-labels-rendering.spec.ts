@@ -152,12 +152,21 @@ test('paused analysis resolves native nodes immediately without advancing time o
 test('vertical global label moves its text clear of adjacent ground without changing its electrical post',async({page})=>{
   await open(page);
   await page.evaluate(()=>{
-    const win=window as unknown as {CircuitJS1:CircuitJsApi;labelDraw?:{x:number;y:number}},ctx=document.querySelector('canvas')!.getContext('2d')!,original=ctx.fillText.bind(ctx);
-    ctx.fillText=(text:string,x:number,y:number,maxWidth?:number)=>{if(text==='b0')win.labelDraw={x,y};if(maxWidth===undefined)original(text,x,y);else original(text,x,y,maxWidth);};
+    const win=window as unknown as {CircuitJS1:CircuitJsApi;labelDraw?:{x:number;y:number;clearanceX:number}},canvas=document.querySelector('canvas')!,ctx=canvas.getContext('2d')!,original=ctx.fillText.bind(ctx);
+    ctx.fillText=(text:string,x:number,y:number,maxWidth?:number)=>{
+      if(text==='b0'){
+        // Labels can translate/rotate their local text origin independently.
+        // Project through the real canvas transform, then compare in CSS pixels
+        // with the native ground-clearance coordinate (including HiDPI scaling).
+        const rendered=new DOMPoint(x,y).matrixTransform(ctx.getTransform()),bounds=canvas.getBoundingClientRect();
+        win.labelDraw={x:rendered.x/(canvas.width/bounds.width),y:rendered.y/(canvas.height/bounds.height),clearanceX:win.CircuitJS1.screenX(174)};
+      }
+      if(maxWidth===undefined)original(text,x,y);else original(text,x,y,maxWidth);
+    };
     win.CircuitJS1.importCircuit('$ 4 .000001 10 50 5 50\nv 160 208 160 160 0 0 40 5 0 0 .5\ng 160 208 160 240 0\n207 160 160 160 224 0 b0\nr 160 160 256 160 0 1000\nw 256 160 256 208 0\nw 256 208 160 208 0',false);
     win.CircuitJS1.ensureAnalyzed!();
   });
-  await expect.poll(()=>page.evaluate(()=> (window as unknown as {labelDraw?:{x:number;y:number}}).labelDraw?.x??0)).toBeGreaterThan(174);
+  await expect.poll(()=>page.evaluate(()=>{const draw=(window as unknown as {labelDraw?:{x:number;clearanceX:number}}).labelDraw;return draw?draw.x-draw.clearanceX:-Infinity;})).toBeGreaterThan(0);
   const label=await page.evaluate(()=>{
     const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1,e=api.getElements().find(e=>e.getType()==='LabeledNodeElm')!;
     return {post:[e.getPostX(0),e.getPostY(0)],node:e.getNodeId(0),sourceNode:api.getElements()[0].getNodeId(1),name:e.getLabelName(),xml:e.exportElement()};
