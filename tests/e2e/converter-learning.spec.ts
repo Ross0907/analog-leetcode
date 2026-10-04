@@ -13,7 +13,7 @@ test("parts-only practice cannot simulate or submit an unwired reference solutio
     await expect(workspace.getByRole("button", { name: "Oscilloscope & FFT", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("combobox", { name: "SPICE analysis source", exact: true })).toBeDisabled();
     await page.getByRole("button", { name: "Run simulation", exact: true }).click();
-    await expect(page.locator(".simulation-message.error")).toContainText(/wire|not connected|output junction/i);
+    await expect(workspace.getByRole("alert")).toContainText(/wire|not connected|output junction/i);
     await expect(page.locator(".result-footer")).toHaveCount(0);
     await page.getByRole("button", { name: "Check fixed topology", exact: true }).click();
     await expect(page.locator(".grade-card.failed")).toContainText(/wire|not connected|output junction/i);

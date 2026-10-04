@@ -29,7 +29,7 @@ test('automatic labels clear wires and other captions; source captions fit on fi
     };
   });
   for (const slug of ['rc-cutoff-1khz', 'sallen-key-q', 'cmos-inverter-trip-point']) {
-    await page.evaluate(text => { const a = (window as unknown as NativeWindow).CircuitJS1; a.importCircuit(text, false); a.compactComponentLeads!(); a.setTheme('light'); a.ensureAnalyzed!(); }, neutralCircuitJsPresentation(CIRCUITJS_STARTERS[slug]));
+    await page.evaluate(text => { const w = window as unknown as NativeWindow, a = w.CircuitJS1; w.ink = []; w.segments = []; a.importCircuit(text, false); a.compactComponentLeads!(); a.setTheme('light'); a.ensureAnalyzed!(); }, neutralCircuitJsPresentation(CIRCUITJS_STARTERS[slug]));
     await expect.poll(() => page.evaluate(() => (window as unknown as NativeWindow).ink.length)).toBeGreaterThan(3);
     const state = await page.evaluate(() => {
       const w = window as unknown as NativeWindow, a = w.CircuitJS1;
