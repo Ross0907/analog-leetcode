@@ -404,7 +404,7 @@ export function SimulationConsole({
       </details>
 
       <div className="sim-output">
-        {(!compact || simError || simulation) && <div className="results-pane scope-results-pane">
+        {!(simError && onError && hideWaveforms) && (!compact || simError || simulation) && <div className="results-pane scope-results-pane">
           <div className="pane-heading"><span>RESULTS</span>{simulation && <small><Clock3 size={12} /> {simulation.runtimeMs.toFixed(1)} ms</small>}</div>
           {simError ? (
             <div className="simulation-message error"><AlertTriangle size={24} /><strong>Simulation stopped</strong><p>{simError}</p></div>

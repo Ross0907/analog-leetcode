@@ -259,6 +259,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
   useEffect(() => {
     mountedRef.current = true;
     let initialized = false;
+    let observedElements: CircuitJsElement[] = [];
     let detach = () => {};
     const started = Date.now();
     const timer = setInterval(() => {
@@ -431,6 +432,13 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
         setReady(true); setStatus('Editor ready. Draw circuits, choose any node, and capture multiple probes.');
       }
       setRunning(api.isRunning());
+      // Paused edits change the native element list before the next solve. Refresh
+      // source forms only when identities change, without polling waveform values.
+      const currentElements = api.getElements();
+      if (currentElements.length !== observedElements.length || currentElements.some((element, index) => element !== observedElements[index])) {
+        observedElements = currentElements;
+        setCircuitVersion(value => value + 1);
+      }
       const stop = api.getStopMessage();
       if (!initialRecordRef.current && api.resetSimulation && probesRef.current.some(probe => probe.enabled) && !stop) { initialRecordRef.current = true; captureRef.current(); }
       if (stop) { setError(stop); cancelCaptureRef.current?.(stop); if (liveRef.current) { liveRef.current.stop(); liveRef.current = null; setLive(false); } }
@@ -587,8 +595,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
     {layout === 'split' && !instrumentMaximized && <WorkspaceDivider label="Resize schematic and instruments" orientation="vertical" value={editorPercent} minimum={30} maximum={75} defaultValue={56} unitsPerPixel={() => 100 / (bodyRef.current?.clientWidth || 1000)} onChange={value => { setEditorPercent(value); persistLayout({ editorPercent: value }); }} onActive={active => { setResizing(active); if (!active) persistLayout(); }} className={styles.verticalDivider}/>}
     <div ref={measurementRef} className={styles.measurementPane} hidden={!instrumentMaximized && layout === 'tabs' && tab !== 'instruments'}>
     {analysis && <fieldset className={styles.analysisRunner} disabled={!ready || capturing || spiceRunning}>
-      <NativeAnalysisControls key={spiceRunRequest} api={nativeApi} settings={{ ...analysisSettings, duration: Number(duration), samples: Number(samples) }} onChange={changeAnalysis} onApplySource={applySource} section="analysis"/>
-      <div className={styles.analysisAction}><button type="button" className={styles.capture} disabled={!ready || capturing || spiceRunning} onClick={runAnalysis}><Play size={14}/>{spiceRunning ? 'Running analysis…' : analysisAction}</button><span>{analysisSettings.type === 'ac-sweep' ? 'Magnitude and phase versus frequency appear below.' : analysisSettings.type === 'dc-sweep' ? 'Output versus swept source appears below.' : analysisSettings.type === 'operating-point' ? 'Node voltages and source currents appear below.' : 'Simulate the current circuit using the selected SPICE models.'}</span></div>
+      <NativeAnalysisControls key={spiceRunRequest} api={nativeApi} settings={{ ...analysisSettings, duration: Number(duration), samples: Number(samples) }} onChange={changeAnalysis} onApplySource={applySource} section="analysis" action={<button type="button" className={styles.capture} disabled={!ready || capturing || spiceRunning} onClick={runAnalysis}><Play size={14}/>{spiceRunning ? 'Running analysis…' : analysisAction}</button>}/>
     </fieldset>}
     <details className={styles.timeCaptureControls} open={analysisSettings.type === 'transient' || timeControlsOpen} onToggle={event => setTimeControlsOpen(event.currentTarget.open)}>
     <summary hidden={analysisSettings.type === 'transient'}>Time capture · Oscilloscope, FFT &amp; logic</summary>
@@ -614,7 +621,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
     <div ref={instrumentRef} className={styles.instruments}>
       {error && <p className={styles.error} role="alert">{error}</p>}
       {spicePayload && <div className={styles.sourceSwitch}><button type="button" aria-pressed={resultSource === 'circuit'} onClick={() => setResultSource('circuit')}>Circuit probes</button><button type="button" aria-pressed={resultSource === 'spice'} onClick={() => setResultSource('spice')}>SPICE response</button></div>}
-      {displayedPayload && <div className={styles.resultHeading} role="status"><h2>{resultName(displayedPayload)}</h2><span>{displayedPayload.engine === 'circuitjs1' ? 'Circuit probes' : 'SPICE'} · {displayedPayload.x.length ? `${displayedPayload.x.length.toLocaleString()} points` : `${displayedPayload.operatingPoint.length} readings`}</span>{displayedPayload.analysis === 'transient' && analysisSettings.type !== 'transient' && <small>This is a time capture. Choose “{analysisAction}” above for the selected analysis.</small>}</div>}
+      {displayedPayload && <div className={styles.resultHeading} role="status"><h2>{resultName(displayedPayload)}</h2><span>{displayedPayload.engine === 'circuitjs1' ? 'Circuit probes' : 'SPICE'} · {displayedPayload.x.length ? `${displayedPayload.x.length.toLocaleString()} points` : `${displayedPayload.operatingPoint.length} readings`}</span>{displayedPayload.analysis === 'transient' && analysisSettings.type !== 'transient' && <small>Choose “{analysisAction}” above to show its response.</small>}</div>}
       {displayedPayload && displayedPayload.warnings.map((warning) => <p className={styles.note} key={warning}>{warning}</p>)}
       {displayedPayload ? <ScopeResult payload={displayedPayload} preferredInstrument={preferredInstrument === 'dc' ? 'dc' : 'scope'} recordDuration={Number(duration)+(analysisSettings.settleDuration??0)} onMaximizedChange={setInstrumentMaximized} view={instrumentView} onViewChange={setInstrumentView} fftLength={fftLength} onFftLengthChange={setFftLength} selectedTraceId={selectedTraceId} onSelectTrace={selectTrace} onRequestCapture={resultSource==='spice' && !spiceLinked ? undefined : requestFftCapture}/> : <div className={styles.empty}><Waves size={30}/><strong>{spiceRunning ? 'Simulating the current circuit…' : resultSource === 'spice' ? analysisAction : 'Watch your circuit respond'}</strong><p>{resultSource === 'spice' ? analysisSettings.type === 'ac-sweep' ? 'Run the AC sweep above. Bode magnitude and phase will appear here.' : analysisSettings.type === 'dc-sweep' ? 'Run the DC sweep above. The source-to-output transfer curve will appear here.' : 'Run the selected analysis above to display its results here.' : 'Set Duration and Samples / probe above, then capture all enabled probes together. Scope, FFT and logic use that same measured record.'}</p></div>}</div>
     {analysis && <div ref={analysisRef} className={styles.analysisPane}>
