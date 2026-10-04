@@ -1,0 +1,33 @@
+import { expect, test } from '@playwright/test';
+
+test('native properties use an app color picker and keep native Apply and Cancel behavior', async ({ page }) => {
+  await page.goto('/lab');
+  await expect(page.getByRole('button', { name: 'Capture all probes', exact: true })).toBeEnabled({timeout:45000});
+  const native=page.frameLocator('iframe[title="CircuitJS schematic editor"]');
+  await native.getByText('Options', {exact:true}).click();
+  await native.getByText('Other Options...', {exact:true}).click();
+  const properties=native.locator('.gwt-DialogBox');
+  await expect(properties).toBeVisible();
+  const field=properties.locator('input[type="color"]').first();
+  const original=await field.inputValue();
+  await field.click();
+  const picker=page.getByRole('dialog',{name:'Schematic color',exact:true});
+  await expect(picker).toBeVisible();
+  await expect.poll(async()=> (await picker.boundingBox())?.x ?? 0).toBeGreaterThan(100);
+  await picker.getByRole('textbox',{name:'Schematic color',exact:true}).fill('#19a7ce');
+  await expect(field).toHaveValue('#19a7ce');
+  await expect(properties).toBeVisible();
+  await picker.getByRole('button',{name:'Done',exact:true}).click();
+  await expect(picker).toBeHidden();
+  await properties.getByRole('button',{name:'Cancel',exact:true}).click();
+  await native.getByText('Options', {exact:true}).click(); await native.getByText('Other Options...', {exact:true}).click();
+  await expect(field).toHaveValue(original);
+  await field.click();await picker.getByRole('textbox',{name:'Schematic color',exact:true}).fill('#65b853');
+  await page.keyboard.press('Escape');await expect(picker).toBeHidden();await expect(properties).toBeVisible();
+  await properties.getByRole('button',{name:'OK',exact:true}).click();
+  await native.getByText('Options', {exact:true}).click(); await native.getByText('Other Options...', {exact:true}).click();
+  await expect(field).toHaveValue('#65b853');
+  await field.click();await expect(picker).toBeVisible();await page.mouse.click(page.viewportSize()!.width-8,page.viewportSize()!.height-8);await expect(picker).toBeHidden();
+  await expect(properties).toBeVisible();
+  await properties.getByRole('button',{name:'Cancel',exact:true}).click();
+});

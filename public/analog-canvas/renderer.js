@@ -17,7 +17,19 @@ export function analogSymbolDefinition(element) {
 }
 export function analogPrimitives(symbol) {
   const variant = symbol.variants?.find((item) => item.id === symbol.defaultVariantId);
-  return [...symbol.primitives.filter((primitive) => !variant?.hiddenPrimitiveParts?.includes(primitive.part)), ...(variant?.additionalPrimitives ?? [])];
+  const primitives = [...symbol.primitives.filter((primitive) => !variant?.hiddenPrimitiveParts?.includes(primitive.part)), ...(variant?.additionalPrimitives ?? [])];
+  // Requested presentation adaptation: align the two MOS gate bars to the
+  // catalog's longer bar. Keep the audited source definitions, leads and arrow
+  // unchanged; this derived presentation is not an unmodified upstream export.
+  if (symbol.id !== 'nmos' && symbol.id !== 'pmos') return primitives;
+  const gateBars = primitives.filter((primitive) => primitive.part === 'gate-bar' && primitive.kind === 'polygon');
+  const ys = gateBars.flatMap((primitive) => primitive.points.map((point) => point.y));
+  const top = Math.min(...ys), bottom = Math.max(...ys);
+  return primitives.map((primitive) => {
+    if (!gateBars.includes(primitive)) return primitive;
+    const middle = primitive.points.reduce((sum, point) => sum + point.y, 0) / primitive.points.length;
+    return { ...primitive, points: primitive.points.map((point) => ({ ...point, y: point.y < middle ? top : bottom })) };
+  });
 }
 export function analogPlacement(symbol, definition, element) {
   const pins = definition.slice(1).map((name) => symbol.pins.find((pin) => pin.name === name)?.at);

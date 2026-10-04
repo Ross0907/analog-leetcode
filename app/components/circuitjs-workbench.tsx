@@ -23,12 +23,15 @@ import DesignCheckPanel from './design-check-panel';
 import type { DesignCheck } from '../../lib/design-checks';
 import { clearProbeAttachment, currentProbeElementAt, probeAttachment, probeNodeName, probePayloadAppearance, spiceProbeMatches, spiceProbePayloadAppearance } from '../../lib/circuitjs-probes';
 import { formatEngineering } from '../../lib/engineering';
+import { InlineColorPicker } from './color-picker';
+import { probeCursor } from '../../lib/probe-cursor';
+import { NativeColorPickerBridge } from './native-color-picker-bridge';
 type CircuitWindow = Window & { CircuitJS1?: CircuitJsApi };
 type SavedProbe = Omit<CircuitJsProbe, 'element'> & { elementIndex: number };
 type SavedCircuit = { version: 1; circuit: string; probes: SavedProbe[]; duration?: number; samples?: number; analysisSettings?: NativeAnalysisSettings; starterRevision?: string };
 const starterRevision = (text: string) => { let hash = 2166136261; for (let index = 0; index < text.length; index++) hash = Math.imul(hash ^ text.charCodeAt(index), 16777619); return (hash >>> 0).toString(16); };
 type AnalysisConfig = { initialNetlist: string; probe?: string | readonly string[]; challengeSlug?: string; judge?: JudgeKind; requireSchematic?: boolean };
-export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, storageKey = 'lab', modelNote, onPrepareGrading, analysis, recommendedProbes, wiringInstructions, analysisDefaults, preferredInstrument, designChecks, acquisitionMode }: { initialCircuit?: string; storageKey?: string; modelNote?: string; onPrepareGrading?: (document: CircuitDocument, deck: string) => void; analysis?: AnalysisConfig; recommendedProbes?: readonly string[]; wiringInstructions?: readonly string[]; analysisDefaults?: Partial<NativeAnalysisSettings>; preferredInstrument?: 'scope' | 'logic' | 'dc'; designChecks?: readonly DesignCheck[]; acquisitionMode?: 'restart-record' | 'live' }) {
+export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUITJS_LAB_STARTER, storageKey = 'lab', modelNote, onPrepareGrading, analysis, recommendedProbes, wiringInstructions, analysisDefaults, preferredInstrument, designChecks, acquisitionMode }: { fillWindow?: boolean; initialCircuit?: string; storageKey?: string; modelNote?: string; onPrepareGrading?: (document: CircuitDocument, deck: string) => void; analysis?: AnalysisConfig; recommendedProbes?: readonly string[]; wiringInstructions?: readonly string[]; analysisDefaults?: Partial<NativeAnalysisSettings>; preferredInstrument?: 'scope' | 'logic' | 'dc'; designChecks?: readonly DesignCheck[]; acquisitionMode?: 'restart-record' | 'live' }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const apiRef = useRef<CircuitJsApi | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -202,7 +205,7 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
     modeRef.current = next;
     setMode(next);
     const canvas = iframeRef.current?.contentDocument?.querySelector('canvas');
-    if (canvas) canvas.style.cursor = next === 'edit' ? '' : 'crosshair';
+    if (canvas) canvas.style.cursor = next === 'edit' ? '' : probeCursor(next);
     if (next !== 'edit') setStatus('Click once on any wire or terminal. Drag a probe grip to move it; Escape returns to editing.');
   }
   function restoreStarter() {
@@ -337,7 +340,7 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
           // Native hit testing identifies the wire; all its terminals share one solved node.
           const current = probesRef.current;
           const kind = modeRef.current;
-          if (kind === 'current' && !supportsCircuitJsCurrent(element)) { setError('Current probing is available on two-terminal components.'); return; }
+          if (kind === 'current' && !supportsCircuitJsCurrent(element)) { setError('Click a scalar wire or a two-terminal component to measure its branch current.'); return; }
           if (current.length >= MAX_CIRCUITJS_PROBES) { setError('A maximum of 32 probes is supported.'); return; }
           if (current.some((probe) => probe.kind === kind && (kind === 'current' ? probe.element === element : probe.element.getNodeId(probe.post) === element.getNodeId(post)))) { setStatus('That node already has a probe. Drag its colored grip to reposition it.'); return; }
           const index = api.getElements().indexOf(element);
@@ -353,7 +356,16 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
           setError(null); setStatus(`${name} added.`);
         };
         const events = ['mousedown', 'mouseup', 'click'] as const;
-        const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { modeRef.current = 'edit'; setMode('edit'); const canvas = nativeDocument.querySelector('canvas'); if (canvas) canvas.style.cursor = ''; } };
+        const escape = (event: KeyboardEvent) => {
+          if (event.key === 'Escape') { modeRef.current = 'edit'; setMode('edit'); const canvas = nativeDocument.querySelector('canvas'); if (canvas) canvas.style.cursor = ''; }
+          if (modeRef.current !== 'edit' || event.key.toLowerCase() !== 'r' || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || event.repeat) return;
+          if ((event.target as Element | null)?.closest?.('input,textarea,select,[contenteditable=true]')) return;
+          const label = api.getHoveredElement(), angle = label?.getLabelAngle?.();
+          if (label?.getType() !== 'LabeledNodeElm' || angle === null || angle === undefined || !label.setLabelAngle) return;
+          event.preventDefault(); event.stopImmediatePropagation();
+          const issue = label.setLabelAngle(angle + (event.shiftKey ? -90 : 90));
+          if (issue) setError(issue); else setStatus('Net label rotated. R rotates clockwise; Shift+R rotates back.');
+        };
         // detach() removes this listener together with the native click handlers.
         // eslint-disable-next-line @eslint-react/web-api-no-leaked-event-listener
         nativeDocument.addEventListener('keydown', escape, true);
@@ -492,7 +504,8 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
     recordWithSettings({ duration: Number(duration), samples: Math.min(131072, Math.max(Number(samples), request.minimumSamples)) });
   }
   useEffect(() => { captureRef.current = () => { void capture(); }; });
-  return <section className={styles.workbench} data-resizing={resizing || undefined} aria-label="CircuitJS schematic and simulation workspace">
+  return <section className={styles.workbench} data-fill-window={fillWindow || undefined} data-resizing={resizing || undefined} aria-label="CircuitJS schematic and simulation workspace">
+    <NativeColorPickerBridge frame={iframeRef} ready={ready}/>
     <div className={styles.toolbar}>
       <button type="button" aria-pressed={tab === 'editor'} onClick={() => navigate('editor')}><MousePointer2 size={16}/> Schematic</button>
       <button type="button" aria-pressed={tab === 'instruments'} onClick={() => navigate('instruments')}><Waves size={16}/> Oscilloscope &amp; FFT</button>
@@ -530,9 +543,9 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
         <button type="button" disabled={!ready || capturing} aria-pressed={mode === 'current'} onClick={() => changeMode('current')}><Radio size={15}/> Current probe</button>
         <button type="button" aria-expanded={labelEditor} disabled={!ready || capturing} onClick={() => setLabelEditor(value => !value)}>Net label</button>
         <label className={styles.schematicTheme}>Paper<select aria-label="Schematic theme" value={schematicTheme} onChange={event => { const next = event.target.value as typeof schematicTheme; setSchematicTheme(next); try { localStorage.setItem('anacode:workbench-layout', JSON.stringify({ editorPercent, editorHeight, probeHeight, schematicTheme: next })); } catch { /* Optional preference. */ } }}><option value="follow">Follow site</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
-        <span className={styles.toolHint}>{mode === 'edit' ? 'W: wire · drag: move · double-click text: edit · Ctrl/Cmd + scroll: zoom' : 'Click a wire or terminal to add a channel.'}</span>
+        <span className={styles.toolHint}>{mode === 'edit' ? 'W: wire · drag text: move · double-click: edit · R over label: rotate · Ctrl/⌘ + scroll: zoom' : 'Place the probe tip on a wire or terminal · repeat for more channels · Esc: finish'}</span>
       </div>
-      {labelEditor && <form className={styles.netLabelEditor} onSubmit={event => { event.preventDefault(); const name = netName.trim(); if (!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(name)) { setError('Use a net name starting with a letter, up to 32 letters, digits or underscores.'); return; } changeMode('edit'); const issue = apiRef.current?.addNetLabel?.(name, netStyle); if (issue) { setError(issue); return; } iframeRef.current?.contentWindow?.focus(); setLabelEditor(false); setError(null); setStatus('Place the label on a wire endpoint or terminal. Equal names connect electrically throughout this circuit.'); }}><label>Net name<input aria-label="Global net name" value={netName} onChange={event => setNetName(event.target.value)} maxLength={32} placeholder="VREF" required/></label><label>Style<select aria-label="Net label style" value={netStyle} onChange={event => setNetStyle(event.target.value as typeof netStyle)}><option value="plain">Text</option><option value="flag">Flag</option></select></label><button type="submit">Place label</button><button type="button" onClick={() => setLabelEditor(false)}>Cancel</button></form>}
+      {labelEditor && <form className={styles.netLabelEditor} onSubmit={event => { event.preventDefault(); const name = netName.trim(); if (!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(name)) { setError('Use a net name starting with a letter, up to 32 letters, digits or underscores.'); return; } changeMode('edit'); const issue = apiRef.current?.addNetLabel?.(name, netStyle); if (issue) { setError(issue); return; } iframeRef.current?.contentWindow?.focus(); setLabelEditor(false); setError(null); setStatus('Place the label on a wire endpoint or terminal. Equal names connect electrically throughout this circuit.'); }}><label>Net name<input aria-label="Global net name" value={netName} onChange={event => setNetName(event.target.value)} maxLength={32} placeholder="VREF" required/></label><label>Style<select aria-label="Net label style" value={netStyle} onChange={event => setNetStyle(event.target.value as typeof netStyle)}><option value="plain">Tag</option><option value="flag">Flag</option></select></label><button type="submit">Place label</button><button type="button" onClick={() => setLabelEditor(false)}>Cancel</button></form>}
       <div className={styles.frameWrap} data-schematic-theme={schematicTheme} style={{ height: editorHeight }}>
         <iframe ref={iframeRef} className={styles.frame} title="CircuitJS schematic editor" src="/circuitjs/circuitjs.html?running=false&hideSidebar=true&hideInfoBox=true&usResistors=true&cct=%24%204%200.000001%2010%2050%205%2050%205e-11" allow="clipboard-read; clipboard-write"/>
         <SchematicProbeOverlay api={apiRef} frame={iframeRef} probes={probes} disabled={capturing} onChange={updateProbes} onMessage={setStatus} selectedProbeId={selectedProbeId} onSelectProbe={selectProbe}/>
@@ -582,7 +595,7 @@ export function CircuitJsWorkbench({ initialCircuit = CIRCUITJS_LAB_STARTER, sto
       <div className={styles.probes}>{probes.map((probe, index) => <div className={styles.probe} key={probe.id} style={{ borderColor: `${probe.color}70` }}>
         <input type="checkbox" aria-label={`Enable ${probe.name}`} checked={probe.enabled} disabled={capturing} onChange={(event) => updateProbes(probes.map((entry) => entry.id === probe.id ? { ...entry, enabled: event.target.checked } : entry))}/>
         <button type="button" aria-label={`Select probe ${index + 1} ${probe.name}`} aria-pressed={selectedProbeId === probe.id} style={{ color: probe.color }} onClick={() => selectProbe(probe.id)}>{index + 1}</button>
-        <input aria-label={`Probe ${index + 1} color`} type="color" value={probe.color} onChange={(event) => updateProbes(probes.map((entry) => entry.id === probe.id ? { ...entry, color: event.target.value } : entry))}/>
+        <details className={styles.probeColor}><summary aria-label={`Probe ${index + 1} color`} style={{ color: probe.color }}>●</summary><InlineColorPicker label={`Probe ${index + 1} color`} value={probe.color} onChange={color => updateProbes(probes.map(entry => entry.id === probe.id ? { ...entry, color } : entry))}/></details>
         <input aria-label={`Probe ${index + 1} name`} value={probe.name} maxLength={80} onChange={(event) => updateProbes(probes.map((entry) => entry.id === probe.id ? { ...entry, name: event.target.value } : entry))}/>
         <output>{Number.isFinite(values[probe.id]) ? values[probe.id].toPrecision(4) : '—'} {probe.kind === 'current' ? 'A' : 'V'}</output>
         <button type="button" aria-label={`Remove ${probe.name}`} disabled={capturing} onClick={() => updateProbes(probes.filter((entry) => entry.id !== probe.id))}><Trash2 size={14}/></button>

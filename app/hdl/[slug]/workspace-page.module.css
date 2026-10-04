@@ -1,0 +1,13 @@
+.shell { height:100dvh; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.shell > header { flex-shrink:0; }
+.workbench { flex:1; min-height:0; display:flex; flex-direction:column; padding:0 6px 6px; }
+.breadcrumb { flex-shrink:0; min-height:32px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:4px 8px; font-size:11px; color:var(--muted); }
+.breadcrumb > span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.breadcrumb nav { display:flex; gap:14px; align-items:center; flex-shrink:0; }
+.breadcrumb a:hover { color:var(--ink); text-decoration:underline; }
+@media(max-width:700px) {
+  .workbench { padding:0 3px 3px; }
+  .breadcrumb { gap:8px; }
+  .breadcrumb > span { display:none; }
+  .breadcrumb nav { width:100%; justify-content:space-between; gap:8px; }
+}

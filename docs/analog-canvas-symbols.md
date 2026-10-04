@@ -12,9 +12,16 @@ generated outputs. This selects existing artwork; it does not generate new
 symbol bodies. The upstream catalog preserves its individual provenance and
 house-derived status for every selected definition.
 
-The presentation adapter renders the catalog primitives directly. MOS uses the
+The presentation adapter renders the catalog primitives. MOS uses the
 upstream `textbook-3terminal` default variant and its supplied source arrow;
-the hidden bulk lead is omitted according to that variant. DC voltage uses the
+the hidden bulk lead is omitted according to that variant. The requested
+equal-length MOS gate bars are a small presentation adaptation: the shorter
+bar extends to the longer bar's existing ±12.5-unit endpoints. The other
+primitives, arrow and electrical pins are unchanged. The original source and
+selected JSON remain byte-for-byte upstream; the renderer and generated MOS
+previews disclose this derivative treatment. Verification against upstream
+main `7e26ec6ed2b725f080bcc479d2b66c1674b25402` on 2026-10-04 found the
+same source hash and unequal original bars. DC voltage uses the
 single-cell battery definition. The diode uses its supplied outline and cathode
 bar. These drawings contain no decorative terminal circles. Native junction
 dots use CircuitJS's own post-count list and appear only at three or more
@@ -52,7 +59,12 @@ The renderer reads the latest editor theme after asynchronous assets finish
 loading, so dark paper cannot retain light-theme ink. Native vertical net-label
 tethers and text shift aside when their presentation would overlap a nearby
 ground; their single native post, electrical name and stored endpoints remain
-unchanged.
+unchanged. Label text starts beside a vertical tether, with plain/flag styles
+and independent 90-degree rotation. Dragging a value or net-label annotation
+updates native XML presentation attributes `atx`, `aty` and `ata`, retained by
+native Undo/Redo and save/reload. Double-clicking a numeric value opens its
+native-backed inline editor. Op-amp selection handles mark only the two real
+inputs and output, never its non-electrical midpoint anchor.
 
 The upstream generic voltage-source body is intentionally an empty circle.
 Its presentation adds an upright sine/triangle/sawtooth indicator according to

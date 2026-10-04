@@ -1,3 +1,22 @@
 @font-face{font-family:'Iosevka Drom Web';font-display:swap;src:url('./IosevkaDrom-Regular.woff2') format('woff2')}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;color:#e2e9f0;font-family:'Iosevka Drom Web',monospace}
 #waveform{height:100%;width:100%}#error{padding:24px;color:#ffad9e}p{padding:16px}
+/* Upstream help is a transparent sliding lane. Present its actual table in a
+   modal instead, so short embedded viewers keep signals and help separate. */
+.wd-help-panel,.wd-help-icon{display:none!important}
+button{font:inherit;cursor:pointer;color:#e2e9f0;background:#1d2b35;border:1px solid #587080;border-radius:5px;padding:5px 9px;font-size:11px}
+button:focus-visible{outline:2px solid #ffc766;outline-offset:2px}
+button:disabled{opacity:.5;cursor:wait}
+#shortcuts-open{position:fixed;right:9px;top:7px;z-index:10;box-shadow:0 1px 5px #0006}
+#shortcuts{box-sizing:border-box;width:560px;max-width:calc(100% - 20px);max-height:calc(100% - 20px);padding:0;border:1px solid #587080;border-radius:8px;background:#13202a;color:#e2e9f0;overflow:hidden;box-shadow:0 8px 30px #0008}
+#shortcuts[open]{display:flex;flex-direction:column}
+#shortcuts::backdrop{background:#060d16b8}
+#shortcuts header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #364956;flex-shrink:0}
+#shortcuts h2{font-size:13px;margin:0}
+#shortcuts header button{flex-shrink:0}
+#shortcuts-content{overflow:auto;min-height:0;padding:0 6px}
+#shortcuts-content h3{display:none}
+#shortcuts-content .wd-help-panel-row{font-size:12px;gap:12px;line-height:1.5}
+#shortcuts-content .wd-key-help-comb{flex-shrink:0}
+#shortcuts footer{font-size:10px;padding:8px 14px;border-top:1px solid #364956;line-height:1.5;flex-shrink:0}
+@media(max-width:360px){#shortcuts-open span{display:none}#shortcuts header{padding:7px 10px}#shortcuts-content .wd-help-panel-row{font-size:11px;gap:6px}}

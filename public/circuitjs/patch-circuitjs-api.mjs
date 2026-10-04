@@ -740,5 +740,143 @@ replace('JSInterface.java', '\t$wnd.CircuitJS1 = {', `\t$wnd.CircuitJS1 = {
             hitTest: $entry(function(x, y) { return that.@com.lushprojects.circuitjs1.client.JSInterface::hitTest(DD)(x, y); }),
             addNetLabel: $entry(function(name, style) { return that.@com.lushprojects.circuitjs1.client.JSInterface::addNetLabel(Ljava/lang/String;Ljava/lang/String;)(name, style); }),
             resetSimulation: $entry(function() { that.@com.lushprojects.circuitjs1.client.JSInterface::resetSimulation()(); }),`);
+// Presentation text is native XML/undo state. Moving it never moves a post,
+// changes a net name, or substitutes a second connectivity implementation.
+replace('CircuitElm.java', '    Rectangle anacodeValueBounds;', `    int anacodeTextX, anacodeTextY, anacodeTextAngle;
+    Rectangle anacodeValueBounds;
+    void anacodeTextBounds(int x, int y, int left, int top, int width, int height) {
+        double angle = anacodeTextAngle * Math.PI / 180;
+        double cs = Math.cos(angle), sn = Math.sin(angle);
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
+        for (int i=0; i<4; i++) {
+            int px = left + ((i&1)==0 ? 0 : width), py = top + ((i&2)==0 ? 0 : height);
+            int tx = (int)Math.round(x + px*cs - py*sn), ty = (int)Math.round(y + px*sn + py*cs);
+            minX = Math.min(minX, tx); minY = Math.min(minY, ty); maxX = Math.max(maxX, tx); maxY = Math.max(maxY, ty);
+        }
+        anacodeValueBounds = new Rectangle(minX-3, minY-3, maxX-minX+6, maxY-minY+6);
+        adjustBbox(minX-3,minY-3,maxX+3,maxY+3);
+    }
+    void anacodeDrawValue(Graphics g, String text, int x, int y, int width) {
+        x += anacodeTextX; y += anacodeTextY;
+        g.save(); g.context.translate(x,y); g.context.rotate(anacodeTextAngle*Math.PI/180);
+        g.drawString(text,0,0); g.restore();
+        anacodeTextBounds(x,y,0,-valueFontSize,width,valueFontSize+3);
+    }
+    String setLabelAngleJS(double angle) {
+        if (!(this instanceof LabeledNodeElm)) return "Select a net label.";
+        if (app.ui.isReadOnly()) return "This schematic is read only.";
+        if (Double.isNaN(angle) || Double.isInfinite(angle) || angle%90 != 0) return "Choose an angle in steps of 90 degrees.";
+        int normalized = (int)((angle%360+360)%360);
+        if (normalized == anacodeTextAngle) return null;
+        app.undoManager.pushUndo(); anacodeTextAngle = normalized;
+        app.unsavedChanges = true; app.undoManager.writeRecoveryToStorage(); app.repaint(); return null;
+    }`);
+replace('CircuitElm.java', '    void dumpXml(Document doc, Element elem) {', `    void dumpXml(Document doc, Element elem) {
+        if (anacodeTextX != 0) XMLSerializer.dumpAttr(elem,"atx",anacodeTextX);
+        if (anacodeTextY != 0) XMLSerializer.dumpAttr(elem,"aty",anacodeTextY);
+        if (anacodeTextAngle != 0) XMLSerializer.dumpAttr(elem,"ata",anacodeTextAngle);`);
+replace('CircuitElm.java', '    void undumpXml(XMLDeserializer xml) {', `    void undumpXml(XMLDeserializer xml) {
+        anacodeTextX = Math.max(-100000,Math.min(100000,xml.parseIntAttr("atx",0)));
+        anacodeTextY = Math.max(-100000,Math.min(100000,xml.parseIntAttr("aty",0)));
+        int angle = xml.parseIntAttr("ata",0); anacodeTextAngle = angle%90==0 ? (angle%360+360)%360 : 0;`);
+replace('CircuitElm.java', '        this.getLabelStyle = $entry(', `        this.getLabelAngle = $entry(function() { return that.@com.lushprojects.circuitjs1.client.CircuitElm::getLabelStyleJS()() === null ? null : that.@com.lushprojects.circuitjs1.client.CircuitElm::anacodeTextAngle; });
+        this.setLabelAngle = $entry(function(angle) { return that.@com.lushprojects.circuitjs1.client.CircuitElm::setLabelAngleJS(D)(angle); });
+        this.getBusWidth = $entry(function() { return that.@com.lushprojects.circuitjs1.client.CircuitElm::getBusWidth()(); });
+        this.getLabelStyle = $entry(`);
+replace('CircuitElm.java', '            g.drawString(s, xc-w/2, yc-abs(dpy)-2);', '            anacodeDrawValue(g,s,xc-w/2,yc-abs(dpy)-2,w);');
+replace('CircuitElm.java', '            g.drawString(s, xx, yc+dpy+ya);', '            anacodeDrawValue(g,s,xx,yc+dpy+ya,w);');
+// Op-amp's generic first resize handle is an internal geometry anchor halfway
+// between its inputs. Selection marks belong only to its three real posts.
+replace('CircuitElm.java', '    void drawHandles(Graphics g, Color c) {', `    void drawHandles(Graphics g, Color c) {
+        if (this instanceof OpAmpElm) {
+            g.setColor(c);
+            for (int i=0;i<getPostCount();i++) { Point p=getPost(i); g.drawRect(p.x-3,p.y-3,6,6); }
+            return;
+        }`);
+// Scope-free host sampling still needs native solved wire currents on each
+// accepted timestep, not the final value deferred until the repaint batch ends.
+replace('SimulationManager.java', 'boolean delayWireProcessing = !anacodeBatch && app.scopeManager.canDelayWireProcessing();', 'boolean delayWireProcessing = !anacodeBatch && !anacodeHasTimestepHook() && app.scopeManager.canDelayWireProcessing();');
+replace('SimulationManager.java', '    boolean anacodeBatch;', `    native boolean anacodeHasTimestepHook() /*-{
+        return !!($wnd.CircuitJS1 && typeof $wnd.CircuitJS1.ontimestep === 'function');
+    }-*/;
+    boolean anacodeBatch;`);
+// A text drag and a double-click value edit are separate native gestures.
+replace('MouseManager.java', '                ce.addJSMethods(); anacodeShowValue(ce); return true;', `                anacodeTextDrag = ce; anacodeTextDownX=gx; anacodeTextDownY=gy;
+                anacodeTextOldX=ce.anacodeTextX; anacodeTextOldY=ce.anacodeTextY; anacodeTextChanged=false;
+                setMouseElm(ce); return true;`);
+replace('MouseManager.java', 'ce.anacodeValueIndex() >= 0) {', '(ce instanceof LabeledNodeElm || ce.anacodeValueIndex() >= 0)) {');
+replace('MouseManager.java', '    boolean anacodeValueClick(int x, int y) {', `    CircuitElm anacodeTextDrag;
+    int anacodeTextDownX, anacodeTextDownY, anacodeTextOldX, anacodeTextOldY;
+    boolean anacodeTextChanged;
+    void anacodeEndTextDrag() {
+        if (anacodeTextDrag == null) return;
+        if (anacodeTextChanged) { sim.unsavedChanges=true; sim.undoManager.writeRecoveryToStorage(); }
+        anacodeTextDrag=null; sim.repaint();
+    }
+    boolean anacodeValueClick(int x, int y) {`);
+replace('MouseManager.java', '    public void onMouseMove(MouseMoveEvent e) {', `    public void onMouseMove(MouseMoveEvent e) {
+        if (anacodeTextDrag != null) {
+            int dx=inverseTransformX(e.getX())-anacodeTextDownX, dy=inverseTransformY(e.getY())-anacodeTextDownY;
+            if (!anacodeTextChanged && dx*dx+dy*dy<9) return;
+            if (!anacodeTextChanged) { sim.undoManager.pushUndo(); anacodeTextChanged=true; }
+            anacodeTextDrag.anacodeTextX=anacodeTextOldX+dx; anacodeTextDrag.anacodeTextY=anacodeTextOldY+dy;
+            sim.repaint(); e.preventDefault(); return;
+        }`);
+replace('MouseManager.java', '    public void onMouseUp(MouseUpEvent e) {', `    public void onMouseUp(MouseUpEvent e) {
+        if (anacodeTextDrag != null) { anacodeEndTextDrag(); e.preventDefault(); return; }`);
+replace('MouseManager.java', '    public void onMouseOut(MouseOutEvent e) {', `    public void onMouseOut(MouseOutEvent e) {
+        anacodeEndTextDrag();`);
+replace('MouseManager.java', '    public void onDoubleClick(DoubleClickEvent e){', `    public void onDoubleClick(DoubleClickEvent e){
+        if (!ui.isReadOnly() && mouseMode == MODE_SELECT) {
+            int gx=inverseTransformX(e.getX()), gy=inverseTransformY(e.getY());
+            for (CircuitElm ce : ui.elmList) {
+                if (ce instanceof LabeledNodeElm || ce.anacodeValueIndex()<0 || ce.anacodeValueBounds==null || !ce.anacodeValueBounds.contains(gx,gy)) continue;
+                ce.addJSMethods(); anacodeShowValue(ce); e.preventDefault(); return;
+            }
+        }`);
+// Net-label tethers terminate at a separate text/flag anchor. A vertical label
+// starts to the side of its wire; all offsets/rotation are presentation only.
+replaceSection('LabeledNodeElm.java', '    void drawLabeledNode(Graphics g, String str, Point pt1, Point pt2) {', '    void drawRotatedLabeledNode(', `    void drawLabeledNode(Graphics g, String str, Point pt1, Point pt2) {
+        g.save(); g.setFont(valueFont);
+        boolean overline=str.startsWith("/"); if(overline) str=str.substring(1);
+        int width=(int)g.context.measureText(str).getWidth(), height=valueFontSize+8;
+        int anchorX=pt2.x, anchorY=pt2.y;
+        int dir=point2.x<point1.x ? -1 : 1;
+        int left=dir>0 ? 8 : -width-8;
+        g.context.translate(anchorX,anchorY); g.context.rotate(anacodeTextAngle*Math.PI/180);
+        g.context.setTextBaseline("middle");
+        if(anacodeFlag()) {
+            int near=dir*7, far=dir*(width+23);
+            g.setLineWidth(3); g.context.beginPath(); g.context.moveTo(0,0);
+            g.context.lineTo(near,-height/2); g.context.lineTo(far,-height/2);
+            g.context.lineTo(far,height/2); g.context.lineTo(near,height/2); g.context.closePath(); g.context.stroke();
+            left=dir>0 ? 15 : -width-15;
+        }
+        g.drawString(str,left,0); if(overline) g.drawLine(left,-height/2,left+width,-height/2);
+        g.restore();
+        anacodeTextBounds(anchorX,anchorY,Math.min(0,left)-3,-height/2,Math.max(width+16,Math.abs(left)+width)+6,height);
+    }
+
+`);
+replace('LabeledNodeElm.java', '        Point labelStart = point1, labelEnd = lead1;', `        Point labelStart = point1, labelEnd = lead1;`);
+replace('LabeledNodeElm.java', '        drawThickLine(g, labelStart, labelEnd, (busWidth > 1) ? 5 : 3);', `        int extraX = point1.x == point2.x && labelEnd.x==point1.x ? 16 : 0;
+        labelEnd = new Point(labelEnd.x+extraX+anacodeTextX,labelEnd.y+anacodeTextY);
+        Point bend=new Point(labelStart.x,labelEnd.y);
+        drawThickLine(g,labelStart,bend,(busWidth>1)?5:3);
+        drawThickLine(g,bend,labelEnd,(busWidth>1)?5:3);`);
+// Migrate the upstream rotate-when-vertical flag once, for both legacy text and
+// XML without an explicit angle. One properties control then owns the angle;
+// Apply must not overwrite it with a second, stale checkbox/choice value.
+replace('LabeledNodeElm.java', '\tsuper(xa, ya, xb, yb, f);', `\tsuper(xa, ya, xb, yb, f);
+        if ((flags & FLAG_ROTATE_TEXT) != 0 && xa == xb) anacodeTextAngle = 270;
+        flags &= ~FLAG_ROTATE_TEXT;`);
+replace('LabeledNodeElm.java', '        text = xml.parseStringAttr("te", text);', `        text = xml.parseStringAttr("te", text);
+        if (xml.parseStringAttr("ata", "").length() == 0 && isRotateText() && x == x2) anacodeTextAngle = 270;
+        flags &= ~FLAG_ROTATE_TEXT;`);
+replace('LabeledNodeElm.java', '\t    EditInfo ei = new EditInfo("", 0, -1, -1);\n\t    ei.checkbox = new Checkbox("Rotate Text When Vertical", isRotateText());\n\t    return ei;', `            EditInfo ei = new EditInfo("Label angle", 0); ei.choice = new Choice();
+            ei.choice.add("0°"); ei.choice.add("90°"); ei.choice.add("180°"); ei.choice.add("270°");
+            ei.choice.select(anacodeTextAngle/90); return ei;`);
+replace('LabeledNodeElm.java', '\t    flags = ei.changeFlag(flags, FLAG_ROTATE_TEXT);', '            anacodeTextAngle = ei.choice.getSelectedIndex()*90;');
+
 patchCircuitJsStimulus(client);
 console.log('Applied CircuitJS native editing, bounded solver acquisition and attributed symbol presentation.');

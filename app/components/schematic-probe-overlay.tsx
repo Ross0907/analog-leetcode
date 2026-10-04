@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, type PointerEvent, type RefObject } from 'react';
-import type { CircuitJsApi, CircuitJsProbe } from '../../lib/circuitjs';
+import { circuitJsElementName, supportsCircuitJsCurrent, type CircuitJsApi, type CircuitJsProbe } from '../../lib/circuitjs';
 import { isProbeWire, probeAttachment, probeNodeName, probePosition } from '../../lib/circuitjs-probes';
 import styles from './circuitjs-workbench.module.css';
 type Point = { x: number; y: number };
@@ -78,6 +78,13 @@ export function SchematicProbeOverlay({ api, frame, probes, disabled, onChange, 
       onChange(probes.map(other => other.id === probe.id ? { ...other, ...probeAttachment(hit.element, hit.post, hit.x, hit.y, hit.pathFraction), name: `V(${probeNodeName(native, hit.element, hit.post)})`, markerOffset: undefined } : other));
       onMessage('Probe connected to the selected node.');
     } else {
+      if (native && hit && hit.distance <= 14 && probe.kind === 'current' && supportsCircuitJsCurrent(hit.element)) {
+        if (probes.some(other => other.id !== probe.id && other.kind === 'current' && other.element === hit.element)) { onMessage('That branch already has a current probe. Move the grip into clear space to reposition it.'); return; }
+        const name = `I(${circuitJsElementName(hit.element, native.getElements().indexOf(hit.element))})`;
+        onChange(probes.map(other => other.id === probe.id ? { ...other, ...probeAttachment(hit.element, hit.post, hit.x, hit.y, hit.pathFraction), name, markerOffset: undefined } : other));
+        onMessage('Current probe connected to the selected branch.');
+        return;
+      }
       onChange(probes.map(other => other.id === probe.id ? { ...other, markerOffset: drag.current } : other));
       onMessage('Probe moved. Its electrical connection is unchanged.');
     }
@@ -89,8 +96,8 @@ export function SchematicProbeOverlay({ api, frame, probes, disabled, onChange, 
       onPointerDown={event => { if (disabled || event.button !== 0) return; event.preventDefault(); event.stopPropagation(); onSelectProbe?.(probe.id); event.currentTarget.setPointerCapture(event.pointerId); const offset = offsetsRef.current.get(probe.id) ?? { x: -32, y: -29 }; dragRef.current = { id: probe.id, start: { x: event.clientX, y: event.clientY }, offset, current: offset }; }}
       onPointerMove={event => { const drag = dragRef.current; if (drag?.id === probe.id) { event.preventDefault(); event.stopPropagation(); drag.current = { x: Math.max(-200, Math.min(200, drag.offset.x + event.clientX - drag.start.x)), y: Math.max(-200, Math.min(200, drag.offset.y + event.clientY - drag.start.y)) }; } }}
       onPointerUp={event => release(event, probe)} onPointerCancel={event => release(event, probe, true)}
-      onKeyDown={event => { if (disabled) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectProbe?.(probe.id); return; } const step = event.shiftKey ? 20 : 5, offset = offsetsRef.current.get(probe.id) ?? { x: -32, y: -29 }; const delta = ({ ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] } as Record<string, number[]>)[event.key]; if (delta) { event.preventDefault(); onSelectProbe?.(probe.id); onChange(probes.map(other => other.id === probe.id ? { ...other, markerOffset: { x: Math.max(-200, Math.min(200, offset.x + delta[0])), y: Math.max(-200, Math.min(200, offset.y + delta[1])) } } : other)); } }}>
-      <title>{probe.name} · {probe.kind === 'voltage' ? 'Drag into clear space, or drop on a wire to reconnect.' : 'Drag into clear space. Current stays attached to this component.'} Arrow keys move the grip.</title>
+      onKeyDown={event => { if (disabled) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectProbe?.(probe.id); return; } const step = event.shiftKey ? 20 : 5, offset = offsetsRef.current.get(probe.id) ?? { x: -32, y: -29 }; if (event.key.toLowerCase() === 'r') { event.preventDefault(); const direction = event.shiftKey ? -1 : 1; onChange(probes.map(other => other.id === probe.id ? { ...other, markerOffset: { x: -offset.y * direction, y: offset.x * direction } } : other)); return; } const delta = ({ ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] } as Record<string, number[]>)[event.key]; if (delta) { event.preventDefault(); onSelectProbe?.(probe.id); onChange(probes.map(other => other.id === probe.id ? { ...other, markerOffset: { x: Math.max(-200, Math.min(200, offset.x + delta[0])), y: Math.max(-200, Math.min(200, offset.y + delta[1])) } } : other)); } }}>
+      <title>{probe.name} · Drag into clear space, or drop on a wire to reconnect. Arrow keys move the grip; R rotates it.</title>
       <circle r="18" fill="transparent"/>
       <path data-body d="M-12 0 L-6 -4 H9 Q12 -4 12 -1 V1 Q12 4 9 4 H-6 Z M9 -4 V4" fill="var(--probe-paper)" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
       <text x="0" y="19" fill="currentColor" textAnchor="middle" fontSize="10" fontWeight="600" fontFamily="system-ui,sans-serif">{probe.kind === 'current' ? 'I' : ''}{index + 1}</text>
