@@ -864,15 +864,19 @@ replace('LabeledNodeElm.java', '        drawThickLine(g, labelStart, labelEnd, (
         Point bend=new Point(labelStart.x,labelEnd.y);
         drawThickLine(g,labelStart,bend,(busWidth>1)?5:3);
         drawThickLine(g,bend,labelEnd,(busWidth>1)?5:3);`);
-replace('LabeledNodeElm.java', '        if (n == 3) {', `        if (n == 4) {
-            EditInfo ei=new EditInfo("Label angle",0); ei.choice=new Choice();
+// Migrate the upstream rotate-when-vertical flag once, for both legacy text and
+// XML without an explicit angle. One properties control then owns the angle;
+// Apply must not overwrite it with a second, stale checkbox/choice value.
+replace('LabeledNodeElm.java', '\tsuper(xa, ya, xb, yb, f);', `\tsuper(xa, ya, xb, yb, f);
+        if ((flags & FLAG_ROTATE_TEXT) != 0 && xa == xb) anacodeTextAngle = 270;
+        flags &= ~FLAG_ROTATE_TEXT;`);
+replace('LabeledNodeElm.java', '        text = xml.parseStringAttr("te", text);', `        text = xml.parseStringAttr("te", text);
+        if (xml.parseStringAttr("ata", "").length() == 0 && isRotateText() && x == x2) anacodeTextAngle = 270;
+        flags &= ~FLAG_ROTATE_TEXT;`);
+replace('LabeledNodeElm.java', '\t    EditInfo ei = new EditInfo("", 0, -1, -1);\n\t    ei.checkbox = new Checkbox("Rotate Text When Vertical", isRotateText());\n\t    return ei;', `            EditInfo ei = new EditInfo("Label angle", 0); ei.choice = new Choice();
             ei.choice.add("0°"); ei.choice.add("90°"); ei.choice.add("180°"); ei.choice.add("270°");
-            ei.choice.select(anacodeTextAngle/90); return ei;
-        }
-        if (n == 3) {`);
-replace('LabeledNodeElm.java', '    public void setEditValue(int n, EditInfo ei) {', `    public void setEditValue(int n, EditInfo ei) {
-        if(n==2) anacodeTextAngle=ei.checkbox.getState() ? 270 : 0;
-        if(n==4) anacodeTextAngle=ei.choice.getSelectedIndex()*90;`);
+            ei.choice.select(anacodeTextAngle/90); return ei;`);
+replace('LabeledNodeElm.java', '\t    flags = ei.changeFlag(flags, FLAG_ROTATE_TEXT);', '            anacodeTextAngle = ei.choice.getSelectedIndex()*90;');
 
 patchCircuitJsStimulus(client);
 console.log('Applied CircuitJS native editing, bounded solver acquisition and attributed symbol presentation.');

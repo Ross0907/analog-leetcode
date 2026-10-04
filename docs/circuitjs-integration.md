@@ -32,6 +32,8 @@ In the host workbench, hover a net label and press R or Shift+R to rotate its an
 
 Scalar straight and routed wires expose CircuitJS's solved current, positive from post0 toward post1 in route order. `getBusWidth()` identifies unsupported bus currents. When a timestep callback is attached, the native solver computes wire current before each accepted callback, including continuous acquisition; finite batches retain the same ordering.
 
+Legacy label imports retain upstream vertical-text rotation: flag 8 migrates to 270° for vertical labels when XML has no explicit `ata`. An explicit XML angle, including 0°, takes precedence. Migration clears that legacy flag, and the native properties dialog has one authoritative **Label angle** selector, so Apply/OK cannot overwrite 90° or 180° with a stale checkbox. Save, export and native Undo/Redo use XML; the older line-based text format remains an import format.
+
 `ensureAnalyzed()` synchronously runs pending native analysis and pre-stamping before node reads, capture or SPICE export. Upstream normally defers node allocation while paused; the bridge completes that same native work without advancing time, replacing elements or unpausing a valid circuit. It returns the native validation error when a circuit cannot be stamped. Vertical net-label presentation also avoids nearby ground marks without changing stored endpoints or its real electrical post.
 
 ## Probes and captures
