@@ -146,10 +146,14 @@ export type CircuitJsCaptureProgress = { samples: number; target: number; time: 
 export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], duration: number, requestedSamples: number, options: {
   onProgress?: (progress: CircuitJsCaptureProgress) => void;
   restart?: boolean;
+  /** Advance real solver steps before recording; returned timestamps retain this offset. */
+  settleDuration?: number;
 } = {}) {
   const connectionError = api.ensureAnalyzed?.();
   if (connectionError) throw new Error('Fix the schematic before capturing: ' + connectionError);
   if (!(duration >= 1e-9 && duration <= 10) || !Number.isFinite(duration)) throw new Error('Capture duration must be between 1 ns and 10 seconds.');
+  const settleDuration = options.settleDuration ?? 0;
+  if (!Number.isFinite(settleDuration) || settleDuration < 0 || settleDuration + duration > 10) throw new Error('Capture and settling time together must be at most 10 seconds.');
   if (!Number.isInteger(requestedSamples) || requestedSamples < 128 || requestedSamples > 131072) throw new Error('Choose between 128 and 131,072 samples.');
   const active = probes.filter((probe) => probe.enabled);
   if (!active.length || active.length > MAX_CIRCUITJS_PROBES) throw new Error('Enable between 1 and 32 probes before capturing.');
@@ -173,6 +177,7 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
   let pumpTimer: ReturnType<typeof setTimeout> | undefined;
   let lastProgress = -Infinity;
   let finished = false;
+  let lastTime = 0;
   let resolve!: (payload: SimulationPayload) => void;
   let reject!: (error: Error) => void;
   const previousHook = api.ontimestep;
@@ -182,7 +187,7 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
     const elapsedMs = performance.now() - started;
     if (!force && elapsedMs - lastProgress < 100) return;
     lastProgress = elapsedMs;
-    options.onProgress?.({ samples: x.length, target: effectiveTarget, time: x.at(-1) ?? 0, elapsedMs });
+    options.onProgress?.({ samples: x.length, target: effectiveTarget, time: lastTime, elapsedMs });
   }
   function cleanup() {
     finished = true;
@@ -217,7 +222,9 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
       previousHook?.(current);
       if (revision !== undefined && current.getCircuitRevision?.() !== revision) return fail('Circuit changed during capture. Start a new capture of the edited circuit.');
       const time = current.getTime() - initialTime;
-      if (time < 0 || (x.length && time < x[x.length - 1])) return fail('Circuit was reset during capture. Start a new capture.');
+      if (time < 0 || time < lastTime) return fail('Circuit was reset during capture. Start a new capture.');
+      lastTime = time;
+      if (time <= settleDuration + (settleDuration ? captureStep * 1e-8 : 0)) return;
       if (x.length && time <= x[x.length - 1]) return;
       for (let index = 0; index < active.length; index++) {
         const value = readCircuitJsProbe(active[index]);
@@ -225,7 +232,7 @@ export function captureCircuitJs(api: CircuitJsApi, probes: CircuitJsProbe[], du
         values[index].push(value);
       }
       x.push(time);
-      if (time >= duration * (1 - 1e-10)) complete();
+      if (time >= (settleDuration + duration) * (1 - 1e-10)) complete();
       else if (x.length >= maxPoints) complete(true);
     } catch (cause) { fail(cause instanceof Error ? cause.message : 'Capture failed.'); }
   }

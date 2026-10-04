@@ -20,6 +20,7 @@ import { rectangleView, nearestPlotTrace, instrumentTraceColor, fitTimeWindow, s
 import { useInstrumentTheme, useTraceAppearance, useInstrumentPanel, useTraceSelection } from "./instrument-state";
 import { TraceContextMenu } from "./trace-context-menu";
 import { exportInstrumentPng } from "./instrument-export";
+import { CursorValueInput } from './cursor-value-input';
 
 export type OscilloscopeDomain = "time" | "frequency" | "sweep";
 export type OscilloscopeCoupling = "DC" | "AC";
@@ -257,9 +258,11 @@ function OscilloscopePlot({
       const span = yPerDivision * VERTICAL_DIVISIONS;
       return { minimum: center - span / 2, maximum: center + span / 2 };
     }
-    const padding = rawSpan * 0.1;
+    // A numerical spectrum floor can span hundreds of dB. Cap display padding
+    // so a physical -5 dB peak is not topped by a misleading +25 dB axis label.
+    const padding = domain === 'frequency' && yUnit === 'dB' ? Math.min(6, rawSpan * 0.1) : rawSpan * 0.1;
     return { minimum: minimum - padding, maximum: maximum + padding };
-  }, [preparedTraces, yPerDivision, yCenter]);
+  }, [preparedTraces, yPerDivision, yCenter, domain, yUnit]);
 
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
@@ -712,10 +715,11 @@ function OscilloscopePlot({
 
       <div className="anacode-scope__cursor-panel" style={styles.cursorPanel}>
         <div style={styles.cursorHeading}><SlidersHorizontal size={15} aria-hidden="true" /><strong>{domain === "time" ? "Time" : domain === "frequency" ? "Frequency" : "Sweep"} cursors</strong></div>
-        <label style={styles.cursorControl} htmlFor={`${controlId}-cursor-a`}>
+        <div style={styles.cursorControl}>
           <span style={{ ...styles.cursorBadge, background: "#e4e4e7", color: "#111214" }}>A</span>
           <input
             id={`${controlId}-cursor-a`}
+            aria-label="Cursor A slider"
             type="range"
             min="0"
             max="1000"
@@ -723,12 +727,13 @@ function OscilloscopePlot({
             onChange={(event) => setCursorA(Number(event.currentTarget.value) / 1000)}
             style={styles.range}
           />
-          <output htmlFor={`${controlId}-cursor-a`} style={styles.cursorOutput}>{formatQuantity(cursorReadout.cursorA, effectiveXUnit)}</output>
-        </label>
-        <label style={styles.cursorControl} htmlFor={`${controlId}-cursor-b`}>
+          <CursorValueInput label="Cursor A position" value={cursorReadout.cursorA} minimum={inverseTransformX(xView.minimum, effectiveXScale)} maximum={inverseTransformX(xView.maximum, effectiveXScale)} unit={effectiveXUnit} style={styles.select} onChange={value => setCursorA((transformX(value, effectiveXScale) - xView.minimum) / (xView.maximum - xView.minimum))}/>
+        </div>
+        <div style={styles.cursorControl}>
           <span style={{ ...styles.cursorBadge, background: "#22c7df", color: "#081012" }}>B</span>
           <input
             id={`${controlId}-cursor-b`}
+            aria-label="Cursor B slider"
             type="range"
             min="0"
             max="1000"
@@ -736,8 +741,8 @@ function OscilloscopePlot({
             onChange={(event) => setCursorB(Number(event.currentTarget.value) / 1000)}
             style={styles.range}
           />
-          <output htmlFor={`${controlId}-cursor-b`} style={styles.cursorOutput}>{formatQuantity(cursorReadout.cursorB, effectiveXUnit)}</output>
-        </label>
+          <CursorValueInput label="Cursor B position" value={cursorReadout.cursorB} minimum={inverseTransformX(xView.minimum, effectiveXScale)} maximum={inverseTransformX(xView.maximum, effectiveXScale)} unit={effectiveXUnit} style={styles.select} onChange={value => setCursorB((transformX(value, effectiveXScale) - xView.minimum) / (xView.maximum - xView.minimum))}/>
+        </div>
         <div style={styles.deltaReadout} aria-live="polite">
           <span>Δ{effectiveXLabel.toLowerCase()}</span>
           <strong>{formatQuantity(cursorReadout.deltaX, effectiveXUnit)}</strong>
@@ -747,8 +752,8 @@ function OscilloscopePlot({
 
       <div style={styles.cursorPanel}>
         <strong style={styles.cursorHeading}>{hasOffsets ? 'Display-axis cursors' : 'Amplitude cursors'}</strong>
-        <label style={styles.cursorControl}>Y A<input aria-label="Amplitude cursor A" type="range" min="0" max="1000" value={Math.round(yCursorA * 1000)} onChange={(event) => setYCursorA(Number(event.currentTarget.value) / 1000)} style={styles.range} /><output style={styles.cursorOutput}>{formatQuantity(yBounds.minimum + yCursorA * (yBounds.maximum - yBounds.minimum), yUnit)}</output></label>
-        <label style={styles.cursorControl}>Y B<input aria-label="Amplitude cursor B" type="range" min="0" max="1000" value={Math.round(yCursorB * 1000)} onChange={(event) => setYCursorB(Number(event.currentTarget.value) / 1000)} style={styles.range} /><output style={styles.cursorOutput}>{formatQuantity(yBounds.minimum + yCursorB * (yBounds.maximum - yBounds.minimum), yUnit)}</output></label>
+        <div style={styles.cursorControl}><span>Y A</span><input aria-label="Amplitude cursor A" type="range" min="0" max="1000" value={Math.round(yCursorA * 1000)} onChange={(event) => setYCursorA(Number(event.currentTarget.value) / 1000)} style={styles.range} /><CursorValueInput label="Amplitude cursor A position" value={yBounds.minimum + yCursorA * (yBounds.maximum - yBounds.minimum)} minimum={yBounds.minimum} maximum={yBounds.maximum} unit={yUnit} style={styles.select} onChange={value => setYCursorA((value - yBounds.minimum) / (yBounds.maximum - yBounds.minimum))}/></div>
+        <div style={styles.cursorControl}><span>Y B</span><input aria-label="Amplitude cursor B" type="range" min="0" max="1000" value={Math.round(yCursorB * 1000)} onChange={(event) => setYCursorB(Number(event.currentTarget.value) / 1000)} style={styles.range} /><CursorValueInput label="Amplitude cursor B position" value={yBounds.minimum + yCursorB * (yBounds.maximum - yBounds.minimum)} minimum={yBounds.minimum} maximum={yBounds.maximum} unit={yUnit} style={styles.select} onChange={value => setYCursorB((value - yBounds.minimum) / (yBounds.maximum - yBounds.minimum))}/></div>
         <output style={styles.deltaReadout}>Δ{yUnit}: {formatQuantity((yCursorB - yCursorA) * (yBounds.maximum - yBounds.minimum), yUnit)}</output>
       </div>
 

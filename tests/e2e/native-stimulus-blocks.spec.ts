@@ -6,7 +6,7 @@ import { circuitJsAnalysis } from '../../lib/circuitjs-analysis';
 test.use({video:'off'});
 const blank='/circuitjs/circuitjs.html?running=false&hideSidebar=true&cct=%24%201%200.000001%2010%2050%205%2050';
 
-test('native programmed PWL repeats, persists in XML, and clears when edited through the native value editor', async ({page}) => {
+test('native programmed PWL repeats, persists in XML, and rejects unrelated inline numeric edits', async ({page}) => {
   await page.goto(blank);
   await page.waitForFunction(()=>Boolean((window as unknown as {CircuitJS1?:AdvancedCircuitJsApi}).CircuitJS1?.setSourceWaveform));
   const result=await page.evaluate(async()=>{
@@ -29,7 +29,7 @@ test('native programmed PWL repeats, persists in XML, and clears when edited thr
   });
   expect(result.voltage).toBeCloseTo(.5,2);
   expect(result.xml).toContain('pwl='); expect(result.persisted).toContain('pwlr=');
-  expect(result.editError).toBeNull(); expect(result.edited).not.toContain('pwl=');
+  expect(result.editError).toBe('This value is not editable.'); expect(result.edited).toBe(result.persisted);
   expect(result.afterCount).toBe(result.count);
   expect(result.initialType).toBe('VoltageElm');
 });

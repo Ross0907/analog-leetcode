@@ -7,8 +7,8 @@
   "files": [
     {
       "path": "NOTICE.txt",
-      "bytes": 2527,
-      "sha256": "6780eb523e27b90c9d0caa6dda8fcae7fe06375f93487b28735db97243eab5c7"
+      "bytes": 2975,
+      "sha256": "c7c1db18a03ea4bdbd8f6d4ce35fe5733fc50cd050fac88d1042d4b8827e920d"
     },
     {
       "path": "icarus/LICENSE",
@@ -162,18 +162,38 @@
     },
     {
       "path": "viewer/bridge.js",
-      "bytes": 3768,
-      "sha256": "ea04c5aa7094a1009424a04331f272e166687de6a9e619e24e6f6b58267b61cd"
+      "bytes": 4195,
+      "sha256": "2366658853b59bf30f57975d3722bcfdc66674a8627db87d16a8aa615b0e7723"
     },
     {
       "path": "viewer/index.html",
-      "bytes": 903,
-      "sha256": "3d02bebd1154ed82db1d37d748ce0d8377df9e3a4d5698b69fd6b2ea6aff819c"
+      "bytes": 984,
+      "sha256": "d077d5a19c8a4db00fb4c3b5583409b85aa7663d31b1868ae4b2b7086a1804fb"
     },
     {
       "path": "viewer/package-provenance.json",
       "bytes": 701,
       "sha256": "eed14f49b778acc98a30d6204096b53be86d65995f67ad460c497c73d49c702c"
+    },
+    {
+      "path": "viewer/presentation-patch.json",
+      "bytes": 762,
+      "sha256": "222f46506bc9a412814fbbd157c329988e486ad88868b39359ba7ffc22b58c6f"
+    },
+    {
+      "path": "viewer/signal-values.mjs",
+      "bytes": 3843,
+      "sha256": "01da5742c340ebd6f0ac8b92a68bd03942c0e3c1c044d56c7622a254f101843d"
+    },
+    {
+      "path": "viewer/source/patch-vcdrom.mjs",
+      "bytes": 3135,
+      "sha256": "784ae2f53829071010d5b993da8e6a832ab9924f7656ca5f48ae1fd4ebdec783"
+    },
+    {
+      "path": "viewer/source/vcdrom-1.6.0.js.gz",
+      "bytes": 319418,
+      "sha256": "7fe440dba703583c93292dc1b397021e6b2b7f93f4ba128668a59aca974fda45"
     },
     {
       "path": "viewer/vcd.wasm",
@@ -182,13 +202,18 @@
     },
     {
       "path": "viewer/vcdrom.js",
-      "bytes": 1149787,
-      "sha256": "85588198b8944e889b9ecb504f1ca8db5f1b252b1b962dc2e8f7afcd7c3b80a8"
+      "bytes": 1150275,
+      "sha256": "8d9c8001718dcb4dc4f56bab7b7b9e6c1779c1b8217037e1edf2eb4e3146b242"
+    },
+    {
+      "path": "viewer/viewer-shell.js",
+      "bytes": 17105,
+      "sha256": "36423468fa6b67ba843159c9efe957f6f5e17d4d62fd0a228da21b8542631a16"
     },
     {
       "path": "viewer/viewer.css",
-      "bytes": 1936,
-      "sha256": "aed2d81ac710f39836e7c09778a5f78b8eda1c43e8aab00e4d1309ad11075f42"
+      "bytes": 7155,
+      "sha256": "dc0d27779fc62bfa692e0d67850fa86d14314f348e594919599b5ae58dc386d5"
     }
   ]
 }

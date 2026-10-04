@@ -339,6 +339,7 @@ replace('CircuitElm.java', '    boolean anacodeSymbolApiReady;', `    Rectangle 
     int anacodeValueIndex() {
         if (this instanceof VoltageElm) {
             VoltageElm source = (VoltageElm)this;
+            if (source.anacodePwlTimes != null) return -1;
             int showVoltage = source instanceof RailElm ? VoltageElm.FLAG_SHOW_VOLTAGE_RAIL : VoltageElm.FLAG_SHOW_VOLTAGE;
             if (source.waveform != VoltageElm.WF_DC && source.waveform != VoltageElm.WF_NOISE && (flags & showVoltage) == 0) {
                 // Frequency-only source labels must edit frequency, not amplitude.
@@ -877,6 +878,103 @@ replace('LabeledNodeElm.java', '\t    EditInfo ei = new EditInfo("", 0, -1, -1);
             ei.choice.add("0°"); ei.choice.add("90°"); ei.choice.add("180°"); ei.choice.add("270°");
             ei.choice.select(anacodeTextAngle/90); return ei;`);
 replace('LabeledNodeElm.java', '\t    flags = ei.changeFlag(flags, FLAG_ROTATE_TEXT);', '            anacodeTextAngle = ei.choice.getSelectedIndex()*90;');
+
+// Keep annotations above geometry, with real clearance from native segments and
+// nearby text. This changes display coordinates only, never electrical posts.
+replace('CircuitElm.java', '        anacodeValueBounds = null;', '        anacodeValueBounds = null; anacodeAnnotationText = null;');
+replace('CircuitElm.java', '    int anacodeTextX, anacodeTextY, anacodeTextAngle;', `    String anacodeAnnotationText;
+    boolean anacodeAnnotationLabel;
+    int anacodeAnnotationX, anacodeAnnotationY, anacodeAnnotationWidth;
+    int anacodeTextX, anacodeTextY, anacodeTextAngle;`);
+replace('CircuitElm.java', '        adjustBbox(minX-3,minY-3,maxX+3,maxY+3);', '        // Final annotation placement extends the hit box after layout.');
+replaceSection('CircuitElm.java', '    void anacodeDrawValue(Graphics g, String text, int x, int y, int width) {', '    String setLabelAngleJS(', `    void anacodeDrawValue(Graphics g, String text, int x, int y, int width) {
+        anacodeAnnotationText=text; anacodeAnnotationLabel=false;
+        anacodeAnnotationX=x+anacodeTextX; anacodeAnnotationY=y+anacodeTextY; anacodeAnnotationWidth=width;
+        anacodeTextBounds(anacodeAnnotationX,anacodeAnnotationY,0,-valueFontSize,width,valueFontSize+3);
+    }
+    static boolean anacodeSegmentOverlap(Rectangle r, Point a, Point b) {
+        if(Math.max(a.x,b.x)<r.x || Math.min(a.x,b.x)>r.x+r.width || Math.max(a.y,b.y)<r.y || Math.min(a.y,b.y)>r.y+r.height)return false;
+        double min=Double.POSITIVE_INFINITY,max=Double.NEGATIVE_INFINITY;
+        for(int i=0;i<4;i++){double x=r.x+((i&1)==0?0:r.width),y=r.y+((i&2)==0?0:r.height),cross=(b.x-a.x)*(y-a.y)-(b.y-a.y)*(x-a.x);min=Math.min(min,cross);max=Math.max(max,cross);}
+        return min<=0 && max>=0;
+    }
+    boolean anacodeAnnotationCollision(Rectangle r) {
+        for(CircuitElm other:app.elmList){
+            if(other!=this && other.anacodeValueBounds!=null && r.intersects(other.anacodeValueBounds))return true;
+            if(other instanceof LabeledNodeElm)continue;
+            if(other instanceof GroundElm){Point p=other.getPost(0);if(r.intersects(new Rectangle(p.x-14,p.y,28,36)))return true;continue;}
+            if(other instanceof RoutedWireElm && ((RoutedWireElm)other).routePoints!=null){
+                java.util.ArrayList<Point> path=((RoutedWireElm)other).routePoints;for(int i=1;i<path.size();i++)if(anacodeSegmentOverlap(r,path.get(i-1),path.get(i)))return true;
+            }else if(other.getPostCount()==2 && anacodeSegmentOverlap(r,other.getPost(0),other.getPost(1)))return true;
+        }
+        return false;
+    }
+    void anacodePaintAnnotation(Graphics g) {
+        if(anacodeAnnotationText==null)return;
+        g.save();g.setFont(valueFont);g.setColor(needsHighlight()?selectColor:whiteColor);
+        int width=anacodeAnnotationWidth,height=valueFontSize+3,left=0,top=-valueFontSize;
+        if(anacodeAnnotationLabel){height=valueFontSize+8;top=-height/2;left=x2<x?-width-8:8;if(((LabeledNodeElm)this).anacodeFlag()){left=x2<x?-width-15:15;width+=16;}}
+        int ax=anacodeAnnotationX,ay=anacodeAnnotationY;
+        int[] sx={0,0,0,-width-18,width+18,0,0,-width-18,width+18};
+        int[] sy={0,-20,20,0,0,-40,40,-20,-20};
+        for(int i=0;i<sx.length;i++){
+            anacodeTextBounds(ax+sx[i],ay+sy[i],left,top,width,height);
+            if((anacodeTextX!=0 || anacodeTextY!=0) || !anacodeAnnotationCollision(anacodeValueBounds)){ax+=sx[i];ay+=sy[i];break;}
+            if(i==sx.length-1)anacodeTextBounds(ax,ay,left,top,width,height);
+        }
+        if(anacodeAnnotationLabel){((LabeledNodeElm)this).anacodePaintLabel(g,anacodeAnnotationText,point1,new Point(ax,ay));}
+        else {
+            g.context.translate(ax,ay);g.context.rotate(anacodeTextAngle*Math.PI/180);
+            g.setColor(app.ui.getBackgroundColor());g.fillRect(left-2,top-2,width+4,height+4);
+            g.setColor(needsHighlight()?selectColor:whiteColor);g.drawString(anacodeAnnotationText,0,0);
+        }
+        Rectangle r=anacodeValueBounds;if(r!=null)adjustBbox(r.x,r.y,r.x+r.width,r.y+r.height);g.restore();
+    }
+`);
+replace('LabeledNodeElm.java', '    void drawLabeledNode(Graphics g, String str, Point pt1, Point pt2) {', `    void drawLabeledNode(Graphics g, String str, Point pt1, Point pt2) {
+        anacodeAnnotationText=str;anacodeAnnotationLabel=true;anacodeAnnotationX=pt2.x;anacodeAnnotationY=pt2.y;
+        g.save();g.setFont(valueFont);anacodeAnnotationWidth=(int)g.context.measureText(str.startsWith("/")?str.substring(1):str).getWidth();g.restore();
+        anacodeTextBounds(pt2.x,pt2.y,x2<x?-anacodeAnnotationWidth-8:8,-(valueFontSize+8)/2,anacodeAnnotationWidth,valueFontSize+8);
+    }
+    void anacodePaintLabel(Graphics g, String str, Point pt1, Point pt2) {
+        g.setColor(needsHighlight()?selectColor:whiteColor);g.context.setLineWidth(2);
+        Point bend=new Point(pt1.x,pt2.y);
+        if(anacodeValueBounds!=null && (anacodeSegmentOverlap(anacodeValueBounds,pt1,bend)||anacodeSegmentOverlap(anacodeValueBounds,bend,pt2)))bend=new Point(pt2.x,pt1.y);
+        g.context.beginPath();g.context.moveTo(pt1.x,pt1.y);g.context.lineTo(bend.x,bend.y);g.context.lineTo(pt2.x,pt2.y);g.context.stroke();`);
+replace('LabeledNodeElm.java', '        g.context.setTextBaseline("middle");\n        if(anacodeFlag()) {', `        g.context.setTextBaseline("middle");
+        int backingLeft=anacodeFlag()?(dir>0?0:-width-25):left-2;
+        int backingWidth=anacodeFlag()?width+25:width+4;
+        g.setColor(app.ui.getBackgroundColor());g.fillRect(backingLeft,-height/2-2,backingWidth,height+4);
+        g.setColor(needsHighlight()?selectColor:whiteColor);
+        if(anacodeFlag()) {`);
+replace('LabeledNodeElm.java', '                drawThickLine(g, point1, labelStart, (busWidth > 1) ? 5 : 3);', '                // The final annotation pass draws the complete tether.');
+replace('LabeledNodeElm.java', '        drawThickLine(g,labelStart,bend,(busWidth>1)?5:3);\n        drawThickLine(g,bend,labelEnd,(busWidth>1)?5:3);', '        // Text and tether are rendered together after automatic clearance.');
+replace('UIManager.java', '        if (mouse.tempMouseMode == MouseManager.MODE_DRAG_ROW ||', `        for(CircuitElm element:elmList)element.anacodePaintAnnotation(g);
+
+        if (mouse.tempMouseMode == MouseManager.MODE_DRAG_ROW ||`);
+replace('CircuitElm.java', '    static void drawPost(Graphics g, Point pt) {', `    static void drawPost(Graphics g, Point pt) {
+        int physicalPosts=0;
+        for(CircuitElm element:app.elmList){if(element instanceof LabeledNodeElm)continue;for(int n=0;n<element.getPostCount();n++)if(element.getPost(n).equals(pt))physicalPosts++;}
+        if(physicalPosts<3)return;`);
+replace('CircuitElm.java', 'g.fillOval(pt.x-2, pt.y-2, 4, 4);', 'g.fillOval(pt.x-3, pt.y-3, 6, 6);');
+// Imports are fitted before their first visible paint. Measure the real native
+// captions on an offscreen canvas so source values and displaced labels are
+// included in that first fit, rather than clipped at the viewport's left edge.
+replace('UIManager.java', '\tRectangle bounds = getCircuitBounds();', `        com.google.gwt.canvas.client.Canvas measure = com.google.gwt.canvas.client.Canvas.createIfSupported();
+        if(measure != null) {
+            measure.setCoordinateSpaceWidth(1); measure.setCoordinateSpaceHeight(1);
+            Graphics annotationGraphics = new Graphics(measure.getContext2d());
+            annotationGraphics.setFont(CircuitElm.unitsFont);
+            for(CircuitElm ce:elmList)ce.drawWithKiCad(annotationGraphics);
+            for(CircuitElm ce:elmList)ce.anacodePaintAnnotation(annotationGraphics);
+        }
+\tRectangle bounds = getCircuitBounds();`);
+// The upstream PNG/SVG exporters use their own native draw pass. Keep the same
+// annotation finalization there so deferring canvas captions cannot drop them
+// from exported images.
+replace('ImageExporter.java', '\t\t    ce.draw(g);', '\t\t    ce.anacodeValueBounds=null; ce.anacodeAnnotationText=null; ce.draw(g);');
+replace('ImageExporter.java', '\t\t// restore everything', '        for(CircuitElm ce:sim.elmList)ce.anacodePaintAnnotation(g);\n\t\t// restore everything');
+replace('ImageExporter.java', 'CircuitElm.whiteColor = Color.white;\n\t            CircuitElm.lightGrayColor = Color.lightGray;\n\t            g.setColor(Color.black);', 'CircuitElm.whiteColor = new Color(sim.ui.anacodeLight ? "#252b32" : "#d2d8df");\n                CircuitElm.lightGrayColor = CircuitElm.whiteColor;\n                g.setColor(sim.ui.getBackgroundColor());');
 
 patchCircuitJsStimulus(client);
 console.log('Applied CircuitJS native editing, bounded solver acquisition and attributed symbol presentation.');

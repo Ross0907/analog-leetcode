@@ -71,6 +71,13 @@ export function analogPlacement(symbol, definition, element) {
   const center = { x: (pins[a].x + pins[b].x) / 2, y: (pins[a].y + pins[b].y) / 2 };
   const target = { x: (posts[a].x + posts[b].x) / 2, y: (posts[a].y + posts[b].y) / 2 };
   const matrix = [c, s, -s * reflection, c * reflection, target.x - c * center.x + s * center.y * reflection, target.y - s * center.x - c * center.y * reflection];
+  if (symbol.id === 'npn' || symbol.id === 'pnp') {
+    // Reserve visible collector/emitter lead length without changing body shape
+    // or any native terminal: move the body slightly toward its base post.
+    const dx = posts[0].x - target.x, dy = posts[0].y - target.y;
+    const distance = Math.hypot(dx, dy), extension = Math.min(10, distance * .16);
+    if (distance > 0) { matrix[4] += dx / distance * extension; matrix[5] += dy / distance * extension; }
+  }
   if (amplifier) {
     // Center its three-pin envelope between the real input and output posts.
     // Both input extensions remain straight along the symbol's horizontal axis.
@@ -80,9 +87,9 @@ export function analogPlacement(symbol, definition, element) {
   return { matrix, pins, posts };
 }
 export function drawAnalogPrimitive(context, primitive, symbolScale = 1) {
-  // Compensate for the symbol fit, retaining the same world-space pen weight
-  // as native wires. Viewport zoom still scales the entire drawing normally.
-  context.lineWidth = 2 / symbolScale;
+  // Separate the fine textbook body pen from the two-unit terminal/wire pen.
+  // Compensation preserves uniform body weight through native symbol fitting.
+  context.lineWidth = 1.25 / symbolScale;
   context.lineCap = primitive.style?.lineCap ?? 'butt'; context.lineJoin = primitive.style?.lineJoin ?? 'miter';
   context.miterLimit = primitive.style?.miterLimit ?? 10;
   const path = primitive.kind === 'path' ? new Path2D(primitive.data) : new Path2D();
@@ -101,7 +108,7 @@ export function drawSourceWaveform(context, waveform, center, scale = 1) {
   context.save();
   try {
     context.translate(center.x, center.y);
-    context.lineWidth = 2;
+    context.lineWidth = 1.25;
     context.lineCap = 'round'; context.lineJoin = 'round';
     if (waveform === -2 || waveform === 6) {
       context.font = `${5.8 * scale}px system-ui,sans-serif`;

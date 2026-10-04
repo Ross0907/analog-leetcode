@@ -3,7 +3,7 @@
 import { createContext, use, useEffect, useMemo, useState, useSyncExternalStore, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 
 export type TraceAppearance = { color?: string; width?: number; offset?: number };
-export type CaptureRequest = { minimumSamples: number; fftLength: number; reason: string };
+export type CaptureRequest = { minimumSamples: number; fftLength: number; reason: string; recordDuration?: number; settleDuration?: number };
 type TraceSelection = { selectedTraceId: string | null; selectTrace: (id: string | null) => void };
 const SelectionContext = createContext<TraceSelection | null>(null);
 

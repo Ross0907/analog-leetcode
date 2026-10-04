@@ -11,6 +11,7 @@ html,body{background:var(--paper)!important;color:var(--ink)!important}
 .gwt-MenuBar-vertical .menuSeparatorInner{border-color:var(--line)!important}
 .gwt-DialogBox,.gwt-PopupPanel,.gwt-DialogBox .dialogContent,.gwt-DialogBox .Caption,.gwt-DialogBox .dialogMiddleCenter{background:var(--panel)!important;color:var(--ink)!important;border-color:var(--line)!important;background-image:none!important}
 .gwt-DialogBox{border:1px solid var(--line)!important;border-radius:8px;box-shadow:0 12px 40px #0003}
+.gwt-DialogBox [class*="dialogMiddle"],.gwt-DialogBox [class*="dialogMiddle"]>div{background:var(--panel)!important;background-image:none!important;border-color:var(--line)!important}
 .gwt-DialogBox .Caption{font:600 14px/1.4 Arial,sans-serif!important;padding:10px!important;border-bottom:1px solid var(--line)!important}
 .gwt-DialogBox .gwt-Label,.gwt-DialogBox .gwt-HTML,.gwt-DialogBox label,.toptriggerlabel{color:var(--ink)!important}
 input,select,textarea,.gwt-TextBox,.gwt-TextArea,.gwt-ListBox{background:var(--paper)!important;color:var(--ink)!important;border:1px solid var(--line)!important;border-radius:4px;padding:5px 7px;font:13px/1.4 Arial,sans-serif}
@@ -20,3 +21,4 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .anacode-inline-value{position:fixed;z-index:99999;min-width:140px;max-width:260px;background:var(--panel);border:1px solid var(--focus);border-radius:4px;padding:3px;box-shadow:0 3px 14px #0002}
 .anacode-inline-value input{width:140px;border:0!important;font:16px/1.3 Georgia,serif;outline:none!important}
 .anacode-inline-value [role="alert"]{font:12px/1.4 Arial,sans-serif;color:#df5d4d;padding:0 4px;max-width:230px}
+.anacode-pwl-editor{width:min(580px,calc(100vw - 80px));max-height:65vh;overflow:auto;padding:4px}.anacode-pwl-editor canvas{display:block;width:100%;height:170px;margin:8px 0;border:1px solid var(--line);border-radius:5px}.anacode-pwl-editor table{width:100%;border-collapse:collapse}.anacode-pwl-editor td{padding:3px}.anacode-pwl-editor input{width:100%;box-sizing:border-box;min-width:0}.anacode-pwl-editor .pwl-error{color:#df5d4d!important;white-space:normal;font-size:12px}.anacode-pwl-editor .pwl-repeat{display:flex;align-items:center;gap:8px;margin:8px 0}.anacode-pwl-editor .pwl-repeat input{width:140px}

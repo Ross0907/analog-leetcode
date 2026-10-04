@@ -175,7 +175,7 @@ test('HDL fills the window with three code/results layouts and bounded waveform 
   expect(await dialog.locator('.wd-help-panel-row').count()).toBeGreaterThan(8);
   expect(await dialog.evaluate(element=>{
     const box=element.getBoundingClientRect();
-    return box.top>=0&&box.left>=0&&box.bottom<=innerHeight&&box.right<=innerWidth&&getComputedStyle(element).backgroundColor==='rgb(19, 32, 42)';
+    return box.top>=0&&box.left>=0&&box.bottom<=innerHeight&&box.right<=innerWidth&&getComputedStyle(element).backgroundColor===getComputedStyle(document.body).backgroundColor;
   })).toBeTruthy();
   await page.screenshot({path:'artifacts/qa/hdl-window-help.png'});
   await viewer.getByRole('button',{name:'Close waveform shortcuts'}).click();

@@ -22,6 +22,8 @@ export type NativeAnalysisSettings = {
   type: 'transient' | 'operating-point' | 'ac-sweep' | 'dc-sweep';
   duration: number;
   samples: number;
+  /** Real solver warm-up, excluded from the returned transient record. */
+  settleDuration?: number;
   startHz: number;
   stopHz: number;
   dcStart: number;
@@ -171,12 +173,12 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
         if (numbers.length % 2) throw new Error('Native PWL data is incomplete.');
         let points = Array.from({ length: numbers.length / 2 }, (_, index) => ({ timeS: numbers[index * 2], value: numbers[index * 2 + 1] }));
         const repeatPeriod = value('pwlr', 0);
-        if (repeatPeriod > 0) points = repeatPwlPoints(points, repeatPeriod, settings.duration);
+        if (repeatPeriod > 0) points = repeatPwlPoints(points, repeatPeriod, settings.duration + (settings.settleDuration ?? 0));
         override = { type: 'pwl', points };
       }
       if (override?.type === 'dc') parameters.dcV = override.value;
       else if (override?.type === 'pwl' || override?.type === 'bitstream') {
-        const points = stimulusPoints(override, settings.duration);
+        const points = stimulusPoints(override, settings.duration + (settings.settleDuration ?? 0));
         parameters.dcV = points[0].value; parameters.transient = { type: 'pwl', points };
       } else if (override?.type === 'sine' || waveform === 1) {
         const sourceAmplitude = override?.type === 'sine' ? override.amplitude : amplitude;
@@ -275,9 +277,15 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
     case 'dc-sweep':
       if (!source) throw new Error('Add a voltage or current source to sweep.');
       analysis = { ...common, type: 'dc-sweep', sourceComponentId: source.id, start: settings.dcStart, stop: settings.dcStop, step: settings.dcStep }; break;
-    default:
+    default: {
       if (!Number.isInteger(settings.samples) || settings.samples < 2 || settings.samples > SIMULATOR_NETLIST_LIMITS.outputPoints) throw new Error(`Choose 2–${SIMULATOR_NETLIST_LIMITS.outputPoints.toLocaleString()} transient samples.`);
-      analysis = { ...common, type: 'transient', stepS: settings.duration / (settings.samples - 1), stopS: settings.duration, startS: 0 };
+      const settleDuration = settings.settleDuration ?? 0;
+      if (!Number.isFinite(settleDuration) || settleDuration < 0 || settleDuration + settings.duration > 10) throw new Error('Capture and settling time together must be at most 10 seconds.');
+      // ngspice's first retained point is after TSTART. Reserve N accepted
+      // intervals for a settled N-point record rather than assuming a TSTART sample.
+      const stepS = settings.duration / (settings.samples - (settleDuration ? 0 : 1));
+      analysis = { ...common, type: 'transient', stepS, stopS: settings.duration + settleDuration, startS: settleDuration, ...(settleDuration ? { maxStepS: stepS } : {}) };
+    }
   }
   const document = circuitDocumentSchema.parse({ version: 1, id: 'native-analysis', title: 'Current CircuitJS schematic', revision: 0, components, junctions: [], wires, netLabels, probes, analyses: [analysis], settings: { gridSize: 16, snapToGrid: true } });
   let generated: ReturnType<typeof generateSpiceDeckFromCircuitDocument>;

@@ -29,8 +29,15 @@ VCDrom 1.6.0 — WaveDrom contributors (MIT)
 https://github.com/wavedrom/vcdrom
   /hdl/viewer/LICENSE
   /hdl/viewer/package-provenance.json
-Its vcdrom.js and vcd.wasm are the unmodified npm release. The AnaCode wrapper
-uses the upstream file importer and removes the upstream page's analytics.
+The VCD parser WASM is the unmodified npm release. Its WebGL renderer retains
+native digital waveform rendering with small AnaCode presentation hooks:
+  /hdl/viewer/presentation-patch.json
+  /hdl/viewer/source/vcdrom-1.6.0.js.gz (exact upstream bundle input)
+  /hdl/viewer/source/patch-vcdrom.mjs (reproducible MIT presentation patch)
+The wrapper uses the upstream file importer, supplies fixed signal/value
+columns, formats the parsed samples, and can display digital bus magnitudes
+as analog traces. It does not replace the parser or HDL simulation engine.
+The upstream page's analytics are removed.
 The Iosevka Drom font remains SIL Open Font License 1.1:
   /hdl/viewer/FONT-LICENSE.md
 Iosevka copyright Renzhi Li and contributors. Original font project:

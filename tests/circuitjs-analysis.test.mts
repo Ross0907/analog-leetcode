@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { circuitJsAnalysis, circuitJsAnalysisOptions, type NativeAnalysisSettings } from '../lib/circuitjs-analysis';
 import type { CircuitJsApi, CircuitJsElement } from '../lib/circuitjs';
+import { validateSimulatorNetlist } from '../lib/simulator-netlist-policy';
 
 const settings: NativeAnalysisSettings = { type: 'operating-point', duration: 0.01, samples: 65536, startHz: 10, stopHz: 100000, dcStart: 0, dcStop: 5, dcStep: 0.05 };
 function element(type: string, nodes: number[], attrs = '', label = '') {
@@ -19,6 +20,25 @@ test('analysis maps native node IDs and polarity, rereading actual edited values
   assert.match(after.deck, /R2 vout 0 2\.2e3/);
   assert.deepEqual(before.probes, ['V(vin)', 'V(vout)']);
   assert.notEqual(before.deck, after.deck);
+});
+
+test('settled SPICE records retain their interval and periodic stimulus through the stop time', () => {
+  const result = circuitJsAnalysis(api(divider()), { ...settings, type: 'transient', duration: .001, settleDuration: .004, samples: 1025, sourceOverrides: { 0: { type: 'pwl', points: [{ timeS: 0, value: 0 }, { timeS: .0005, value: 5 }, { timeS: .001, value: 0 }], repeatPeriodS: .001 } } });
+  const analysis = result.document.analyses[0];
+  assert.equal(analysis.type, 'transient');
+  if (analysis.type !== 'transient') throw Error('Expected transient analysis');
+  assert.equal(analysis.startS, .004); assert.equal(analysis.stopS, .005);
+  assert.equal(analysis.stepS, .001 / 1025); assert.equal(analysis.maxStepS, analysis.stepS);
+  assert.match(result.deck, /4\.5e-3 5e0/);
+  assert.throws(() => circuitJsAnalysis(api(divider()), { ...settings, type: 'transient', settleDuration: 10 }), /at most 10/);
+});
+
+test('maximum settled SPICE depth remains within the actual retained-record limit', () => {
+  for (const settleDuration of [0, .004]) {
+    const result = circuitJsAnalysis(api(divider()), { ...settings, type: 'transient', duration: .001, settleDuration, samples: 131072 });
+    assert.doesNotThrow(() => validateSimulatorNetlist(result.deck));
+  }
+  assert.throws(() => validateSimulatorNetlist('Too dense\nV1 in 0 DC 1\nR1 in 0 1k\n.tran 1n 1m .0008 1n\n.end'), /point preview limit/);
 });
 
 test('current bindings preserve native identity and compiled references across grounds, IC supplies and block internals', () => {

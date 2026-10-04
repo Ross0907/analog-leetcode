@@ -95,3 +95,22 @@ test('a native reset during a record rejects mixed histories even when capture b
   api.stepSimulation!(1, 8);
   await assert.rejects(capture.result, /reset during capture/);
 });
+
+test('settling advances real steps without consuming record depth or shifting recorded values', async () => {
+  const { api, probe, steps } = simulator();
+  const result = await captureCircuitJs(api, [probe], .001, 1024, { restart: true, settleDuration: .004 }).result;
+  assert.equal(result.x.length, 1024);
+  assert.equal(steps(), 5120);
+  assert.ok(result.x[0] > .004 && result.x.at(-1)! <= .005 + 1e-12);
+  result.x.forEach((time, index) => assert.equal(result.traces[0].values[index], Math.sin(time * 1000)));
+  assert.equal(api.getMaxTimeStep(), 1e-6);
+  assert.throws(() => captureCircuitJs(api, [probe], 1, 1024, { settleDuration: 10 }), /at most 10/);
+  assert.throws(() => captureCircuitJs(api, [probe], 1, 1024, { settleDuration: NaN }), /settling/);
+});
+
+test('a reset during settling also rejects the mixed simulation history', async () => {
+  const { api, probe } = simulator();
+  const capture = captureCircuitJs(api, [probe], .01, 128, { restart: true, settleDuration: 1 });
+  api.stepSimulation!(10, 8); api.resetSimulation!(); api.stepSimulation!(1, 8);
+  await assert.rejects(capture.result, /reset during capture/);
+});

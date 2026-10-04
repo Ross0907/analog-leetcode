@@ -24,7 +24,7 @@ test('paused edits analyze fresh nodes and run SPICE without cancelling the prep
   const dc=workspace.getByRole('region',{name:'DC readings',exact:true});
   await expect(dc).toContainText('1.667 V');
   await dc.getByRole('button',{name:'Select V(vout)',exact:true}).click();
-  await expect(workspace.getByRole('button',{name:'Move probe 1 V(vout)',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(workspace.getByRole('button',{name:/^Move probe \d+ V\(vout\)$/})).toHaveAttribute('aria-pressed','true');
 });
 
 test('flash ADC captures four real stimulus cycles and longer acquisition keeps eight',async({page})=>{

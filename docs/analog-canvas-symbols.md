@@ -24,8 +24,10 @@ main `7e26ec6ed2b725f080bcc479d2b66c1674b25402` on 2026-10-04 found the
 same source hash and unequal original bars. DC voltage uses the
 single-cell battery definition. The diode uses its supplied outline and cathode
 bar. These drawings contain no decorative terminal circles. Native junction
-dots use CircuitJS's own post-count list and appear only at three or more
-connections, including branched wire endpoints. Selecting a component no
+dots use CircuitJS's own post-count list, filtered to physical device/wire
+branches, and appear only at three or more connections. A net label naming
+an otherwise two-connection wire does not add a dot. Junctions use a three-unit
+radius. Selecting a component no
 longer fills its terminal locations with circles.
 
 Artwork is uniformly scaled and rotated, with reflection for reversed native
@@ -45,10 +47,12 @@ objects, values, direction and ordering, then requests native analysis once.
 Saved user documents and file imports retain their authored coordinates. Unsupported
 artwork retains the separately attributed KiCad or native CircuitJS rendering.
 
-The fitted Analog Canvas bodies use the same two-world-unit stroke as native
-wires; the adapter compensates for symbol-fit scale while normal viewport zoom
-continues to scale everything together. BJT fitting reserves extra clearance
-at collector and emitter posts. The exact upstream `opamp-wide` definition has
+The fitted Analog Canvas bodies use a finer 1.25-world-unit stroke, separate
+from the two-unit native wires and display leads. The adapter compensates for
+symbol-fit scale while normal viewport zoom scales everything together. BJT
+fitting translates the unchanged body toward its base by at most ten units,
+extending collector/emitter clearance to the original connected native posts.
+The exact upstream `opamp-wide` definition has
 40-unit input pitch: a uniform .8 scale matches CircuitJS's normal 32-unit
 signed input pitch. Its two input leads stay straight at every rotation and
 flip; the output is the third and only remaining electrical terminal. Authored
@@ -59,7 +63,11 @@ The renderer reads the latest editor theme after asynchronous assets finish
 loading, so dark paper cannot retain light-theme ink. Native vertical net-label
 tethers and text shift aside when their presentation would overlap a nearby
 ground; their single native post, electrical name and stored endpoints remain
-unchanged. Label text starts beside a vertical tether, with plain/flag styles
+unchanged. A final annotation pass places automatic value/label text clear of
+native wire segments and neighboring captions, then paints a small paper
+backing. User-dragged offsets remain authoritative. An offscreen measurement
+pass includes the actual caption bounds in the first viewport fit, preventing
+left-side source values from being clipped. Label text starts beside a vertical tether, with plain/flag styles
 and independent 90-degree rotation. Dragging a value or net-label annotation
 updates native XML presentation attributes `atx`, `aty` and `ata`, retained by
 native Undo/Redo and save/reload. Double-clicking a numeric value opens its

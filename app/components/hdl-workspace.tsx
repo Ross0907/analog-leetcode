@@ -75,6 +75,12 @@ export function HdlWorkspace({ challenge, playground=false }: { challenge: Omit<
   useEffect(() => {
     if(waveReady && result?.vcd)frameRef.current?.contentWindow?.postMessage({type:'anacode-vcd',vcd:result.vcd},location.origin);
   },[waveReady,result]);
+  useEffect(()=>{
+    if(!waveReady)return;
+    const update=()=>frameRef.current?.contentWindow?.postMessage({type:'anacode-viewer-theme',theme:document.documentElement.dataset.theme==='dark'?'dark':'light'},location.origin);
+    update();const observer=new MutationObserver(update);observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+    return ()=>observer.disconnect();
+  },[waveReady]);
   function invalidateOutput() {
     revisionRef.current++;
     cancelRef.current?.();
