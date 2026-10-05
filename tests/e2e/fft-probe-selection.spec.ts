@@ -14,7 +14,7 @@ test('lesson36 has real high-depth spectra for both probes, separate views and l
   const workbench = await openWorkbench(page, '/problems/delta-sigma-output-filter');
   await workbench.getByRole('button', { name: 'Spectrum', exact: true }).click();
   const spectrum = workbench.getByRole('region', { name: 'Spectrum analyzer', exact: true });
-  await expect(spectrum.getByRole('combobox', { name: 'FFT samples', exact: true })).toHaveValue('16384');
+  expect(Number(await spectrum.getByRole('combobox', { name: 'FFT samples', exact: true }).inputValue())).toBeGreaterThanOrEqual(32768);
   await spectrum.getByRole('combobox', { name: 'FFT samples', exact: true }).selectOption('16384');
   await expect(spectrum).toHaveAttribute('data-fft-used', '16384');
   const overlap = spectrum.getByRole('region', { name: 'FFT spectrum', exact: true });

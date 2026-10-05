@@ -48,7 +48,11 @@ test('capture stays beside the schematic and probe artwork stays compact through
   const drawingBounds = (await page.locator('iframe[title="CircuitJS schematic editor"]').boundingBox())!;
   const waveBounds = (await waveform.boundingBox())!;
   expect(waveBounds.x).toBeGreaterThan(drawingBounds.x + drawingBounds.width);
-  expect(waveBounds.y).toBeLessThan(drawingBounds.y + 150);
+  // Analysis and acquisition controls share this pane. Keep the complete plot
+  // visible beside the drawing rather than assuming an older toolbar height.
+  expect(waveBounds.y).toBeLessThan(drawingBounds.y + 250);
+  const plotBounds = (await waveform.locator('canvas').boundingBox())!;
+  expect(plotBounds.y + plotBounds.height).toBeLessThanOrEqual(page.viewportSize()!.height);
   await expect(editor.locator('canvas').first()).toBeVisible();
   await page.screenshot({ path: '.tmp/refined-workbench-light.png', fullPage: false });
 });

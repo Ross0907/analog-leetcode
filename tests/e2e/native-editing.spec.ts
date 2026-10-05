@@ -233,7 +233,7 @@ test('starter lead compaction uses real short components and native wires withou
   await expect.poll(() => page.evaluate(() => window.CircuitJS1.getElements().filter((element) => element.getType() === 'ResistorElm').map((element) => element.getVoltageDiff()))).toEqual([5,5]);
 });
 
-test('native source value edits clear programmed waveform tables and resume the edited waveform', async ({page}) => {
+test('a programmed waveform cannot be silently overwritten by a generic inline numeric edit', async ({page}) => {
   await open(page); await expect.poll(() => output(page)).toBeCloseTo(5,6);
   const state = await page.evaluate(() => {
     const api = window.CircuitJS1 as AdvancedCircuitJsApi, source = api.getElements()[0];
@@ -247,5 +247,5 @@ test('native source value edits clear programmed waveform tables and resume the 
     return {error, programmed, edited, xml:source.exportElement(), spread:Math.max(...readings)-Math.min(...readings), stop:api.getStopMessage()};
   });
   expect(state.error).toBeNull(); expect(state.programmed.xml).toContain('pwl='); expect(state.programmed.voltage).toBeCloseTo(6,6);
-  expect(state.edited).toBeNull(); expect(state.xml).not.toContain('pwl='); expect(state.spread).toBeGreaterThan(0.0001); expect(state.stop).toBeNull();
+  expect(state.edited).toBe('This value is not editable.'); expect(state.xml).toContain('pwl='); expect(state.spread).toBeLessThan(1e-10); expect(state.stop).toBeNull();
 });

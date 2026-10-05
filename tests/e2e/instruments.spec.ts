@@ -13,7 +13,7 @@ async function expectScopeCanvasFits(scope: Locator) {
 }
 
 async function openSettings(page: Page, summary: string) {
-  const disclosure = page.locator('details').filter({ has: page.locator('summary', { hasText: summary }) }).first();
+  const disclosure = page.locator('summary').filter({ hasText: summary }).locator('..').first();
   if (await disclosure.count() && await disclosure.getAttribute('open') === null) await disclosure.locator(':scope > summary').click();
 }
 

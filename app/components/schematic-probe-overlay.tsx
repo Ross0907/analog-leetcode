@@ -11,14 +11,25 @@ export function SchematicProbeOverlay({ api, frame, probes, disabled, onChange, 
   selectedProbeId?: string | null; onSelectProbe?: (id: string) => void;
 }) {
   const groupsRef = useRef(new Map<string, SVGGElement>());
+  const overlayRef = useRef<SVGSVGElement>(null);
   const offsetsRef = useRef(new Map<string, Point>());
   const dragRef = useRef<{ id: string; start: Point; offset: Point; current: Point } | null>(null);
   useEffect(() => {
     let request = 0;
+    let lastGeometry = '';
     const position = () => {
       const native = api.current, canvas = frame.current?.contentDocument?.querySelector('canvas');
+      const modal = frame.current?.contentDocument?.querySelector<HTMLElement>('.gwt-DialogBox');
+      const obscured = Boolean(modal && modal.getClientRects().length);
+      if (overlayRef.current) overlayRef.current.style.visibility = obscured ? 'hidden' : '';
+      if (obscured) { lastGeometry = ''; request = requestAnimationFrame(position); return; }
       if (native && canvas && frame.current?.offsetWidth) {
         const rect = canvas.getBoundingClientRect();
+        const points = probes.filter(probe => probe.enabled).map(probe => [probe, probePosition(probe)] as const);
+        const drag = dragRef.current;
+        const geometry = `${rect.left},${rect.top},${rect.width},${rect.height},${native.screenX(0)},${native.screenY(0)},${native.screenX(16)},${native.getCircuitRevision?.()}:${points.map(([probe, point]) => `${probe.id}:${point.x},${point.y}`).join(';')}:${drag?.id},${drag?.current.x},${drag?.current.y}`;
+        if (geometry === lastGeometry) { request = requestAnimationFrame(position); return; }
+        lastGeometry = geometry;
         const markerScale = Math.max(.6, Math.min(1, Math.sqrt(Math.abs(native.screenX(16) - native.screenX(0)) / 16)));
         const zoom = Math.abs(native.screenX(16) - native.screenX(0)) / 16;
         const obstacles = native.getElements().filter(element => !isProbeWire(element) && element.getPostCount()).flatMap(element => {
@@ -37,10 +48,10 @@ export function SchematicProbeOverlay({ api, frame, probes, disabled, onChange, 
           return [bounds];
         });
         const occupied: Point[] = [];
-        for (const probe of probes.filter(probe => probe.enabled)) {
+        for (const [probe, point] of points) {
           const group = groupsRef.current.get(probe.id);
           if (!group) continue;
-          const point = probePosition(probe), x = rect.left + native.screenX(point.x), y = rect.top + native.screenY(point.y);
+          const x = rect.left + native.screenX(point.x), y = rect.top + native.screenY(point.y);
           const directions = [{ x: -32, y: -29 }, { x: 32, y: -29 }, { x: -32, y: 29 }, { x: 32, y: 29 }, { x: -54, y: 0 }, { x: 54, y: 0 }, { x: 0, y: -48 }, { x: 0, y: 48 }].map(offset => ({ x: offset.x * markerScale, y: offset.y * markerScale }));
           const score = (offset: Point) => {
             const cx = x + offset.x, cy = y + offset.y;
@@ -89,7 +100,7 @@ export function SchematicProbeOverlay({ api, frame, probes, disabled, onChange, 
       onMessage('Probe moved. Its electrical connection is unchanged.');
     }
   };
-  return <svg className={styles.markers} aria-label="Schematic probes">{probes.map((probe, index) => probe.enabled && <g key={probe.id} data-selected={selectedProbeId === probe.id || undefined} ref={element => { if (element) groupsRef.current.set(probe.id, element); else groupsRef.current.delete(probe.id); }} color={probe.color}>
+  return <svg ref={overlayRef} className={styles.markers} aria-label="Schematic probes">{probes.map((probe, index) => probe.enabled && <g key={probe.id} data-selected={selectedProbeId === probe.id || undefined} ref={element => { if (element) groupsRef.current.set(probe.id, element); else groupsRef.current.delete(probe.id); }} color={probe.color}>
     {selectedProbeId === probe.id && <circle r="6" fill="none" stroke="currentColor" strokeWidth="1.5"/>}
     <path data-lead fill="none" stroke="currentColor" strokeWidth="1.6"/><circle r="2.2" fill="currentColor"/>
     <g data-grip role="button" tabIndex={disabled ? -1 : 0} aria-label={`Move probe ${index + 1} ${probe.name}`} aria-pressed={selectedProbeId === probe.id} aria-disabled={disabled || undefined} className={styles.probeGrip}

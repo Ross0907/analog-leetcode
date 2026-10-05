@@ -51,7 +51,9 @@ export function SimulationConsole({
   settingsSlot,
   invalidationKey,
   runRequest,
+  runRequestSource,
   onRunningChange,
+  onError,
   getCurrentInvalidationKey,
 }: {
   initialNetlist: string;
@@ -69,7 +71,9 @@ export function SimulationConsole({
   settingsSlot?: ReactNode;
   invalidationKey?: string;
   runRequest?: number;
+  runRequestSource?: 'schematic' | 'deck';
   onRunningChange?: (running: boolean) => void;
+  onError?: (message: string | null) => void;
   getCurrentInvalidationKey?: () => string;
 }) {
   const [netlist, setNetlist] = useState(initialNetlist);
@@ -94,6 +98,7 @@ export function SimulationConsole({
 
   useEffect(() => { onResult?.(simulation, analysisSource); }, [simulation, onResult, analysisSource]);
   useEffect(() => { onRunningChange?.(running); }, [running, onRunningChange]);
+  useEffect(() => { onError?.(simError); }, [simError, onError]);
 
   const disposeWorker = useCallback((session = workerSessionRef.current) => {
     if (!session) return;
@@ -236,7 +241,7 @@ export function SimulationConsole({
     return () => clearTimeout(timer);
   }, [invalidationKey, cancelSimulation]);
 
-  const runSimulation = useCallback(() => {
+  const runSimulation = useCallback((sourceOverride?: 'schematic' | 'deck') => {
     cancelSimulation();
     setRunning(true);
     setSimError(null);
@@ -244,8 +249,10 @@ export function SimulationConsole({
     setGrade(null);
     const id = crypto.randomUUID();
     activeRunRef.current = id;
-    let probes: string[];
-    try { probes = validateSimulatorProbes(probeText.split(/[\s,]+/).filter(Boolean)); }
+    const source = requireSchematic ? 'schematic' : sourceOverride ?? analysisSource;
+    if (sourceOverride) setAnalysisSource(source);
+    let probes: string[] = [];
+    try { if (source === 'deck') probes = validateSimulatorProbes(probeText.split(/[\s,]+/).filter(Boolean)); }
     catch (error) {
       activeRunRef.current = null;
       setRunning(false);
@@ -253,13 +260,14 @@ export function SimulationConsole({
       return;
     }
     let runNetlist = netlist;
-    if (requireSchematic || analysisSource === "schematic") {
+    if (source === "schematic") {
       try {
         if (!prepareCircuit) throw new Error("Wire the circuit in the schematic before running it.");
         const prepared = prepareCircuit();
         preparedInvalidationRef.current = prepared.invalidationKey ?? invalidationKey;
         runNetlist = prepared.deck;
-        if (prepared.probes) { probes = validateSimulatorProbes(prepared.probes); setProbeText(probes.join(", ")); }
+        probes = validateSimulatorProbes(prepared.probes ?? probeText.split(/[\s,]+/).filter(Boolean));
+        setProbeText(probes.join(", "));
         setNetlist(runNetlist);
       } catch (cause) {
         preparedInvalidationRef.current = getCurrentInvalidationKey?.() ?? invalidationKey;
@@ -287,9 +295,9 @@ export function SimulationConsole({
   useEffect(() => {
     if (previousRunRequestRef.current === runRequest) return;
     // Apply the shared duration/depth and clear invalidated results before running.
-    const timer = setTimeout(() => { previousRunRequestRef.current = runRequest; runSimulation(); }, 0);
+    const timer = setTimeout(() => { previousRunRequestRef.current = runRequest; runSimulation(runRequestSource); }, 0);
     return () => clearTimeout(timer);
-  }, [runRequest, runSimulation]);
+  }, [runRequest, runRequestSource, runSimulation]);
 
   useEffect(() => {
     prepareWorkerRef.current = prepareWorker;
@@ -377,7 +385,7 @@ export function SimulationConsole({
             catch (cause) { setSimError(cause instanceof Error ? cause.message : "Check the schematic before preparing analysis."); }
           }}>Use current schematic</button>}
           <button className="icon-button" type="button" onClick={() => { cancelSimulation(); submissionSequenceRef.current++; preparedGradeInvalidationRef.current = undefined; setSubmitting(false); setNetlist(initialNetlist); setProbeText(initialProbeText); setSimulation(null); setGrade(null); setSimError(null); }} aria-label="Reset simulation"><RotateCcw size={16} /></button>
-          <button className="button button-small button-run" type="button" onClick={runSimulation} disabled={running}>
+          <button className="button button-small button-run" type="button" onClick={() => runSimulation()} disabled={running}>
             {running ? <><span className="spinner" /> Running</> : <><Play size={15} fill="currentColor" /> Run simulation</>}
           </button>
           {compact && challengeSlug && judge && <button className="button button-small button-submit" type="button" onClick={submitSolution} disabled={submitting}>{submitting ? 'Checking…' : <><Send size={14}/>Check fixed topology</>}</button>}
@@ -396,7 +404,7 @@ export function SimulationConsole({
       </details>
 
       <div className="sim-output">
-        {(!compact || simError || simulation) && <div className="results-pane scope-results-pane">
+        {!(simError && onError && hideWaveforms) && (!compact || simError || simulation) && <div className="results-pane scope-results-pane">
           <div className="pane-heading"><span>RESULTS</span>{simulation && <small><Clock3 size={12} /> {simulation.runtimeMs.toFixed(1)} ms</small>}</div>
           {simError ? (
             <div className="simulation-message error"><AlertTriangle size={24} /><strong>Simulation stopped</strong><p>{simError}</p></div>

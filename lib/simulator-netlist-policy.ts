@@ -145,7 +145,9 @@ function validateAnalysis(line: string) {
     const maximumStep = tokens[4] ? positiveNumber(tokens[4], "maximum transient step") : step;
     // A tiny explicit maximum step can force a much denser solver record.
     const intervals = (stop - start) / Math.min(step, maximumStep);
-    enforcePointLimit(Math.ceil(intervals - 1e-9 * Math.max(1, intervals)) + 1);
+    // ngspice retains t=0 for an ordinary record, but starts strictly after a
+    // nonzero TSTART. Settling must not consume one of the recorded samples.
+    enforcePointLimit(Math.ceil(intervals - 1e-9 * Math.max(1, intervals)) + (start === 0 ? 1 : 0));
     return;
   }
   if (directive === ".ac") {

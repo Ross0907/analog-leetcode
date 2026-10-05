@@ -41,9 +41,9 @@ test('native point picking finds real wires without hovering and rejects the opa
     const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;
     const hit=api.hitTest!(api.screenX(128),api.screenY(80)+4);
     const terminal=api.hitTest!(api.screenX(320),api.screenY(80));
-    return {wire:hit?.wire,x:hit?.x,y:hit?.y,voltage:hit?.element.getVoltage(hit.post),distance:hit?.distance,terminal:terminal?.element.getNodeId(terminal.post),empty:api.hitTest!(api.screenX(240),api.screenY(160))};
+    return {wire:hit?.wire,xError:hit ? Math.abs(api.screenX(hit.x)-api.screenX(128)) : Infinity,y:hit?.y,voltage:hit?.element.getVoltage(hit.post),distance:hit?.distance,terminal:terminal?.element.getNodeId(terminal.post),empty:api.hitTest!(api.screenX(240),api.screenY(160))};
   });
-  expect(found.wire).toBe(true);expect(found.x).toBeCloseTo(128,0);expect(found.y).toBe(80);expect(found.voltage).toBeCloseTo(10,6);expect(found.distance).toBeLessThanOrEqual(5);expect(found.terminal).toBeGreaterThan(0);expect(found.empty).toBeNull();
+  expect(found.wire).toBe(true);expect(found.xError).toBeLessThanOrEqual(1);expect(found.y).toBe(80);expect(found.voltage).toBeCloseTo(10,6);expect(found.distance).toBeLessThanOrEqual(5);expect(found.terminal).toBeGreaterThan(0);expect(found.empty).toBeNull();
   await page.evaluate(()=>{const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;api.importCircuit('$ 4 .000001 10 50 5 50\na 160 160 288 160 8 15 -15 1000000 0 0 100000',false);});
   expect(await page.evaluate(()=>{const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;return api.hitTest!(api.screenX(224),api.screenY(160));})).toBeNull();
 });
@@ -73,9 +73,9 @@ test('routed wire picking reports its real polyline and path fraction at a bend-
     const lengths=path.slice(1).map((p,i)=>Math.hypot(p.x-path[i].x,p.y-path[i].y));
     const index=lengths.indexOf(Math.max(...lengths)),a=path[index],b=path[index+1],x=(a.x+b.x)/2,y=(a.y+b.y)/2;
     const hit=api.hitTest!(api.screenX(x),api.screenY(y))!;
-    return {path,x,y,hitX:hit.x,hitY:hit.y,same:hit.element===wire,fraction:hit.pathFraction,expected:(lengths.slice(0,index).reduce((a,b)=>a+b,0)+lengths[index]/2)/lengths.reduce((a,b)=>a+b,0)};
+    return {path,pixelError:Math.hypot(api.screenX(hit.x)-api.screenX(x),api.screenY(hit.y)-api.screenY(y)),same:hit.element===wire,fraction:hit.pathFraction,expected:(lengths.slice(0,index).reduce((a,b)=>a+b,0)+lengths[index]/2)/lengths.reduce((a,b)=>a+b,0)};
   });
-  expect(result.path.length).toBeGreaterThanOrEqual(3);expect(result.same).toBe(true);expect(result.hitX).toBeCloseTo(result.x,0);expect(result.hitY).toBeCloseTo(result.y,0);expect(result.fraction).toBeCloseTo(result.expected,2);
+  expect(result.path.length).toBeGreaterThanOrEqual(3);expect(result.same).toBe(true);expect(result.pixelError).toBeLessThanOrEqual(1);expect(result.fraction).toBeCloseTo(result.expected,2);
 });
 
 test('reset retains probes and source tables while ground artwork faces down and PWL metadata is truthful',async({page})=>{

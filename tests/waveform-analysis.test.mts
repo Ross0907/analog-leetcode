@@ -38,7 +38,7 @@ test("cursor interpolation is bounded and uses the interval containing each curs
 
 test("all supported FFT windows preserve coherent sinusoid peak amplitude", () => {
   const { time, values } = signal(4096, 32);
-  for (const window of ["rectangular", "hann", "hamming", "blackman"] as WindowFunction[]) {
+  for (const window of ["rectangular", "hann", "hamming", "blackman", "blackman-harris"] as WindowFunction[]) {
     const spectrum = computeSpectrum(time, values, { length: 4096, window, removeDc: true });
     near(spectrum.amplitudes[32]!, 1, 1e-8); near(spectrum.decibels[32]!, 0, 1e-8);
     near(spectrum.amplitudes[0]!, 0, 1e-10); near(spectrum.dominantFrequency, 32);

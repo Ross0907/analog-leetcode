@@ -1,8 +1,8 @@
 import FFT from "fft.js";
-import { inspectFftSampling, uniformFftSuffix } from './fft-sampling';
+import { prepareFftRecord, type FftRecord } from './fft-sampling';
 
 export type WaveformPoint = { x: number; y: number };
-export type WindowFunction = "rectangular" | "hann" | "hamming" | "blackman";
+export type WindowFunction = "rectangular" | "hann" | "hamming" | "blackman" | "blackman-harris";
 export type WaveformMeasurements = {
   minimum: number | null; maximum: number | null; peakToPeak: number | null;
   mean: number | null; rms: number | null; frequency: number | null; dutyCycle: number | null;
@@ -74,7 +74,31 @@ export type Spectrum = {
   length: number; dominantFrequency: number | null; thd: number | null; snr: number | null;
   sinad: number | null; sfdr: number | null; harmonics: Array<{ order: number; frequency: number; amplitude: number }>;
   warnings: string[]; metricsReason: string | null;
+  recordStart: number; recordEnd: number; periodicFrequency: number | null; coherent: boolean;
+  displayPeakFrequency: number | null;
 };
+
+/** A centered display crop; the full one-sided spectrum remains unchanged. */
+export function centeredSpectrumSpan(spectrum: Spectrum, logarithmic = false) {
+  const peak = spectrum.displayPeakFrequency;
+  if (peak === null) return null;
+  const nyquist = spectrum.sampleRate / 2;
+  if (!(peak > 0 && peak < nyquist)) return null;
+  if (logarithmic) { const ratio = Math.min(2, peak / spectrum.binWidth, nyquist / peak); return ratio > 1 ? { start: peak / ratio, stop: peak * ratio } : null; }
+  const half = Math.min(peak, nyquist - peak, Math.max(peak / 2, spectrum.binWidth * 8));
+  return { start: peak - half, stop: peak + half };
+}
+
+// Bounded reusable transform plans avoid rebuilding twiddle tables for every
+// simultaneous probe. Transforms are synchronous; output remains per channel.
+const fftPlans = new Map<number, FFT>();
+function fftPlan(length: number) {
+  const cached = fftPlans.get(length);
+  if (cached) { fftPlans.delete(length); fftPlans.set(length, cached); return cached; }
+  const plan = new FFT(length); fftPlans.set(length, plan);
+  if (fftPlans.size > 2) fftPlans.delete(fftPlans.keys().next().value!);
+  return plan;
+}
 
 /** A display-only band enclosing 99.9% of non-DC spectral power, with room around resolved peaks. */
 export function spectrumSignalStop(spectra: readonly Spectrum[]): number | null {
@@ -94,27 +118,19 @@ export function spectrumSignalStop(spectra: readonly Spectrum[]): number | null 
 }
 
 export function computeSpectrum(time: ArrayLike<number>, values: ArrayLike<number>, options: {
-  length: number; window: WindowFunction; removeDc: boolean;
+  length: number; window: WindowFunction; removeDc: boolean; record?: FftRecord;
 }): Spectrum {
   const { length, window, removeDc } = options;
   if (!Number.isInteger(length) || length < 64 || length > 131072 || (length & (length - 1)) !== 0) throw new Error("FFT length must be a power of two from 64 to 131072.");
   if (time.length !== values.length || time.length < length) throw new Error(`Capture at least ${length} samples for this FFT length.`);
-  const points: WaveformPoint[] = [];
-  const sampling = inspectFftSampling(time);
-  for (let i = 0; i < time.length; i++) {
-    const x = Number(time[i]); const y = Number(values[i]);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("FFT requires finite samples.");
-    points.push({ x, y });
-  }
-  const uniform = uniformFftSuffix(time, length);
-  const irregular = uniform === null;
-  const step = uniform?.step ?? sampling.largestStep;
-  const end = points[points.length - 1]!.x;
-  const start = end - (length - 1) * step;
-  if (start < points[0]!.x - step * 1e-6) throw new Error("Capture is too short at its largest timestep. Choose a smaller FFT or capture longer with a smaller maximum timestep.");
-  // Decimal sample spacing can round the final interpolation coordinate one
-  // ULP past the recorded endpoint. Stay within the already-validated record.
-  const samples = uniform ? Array.from({ length }, (_, i) => Number(values[uniform.start + i])) : Array.from({ length }, (_, i) => interpolateWaveform(points, Math.min(end, Math.max(points[0]!.x, start + i * step)))!);
+  const record = options.record?.time === time && options.record.length === length ? options.record : prepareFftRecord(time, length);
+  for (let i = 0; i < values.length; i++) if (!Number.isFinite(Number(values[i]))) throw new Error('FFT requires finite samples.');
+  const irregular = record.uniformStart === null, step = record.step;
+  const samples = Array.from({ length }, (_, i) => {
+    if (record.uniformStart !== null) return Number(values[record.uniformStart + i]);
+    const left = record.left![i]!, fraction = record.fraction![i]!;
+    return Number(values[left]) + (Number(values[left + 1]) - Number(values[left])) * fraction;
+  });
   if (samples.some((sample) => sample === null || !Number.isFinite(sample))) throw new Error("FFT resampling exceeds the capture.");
   const mean = removeDc ? samples.reduce((sum, value) => sum + value, 0) / length : 0;
   let windowSum = 0;
@@ -122,11 +138,12 @@ export function computeSpectrum(time: ArrayLike<number>, values: ArrayLike<numbe
     const angle = 2 * Math.PI * i / length;
     const weight = window === "hann" ? 0.5 - 0.5 * Math.cos(angle)
       : window === "hamming" ? 0.54 - 0.46 * Math.cos(angle)
-        : window === "blackman" ? 0.42 - 0.5 * Math.cos(angle) + 0.08 * Math.cos(2 * angle) : 1;
+        : window === "blackman" ? 0.42 - 0.5 * Math.cos(angle) + 0.08 * Math.cos(2 * angle)
+          : window === 'blackman-harris' ? .35875 - .48829 * Math.cos(angle) + .14128 * Math.cos(2 * angle) - .01168 * Math.cos(3 * angle) : 1;
     windowSum += weight;
     return (sample - mean) * weight;
   });
-  const transform = new FFT(length); const output = transform.createComplexArray();
+  const transform = fftPlan(length); const output = transform.createComplexArray();
   transform.realTransform(output, input);
   const sampleRate = 1 / step; const binWidth = sampleRate / length;
   const amplitudes = Array.from({ length: length / 2 + 1 }, (_, i) => Math.hypot(Number(output[2 * i]), Number(output[2 * i + 1])) * (i === 0 || i === length / 2 ? 1 : 2) / windowSum);
@@ -139,9 +156,9 @@ export function computeSpectrum(time: ArrayLike<number>, values: ArrayLike<numbe
   const dominantFrequency = resolved ? frequencies[peak]! : null;
   const warnings = irregular ? ["Adaptive timesteps were linearly resampled at the largest recorded interval. Interpolation limits high-frequency accuracy."] : [];
   warnings.push("Spectrum is one-sided peak amplitude, corrected for window gain. dB is relative to 1 trace unit; floor −300 dB.");
-  const result: Spectrum = { frequencies, amplitudes, decibels, sampleRate, binWidth, length, dominantFrequency, thd: null, snr: null, sinad: null, sfdr: null, harmonics: [], warnings, metricsReason: null };
   const waveform = measureWaveform(samples.map((y, i) => ({ x: i * step, y })));
   const coherent = waveform.frequency !== null && Math.abs(waveform.frequency / binWidth - peak) < 0.01;
+  const result: Spectrum = { frequencies, amplitudes, decibels, sampleRate, binWidth, length, dominantFrequency, displayPeakFrequency: significant ? frequencies[peak]! : null, thd: null, snr: null, sinad: null, sfdr: null, harmonics: [], warnings, metricsReason: null, recordStart: record.start, recordEnd: record.end, periodicFrequency: waveform.frequency, coherent };
   if (!resolved || !coherent || irregular || window !== "rectangular" || length < 256 || peak < 8 || peak > length / 16) {
     result.metricsReason = "THD / SNR / SINAD / SFDR require a uniformly sampled, coherent periodic record: Rectangular window, ≥256 samples, ≥8 cycles, and ≥16 samples per cycle. Use the displayed FFT bin spacing to align the capture.";
     return result;

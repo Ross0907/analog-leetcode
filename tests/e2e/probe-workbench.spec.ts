@@ -40,12 +40,22 @@ test('Lab fills the viewport and places a real current probe on a wire with one 
   },branch);
   expect(Math.abs(actual.wire)).toBeCloseTo(Math.abs(actual.resistor),8);
   expect(actual.circuit).toBe(branch.circuit);
-  const labelPoint=await native.locator('body').evaluate(()=>{
+  const labelPoint=await native.locator('body').evaluate(()=>new Promise<{x:number;y:number}>((resolve,reject)=>{
     const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;
     const label=api.getElements().find(el=>el.getType()==='LabeledNodeElm')!;
-    // The starter's vertical vin label ends at its native lead, with text to its right.
-    return {x:api.screenX(label.getPostX(0)+34),y:api.screenY(label.getPostY(0)-15)};
-  });
+    // Pick the caption where the native collision-aware renderer actually drew it.
+    const canvas=document.querySelector('canvas')!,ctx=canvas.getContext('2d')!,original=ctx.fillText;
+    const timer=setTimeout(()=>{ctx.fillText=original;reject(new Error('Net label was not rendered'));},5000);
+    ctx.fillText=function(text,x,y,maxWidth){
+      if(text===label.getLabelName()){
+        const metrics=ctx.measureText(text),point=new DOMPoint(x+(metrics.actualBoundingBoxRight-metrics.actualBoundingBoxLeft)/2,y+(metrics.actualBoundingBoxDescent-metrics.actualBoundingBoxAscent)/2).matrixTransform(ctx.getTransform());
+        const ratio=canvas.width/canvas.getBoundingClientRect().width;
+        clearTimeout(timer);ctx.fillText=original;resolve({x:point.x/ratio,y:point.y/ratio});
+      }
+      if(maxWidth===undefined)original.call(ctx,text,x,y);else original.call(ctx,text,x,y,maxWidth);
+    };
+    api.setTheme(api.getTheme()); // Request a redraw even when capture paused the solver.
+  }));
   await canvas.hover({position:labelPoint});
   await expect.poll(()=>native.locator('body').evaluate(()=>(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1.getHoveredElement()?.getType())).toBe('LabeledNodeElm');
   await canvas.press('r');

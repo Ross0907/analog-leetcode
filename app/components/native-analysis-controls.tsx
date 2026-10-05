@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { circuitJsAnalysisOptions, type NativeAnalysisSettings, type NativeSourceOverride } from '../../lib/circuitjs-analysis';
 import type { CircuitJsApi, CircuitJsElement } from '../../lib/circuitjs';
 import { parseEngineeringNumber } from '../../lib/engineering';
@@ -18,7 +18,8 @@ function sourceFormKey(element: CircuitJsElement) {
   return key;
 }
 
-export function NativeAnalysisControls({ api, settings, onChange, onApplySource, section = 'all' }: {
+export function NativeAnalysisControls({ api, settings, onChange, onApplySource, section = 'all', action }: {
+  action?: ReactNode;
   section?: 'all' | 'analysis' | 'sources';
   api: CircuitJsApi | null; settings: NativeAnalysisSettings; onChange: (settings: NativeAnalysisSettings) => void;
   onApplySource: (index: number, source: NativeSourceOverride | undefined, expectedElement?: CircuitJsElement) => void;
@@ -42,6 +43,7 @@ export function NativeAnalysisControls({ api, settings, onChange, onApplySource,
     <label>Analysis<select aria-label="Schematic analysis type" value={settings.type} onChange={event => { update({ type: event.target.value as NativeAnalysisSettings['type'] }); setSweepOpen(true); }}>
       <option value="transient">Transient waveform</option><option value="operating-point">DC operating point</option><option value="ac-sweep">AC frequency response</option><option value="dc-sweep">DC source sweep</option>
     </select></label>
+    {action}
     {settings.type === 'ac-sweep' && <details className={styles.sweepSettings} open={sweepOpen} onToggle={event => setSweepOpen(event.currentTarget.open)}><summary>AC sweep settings</summary><div className={styles.sweepFields}>
       <label>Excitation<select aria-label="AC excitation source" value={settings.acSource ?? options.sources[0]?.index ?? ''} onChange={event => update({ acSource: Number(event.target.value) })}>{options.sources.map(source => <option key={source.index} value={source.index}>{source.label}</option>)}</select></label>
       <label>Start (Hz)<input aria-label="AC start frequency" type="number" min="0.001" value={settings.startHz} onChange={event => update({ startHz: Number(event.target.value) })}/></label>

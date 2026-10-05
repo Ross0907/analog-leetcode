@@ -42,7 +42,61 @@ export function patchCircuitJsStimulus(client) {
         XMLSerializer.dumpAttr(elem, "wf", waveform);`);
   replace('VoltageElm.java', '\tinternalResistance = xml.parseDoubleAttr("ir", 0);', `\tinternalResistance = xml.parseDoubleAttr("ir", 0);
         setAnacodePwl(xml.parseStringAttr("pwl", null), xml.parseDoubleAttr("pwlr", 0));`);
-  replace('VoltageElm.java', '    public void setEditValue(int n, EditInfo ei) {', '    public void setEditValue(int n, EditInfo ei) {\n        setAnacodePwl(null, 0);');
+  replace('VoltageElm.java', '    public EditInfo getEditInfo(int n) {', `    public EditInfo getEditInfo(int n) {
+        if (anacodePwlTimes != null) {
+            if (n == 0) { EditInfo ei = new EditInfo("PWL points", 0); ei.widget = new AnacodePwlEditor(this); return ei; }
+            if (n == 1) { EditInfo ei = new EditInfo("", 0); ei.button = new com.google.gwt.user.client.ui.Button("Use standard waveform settings"); return ei; }
+            return null;
+        }`);
+  replace('VoltageElm.java', '    public void setEditValue(int n, EditInfo ei) {', `    public void setEditValue(int n, EditInfo ei) {
+        if (anacodePwlTimes != null) {
+            if (n == 0) {
+                try { AnacodePwlEditor editor = (AnacodePwlEditor)ei.widget; String data=editor.data(); double repeat=editor.period();
+                    VoltageElm check=new VoltageElm(0,0,WF_AC); check.setAnacodePwl(data,repeat); setAnacodePwl(data,repeat);
+                } catch (Exception error) { ei.setError("Enter finite points with increasing times and a nonnegative repeat period."); }
+            } else if (n == 1) { setAnacodePwl(null,0); ei.newDialog=true; }
+            return;
+        }
+        setAnacodePwl(null, 0);`);
+  writeFileSync(join(client, 'AnacodePwlEditor.java'), `// SPDX-License-Identifier: GPL-2.0-or-later
+package com.lushprojects.circuitjs1.client;
+
+import java.util.Vector;
+import com.google.gwt.user.client.ui.*;
+import com.google.gwt.canvas.client.Canvas;
+import com.google.gwt.canvas.dom.client.Context2d;
+
+/** A native property widget. Draft points never reach the solver before Apply. */
+class AnacodePwlEditor extends VerticalPanel {
+    Vector<TextBox> times=new Vector<TextBox>(), values=new Vector<TextBox>();
+    FlexTable table=new FlexTable(); TextBox repeat=new TextBox(); Label error=new Label();
+    Canvas preview=Canvas.createIfSupported(); Button add=new Button("Add point");
+    AnacodePwlEditor(VoltageElm source) {
+        setStyleName("anacode-pwl-editor");
+        add(new Label("Time in seconds and voltage in volts; engineering units such as 1m and 500u are accepted."));
+        if(preview!=null){preview.setCoordinateSpaceWidth(580);preview.setCoordinateSpaceHeight(170);preview.getElement().setAttribute("aria-label","PWL waveform preview");add(preview);}
+        error.setStyleName("pwl-error");error.getElement().setAttribute("role","status");add(error);add(table);
+        for(int i=0;i<source.anacodePwlTimes.length;i++)append(Double.toString(source.anacodePwlTimes[i]),Double.toString(source.anacodePwlValues[i]));
+        add.addClickHandler(event->{if(times.size()>=1024)return;double last=0,step=.001;try{last=EditDialog.parseUnits(times.lastElement().getText());if(times.size()>1)step=Math.max(1e-12,last-EditDialog.parseUnits(times.get(times.size()-2).getText()));}catch(Exception ignored){}append(Double.toString(last+step),values.lastElement().getText());rows();draw();});
+        add(add);HorizontalPanel period=new HorizontalPanel();period.setStyleName("pwl-repeat");period.add(new Label("Repeat period (s; 0 = once)"));repeat.setText(Double.toString(source.anacodePwlRepeat));repeat.getElement().setAttribute("aria-label","PWL repeat period");period.add(repeat);add(period);
+        repeat.addKeyUpHandler(event->draw());repeat.addChangeHandler(event->draw());rows();draw();
+    }
+    void append(String time,String value){TextBox t=new TextBox(),v=new TextBox();t.setText(time);v.setText(value);times.add(t);values.add(v);t.addKeyUpHandler(event->draw());v.addKeyUpHandler(event->draw());t.addChangeHandler(event->draw());v.addChangeHandler(event->draw());}
+    void rows(){table.removeAllRows();table.setText(0,0,"Time (s)");table.setText(0,1,"Voltage (V)");table.setText(0,2,"");
+        for(int i=0;i<times.size();i++){final int index=i;times.get(i).getElement().setAttribute("aria-label","PWL time "+(i+1));values.get(i).getElement().setAttribute("aria-label","PWL voltage "+(i+1));table.setWidget(i+1,0,times.get(i));table.setWidget(i+1,1,values.get(i));Button remove=new Button("Remove");remove.getElement().setAttribute("aria-label","Remove PWL point "+(i+1));remove.setEnabled(times.size()>2);remove.addClickHandler(event->{times.remove(index);values.remove(index);rows();draw();});table.setWidget(i+1,2,remove);}add.setEnabled(times.size()<1024);
+    }
+    double period() throws java.text.ParseException {return EditDialog.parseUnits(repeat.getText());}
+    String data() throws java.text.ParseException {StringBuilder text=new StringBuilder();for(int i=0;i<times.size();i++){if(i>0)text.append(' ');text.append(EditDialog.parseUnits(times.get(i).getText()));text.append(' ');text.append(EditDialog.parseUnits(values.get(i).getText()));}return text.toString();}
+    void draw(){if(preview==null)return;Context2d g=preview.getContext2d();boolean dark="dark".equals(com.google.gwt.dom.client.Document.get().getDocumentElement().getAttribute("data-theme"));String ink=dark?"#d2d8df":"#252b32";g.setFillStyle(dark?"#17191d":"#fafbfc");g.fillRect(0,0,580,170);
+        try{VoltageElm check=new VoltageElm(0,0,VoltageElm.WF_AC);check.setAnacodePwl(data(),period());double maxTime=Math.max(check.anacodePwlTimes[check.anacodePwlTimes.length-1],check.anacodePwlRepeat),min=Double.POSITIVE_INFINITY,max=Double.NEGATIVE_INFINITY;
+            for(double value:check.anacodePwlValues){min=Math.min(min,value);max=Math.max(max,value);}double range=Math.max(1e-9,max-min);if(max==min){min-=.5;max+=.5;range=1;}maxTime=Math.max(1e-12,maxTime);
+            g.setStrokeStyle(dark?"#39424e":"#d7dfe7");g.setLineWidth(1);for(int i=0;i<=4;i++){double x=50+i*125,y=18+i*30;g.beginPath();g.moveTo(x,18);g.lineTo(x,138);g.moveTo(50,y);g.lineTo(550,y);g.stroke();}
+            g.setStrokeStyle(dark?"#e4b568":"#a96809");g.setLineWidth(2);g.beginPath();g.moveTo(50,138-(check.anacodePwlValues[0]-min)/range*120);for(int i=0;i<check.anacodePwlTimes.length;i++)g.lineTo(50+check.anacodePwlTimes[i]/maxTime*500,138-(check.anacodePwlValues[i]-min)/range*120);g.lineTo(550,138-(check.anacodePwlValues[check.anacodePwlValues.length-1]-min)/range*120);g.stroke();
+            g.setFillStyle(ink);g.setFont("11px Arial");g.fillText(CircuitElm.getUnitText(max,"V"),2,22);g.fillText(CircuitElm.getUnitText(min,"V"),2,140);g.fillText("0 s",50,160);g.fillText(CircuitElm.getUnitText(maxTime,"s"),490,160);error.setText("");
+        }catch(Exception invalid){error.setText("Enter 2–1024 finite points with increasing times. Repeat period must be zero or positive.");}
+    }
+}
+`);
   replace('VoltageElm.java', '    void getInfo(String arr[]) {', `    void getInfo(String arr[]) {
         if (anacodePwlTimes != null) {
             arr[0] = "PWL voltage source";

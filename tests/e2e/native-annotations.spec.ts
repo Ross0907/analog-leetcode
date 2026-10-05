@@ -32,7 +32,10 @@ test('value text drags independently, saves and undoes; double click changes the
   expect(await page.evaluate(()=>{const a=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1,e=a.getElements().find(e=>e.getType()==='ResistorElm')!;return [e.getPostX(0),e.getPostY(0),e.getPostX(1),e.getPostY(1)];})).toEqual([160,80,320,80]);
   await page.keyboard.press('Control+z'); await expect.poll(()=>xml(page)).toBe(initial);
   await page.keyboard.press('Control+y'); await expect.poll(()=>xml(page)).toBe(saved);
-  await page.mouse.dblclick(end.x,end.y); const input=page.getByRole('textbox',{name:'Resistance (ohms)',exact:true});
+  // Redo imports the saved drawing and fits its new caption bounds. Reproject
+  // the saved world position instead of clicking the pre-import screen pixel.
+  const restored=await point(page,270,20);
+  await page.mouse.dblclick(restored.x,restored.y); const input=page.getByRole('textbox',{name:'Resistance (ohms)',exact:true});
   await expect(input).toBeVisible(); await input.fill('2k'); await input.press('Enter');
   await expect.poll(()=>page.evaluate(()=>{const a=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;return a.getElements().find(e=>e.getType()==='ResistorElm'&&e.getPostX(0)===320)?.getVoltage(0);})).toBeCloseTo(10/3,5);
   saved=await xml(page); await page.evaluate(text=>(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1.importCircuit(text,false),saved);
