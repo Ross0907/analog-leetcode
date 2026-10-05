@@ -7,6 +7,7 @@ const definitions = {
   NTransistorElm: ['npn', 'B', 'C', 'E'], PTransistorElm: ['pnp', 'B', 'C', 'E'],
   NMosfetElm: ['nmos', 'G', 'S', 'D'], PMosfetElm: ['pmos', 'G', 'D', 'S'],
 };
+const passiveSymbols = new Set(['resistor', 'capacitor', 'inductor', 'inductor-compact']);
 export function analogSymbolDefinition(element) {
   const type = element.getType();
   if (type === 'BatteryElm') return ['battery', '-', '+'];
@@ -55,7 +56,6 @@ export function analogPlacement(symbol, definition, element) {
     const sc = cross(pins[a], pins[b], pins[other]), tc = cross(posts[a], posts[b], posts[other]);
     reflection = sc * tc < 0 ? -1 : 1;
     scale = Math.min(scale, Math.abs(tc / targetLength) / Math.abs(sc / sourceLength));
-    if (symbol.id === 'npn' || symbol.id === 'pnp') scale *= 0.7;
     if (amplifier) {
       // The upstream wide variant has 40-unit input pitch. Match the real signed
       // posts exactly (normal native pitch 32 => uniform scale .8), avoiding any
@@ -86,10 +86,10 @@ export function analogPlacement(symbol, definition, element) {
   }
   return { matrix, pins, posts };
 }
-export function drawAnalogPrimitive(context, primitive, symbolScale = 1) {
-  // Separate the fine textbook body pen from the two-unit terminal/wire pen.
-  // Compensation preserves uniform body weight through native symbol fitting.
-  context.lineWidth = 1.25 / symbolScale;
+export function drawAnalogPrimitive(context, primitive, symbolScale = 1, symbolId = '') {
+  // Passive bodies and their leads use the same two-unit wire pen. Keep the
+  // finer active-device outlines, compensating both for uniform symbol fitting.
+  context.lineWidth = (passiveSymbols.has(symbolId) ? 2 : 1.25) / symbolScale;
   context.lineCap = primitive.style?.lineCap ?? 'butt'; context.lineJoin = primitive.style?.lineJoin ?? 'miter';
   context.miterLimit = primitive.style?.miterLimit ?? 10;
   const path = primitive.kind === 'path' ? new Path2D(primitive.data) : new Path2D();
@@ -126,7 +126,7 @@ export function drawSourceWaveform(context, waveform, center, scale = 1) {
 export function analogSvg(symbol) {
   const point = (p) => `${p.x},${p.y}`;
   const elements = analogPrimitives(symbol).map((p) => {
-    const style = `fill="${p.fill === 'foreground' ? '#252b32' : 'none'}" stroke="${p.stroke === 'none' ? 'none' : '#252b32'}" stroke-width="${p.style?.strokeRole === 'emphasis' ? 2.2 : p.style?.strokeRole === 'ground' ? 2 : 1.5}" stroke-linecap="${p.style?.lineCap ?? 'butt'}" stroke-linejoin="${p.style?.lineJoin ?? 'miter'}"`;
+    const style = `fill="${p.fill === 'foreground' ? '#252b32' : 'none'}" stroke="${p.stroke === 'none' ? 'none' : '#252b32'}" stroke-width="${passiveSymbols.has(symbol.id) ? 2 : p.style?.strokeRole === 'emphasis' ? 2.2 : p.style?.strokeRole === 'ground' ? 2 : 1.5}" stroke-linecap="${p.style?.lineCap ?? 'butt'}" stroke-linejoin="${p.style?.lineJoin ?? 'miter'}"`;
     if (p.kind === 'line') return `<line x1="${p.from.x}" y1="${p.from.y}" x2="${p.to.x}" y2="${p.to.y}" ${style}/>`;
     if (p.kind === 'path') return `<path d="${p.data}" ${style}/>`;
     if (p.kind === 'circle') return `<circle cx="${p.center.x}" cy="${p.center.y}" r="${p.radius}" ${style}/>`;
@@ -158,7 +158,7 @@ export async function createAnalogCanvasRenderer() {
       context.save();
       try {
         context.transform(...matrix);
-        analogPrimitives(symbol).forEach((primitive) => drawAnalogPrimitive(context, primitive, Math.hypot(matrix[0], matrix[1])));
+        analogPrimitives(symbol).forEach((primitive) => drawAnalogPrimitive(context, primitive, Math.hypot(matrix[0], matrix[1]), symbol.id));
       } finally { context.restore(); }
       // Keep the time-axis indicator upright regardless of source rotation.
       if (symbol.id === 'voltage-source') {

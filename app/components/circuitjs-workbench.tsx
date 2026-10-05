@@ -76,7 +76,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
   const [live, setLive] = useState(false);
   const [liveDepth, setLiveDepth] = useState(0);
   const [spicePayload, setSpicePayload] = useState<SimulationPayload | null>(null);
-  const [resultSource, setResultSource] = useState<'circuit' | 'spice'>('circuit');
+  const [resultSource, setResultSource] = useState<'circuit' | 'spice'>(() => (analysisDefaults?.type ?? (analysis?.initialNetlist.match(/^\s*\.ac\b/m) ? 'ac-sweep' : 'transient')) === 'ac-sweep' ? 'spice' : 'circuit');
   const [modelNotes, setModelNotes] = useState<string[]>([]);
   const [instrumentMaximized, setInstrumentMaximized] = useState(false);
   const [captureOrigin, setCaptureOrigin] = useState<'restart' | 'continue'>('restart');
@@ -285,7 +285,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
             starter = validateCircuitJsText(saved.circuit); restoredProbesRef.current = Array.isArray(saved.probes) ? saved.probes.slice(0, MAX_CIRCUITJS_PROBES) : null;
             if (typeof saved.duration === 'number' && saved.duration >= 1e-9 && saved.duration <= 10) setDuration(String(saved.duration));
             if (typeof saved.samples === 'number' && Number.isInteger(saved.samples) && saved.samples >= 128 && saved.samples <= 131072) setSamples(String(saved.samples));
-            if (saved.analysisSettings && typeof saved.analysisSettings === 'object') { settingsRef.current = { ...settingsRef.current, ...saved.analysisSettings }; setAnalysisSettings(settingsRef.current); }
+            if (saved.analysisSettings && typeof saved.analysisSettings === 'object') { settingsRef.current = { ...settingsRef.current, ...saved.analysisSettings }; setAnalysisSettings(settingsRef.current); setResultSource(settingsRef.current.type === 'ac-sweep' ? 'spice' : 'circuit'); }
           }
         } catch { /* Corrupt or unavailable local storage leaves the authored starter intact. */ }
         api.onanalyze = () => {
@@ -440,7 +440,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
         setCircuitVersion(value => value + 1);
       }
       const stop = api.getStopMessage();
-      if (!initialRecordRef.current && api.resetSimulation && probesRef.current.some(probe => probe.enabled) && !stop) { initialRecordRef.current = true; captureRef.current(); }
+      if (!initialRecordRef.current && settingsRef.current.type !== 'ac-sweep' && api.resetSimulation && probesRef.current.some(probe => probe.enabled) && !stop) { initialRecordRef.current = true; captureRef.current(); }
       if (stop) { setError(stop); cancelCaptureRef.current?.(stop); if (liveRef.current) { liveRef.current.stop(); liveRef.current = null; setLive(false); } }
       if (liveRef.current && !liveRef.current.stopped && performance.now() - lastPublishedRef.current >= 500) {
         const result = liveRef.current.snapshot();
@@ -620,7 +620,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
     </details>
     <div ref={instrumentRef} className={styles.instruments}>
       {error && <p className={styles.error} role="alert">{error}</p>}
-      {spicePayload && <div className={styles.sourceSwitch}><button type="button" aria-pressed={resultSource === 'circuit'} onClick={() => setResultSource('circuit')}>Circuit probes</button><button type="button" aria-pressed={resultSource === 'spice'} onClick={() => setResultSource('spice')}>SPICE response</button></div>}
+      {(spicePayload || analysisSettings.type === 'ac-sweep') && <div className={styles.sourceSwitch} role="group" aria-label="Analysis displays"><button type="button" aria-pressed={resultSource === 'circuit'} onClick={() => { setResultSource('circuit'); setTimeControlsOpen(true); }}>Circuit probes</button><button type="button" aria-pressed={resultSource === 'spice'} onClick={() => { setResultSource('spice'); setTimeControlsOpen(false); }}>{analysisSettings.type === 'ac-sweep' || spicePayload?.analysis === 'ac' ? 'AC sweep' : 'SPICE response'}</button></div>}
       {displayedPayload && <div className={styles.resultHeading} role="status"><h2>{resultName(displayedPayload)}</h2><span>{displayedPayload.engine === 'circuitjs1' ? 'Circuit probes' : 'SPICE'} · {displayedPayload.x.length ? `${displayedPayload.x.length.toLocaleString()} points` : `${displayedPayload.operatingPoint.length} readings`}</span>{displayedPayload.analysis === 'transient' && analysisSettings.type !== 'transient' && <small>Choose “{analysisAction}” above to show its response.</small>}</div>}
       {displayedPayload && displayedPayload.warnings.map((warning) => <p className={styles.note} key={warning}>{warning}</p>)}
       {displayedPayload ? <ScopeResult payload={displayedPayload} preferredInstrument={preferredInstrument === 'dc' ? 'dc' : 'scope'} recordDuration={Number(duration)+(analysisSettings.settleDuration??0)} onMaximizedChange={setInstrumentMaximized} view={instrumentView} onViewChange={setInstrumentView} fftLength={fftLength} onFftLengthChange={setFftLength} selectedTraceId={selectedTraceId} onSelectTrace={selectTrace} onRequestCapture={resultSource==='spice' && !spiceLinked ? undefined : requestFftCapture}/> : <div className={styles.empty}><Waves size={30}/><strong>{spiceRunning ? 'Simulating the current circuit…' : resultSource === 'spice' ? analysisAction : 'Watch your circuit respond'}</strong><p>{resultSource === 'spice' ? analysisSettings.type === 'ac-sweep' ? 'Run the AC sweep above. Bode magnitude and phase will appear here.' : analysisSettings.type === 'dc-sweep' ? 'Run the DC sweep above. The source-to-output transfer curve will appear here.' : 'Run the selected analysis above to display its results here.' : 'Set Duration and Samples / probe above, then capture all enabled probes together. Scope, FFT and logic use that same measured record.'}</p></div>}</div>

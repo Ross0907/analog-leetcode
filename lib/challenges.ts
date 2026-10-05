@@ -5,6 +5,7 @@ import type { DesignCheck } from "./design-checks";
 import { expertChallenges } from "./expert-challenges";
 import { applyCurriculumDefaults } from "./curriculum-defaults";
 import { dynamicChallenges } from "./dynamic-challenges";
+import { measurementChallenges } from "./measurement-challenges";
 
 export type Difficulty = "Foundation" | "Intermediate" | "Advanced" | "Expert";
 export type Domain = "DC" | "AC" | "Semiconductors" | "Op-amps" | "Digital";
@@ -222,7 +223,7 @@ export const challenges: Challenge[] = [
   },
 ];
 
-challenges.push(...practiceChallenges, ...converterChallenges, ...wiringChallenges, ...expertChallenges, ...dynamicChallenges);
+challenges.push(...practiceChallenges, ...converterChallenges, ...wiringChallenges, ...expertChallenges, ...dynamicChallenges, ...measurementChallenges);
 challenges.forEach((challenge, index) => { challenges[index] = applyCurriculumDefaults(challenge); });
 
 export function getChallenge(slug: string) {

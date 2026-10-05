@@ -20,7 +20,7 @@ export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: contr
   const [windowName, setWindowName] = useState<WindowFunction>('hann');
   const [removeDc, setRemoveDc] = useState(true), [logFrequency, setLogFrequency] = useState(false), [db, setDb] = useState(true);
   const [start, setStart] = useState(0), [stop, setStop] = useState(0), [marker, setMarker] = useState(0), [autoVersion, setAutoVersion] = useState(0);
-  const [frequencyRange, setFrequencyRange] = useState<'signal' | 'full' | 'peak' | 'custom'>('signal');
+  const [frequencyRange, setFrequencyRange] = useState<'signal' | 'full' | 'peak' | 'custom'>('peak');
   const [requestedDuration, setRequestedDuration] = useState<number | null>(null), [settleDuration, setSettleDuration] = useState(0);
   const signalRange = frequencyRange === 'signal';
   const samplingResult = useMemo(() => { try { return { sampling: inspectFftSampling(time), error: null }; } catch (cause) { return { sampling: null, error: cause instanceof Error ? cause.message : 'Invalid sample times.' }; } }, [time]);
@@ -28,7 +28,7 @@ export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: contr
   const length = controlledLength ?? localLength ?? (sampling?.supportedLength || 1024);
   const usedLength = Math.min(length, sampling?.supportedLength ?? 0);
   const request = sampling && usedLength < length ? fftCaptureRequest(sampling, length, traces.length) : null;
-  const autoSet = () => { setLength(sampling?.supportedLength || 64); setWindowName('hann'); setRemoveDc(true); setLogFrequency(false); setDb(true); setStart(0); setStop(0); setFrequencyRange('signal'); setMarker(0); setAutoVersion(version => version + 1); };
+  const autoSet = () => { setLength(sampling?.supportedLength || 64); setWindowName('hann'); setRemoveDc(true); setLogFrequency(false); setDb(true); setStart(0); setStop(0); setFrequencyRange('peak'); setMarker(0); setAutoVersion(version => version + 1); };
   const results = useMemo(() => {
     try {
       const record = usedLength >= 64 ? prepareFftRecord(time, usedLength) : null;
@@ -44,7 +44,7 @@ export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: contr
   const spectrum = focused?.spectrum, trace = focused?.trace;
   const centeredSpan = spectrum ? centeredSpectrumSpan(spectrum, logFrequency) : null;
   const visibleStart = frequencyRange === 'peak' ? centeredSpan?.start ?? 0 : start;
-  const visibleStop = frequencyRange === 'peak' ? centeredSpan?.stop ?? 0 : signalRange ? signalStop ?? 0 : stop;
+  const visibleStop = frequencyRange === 'peak' ? centeredSpan?.stop ?? signalStop ?? 0 : signalRange ? signalStop ?? 0 : stop;
   const maxDepth = 2 ** Math.floor(Math.log2(Math.min(131072, Math.floor(2097152 / (Math.max(1, traces.length) + 1)))));
   const desiredDuration = requestedDuration ?? (spectrum ? Math.min(8 / spectrum.binWidth, maxDepth / spectrum.sampleRate) : 0);
   const longerRequest = spectrum ? fftResolutionRequest(spectrum.sampleRate, spectrum.length, desiredDuration, settleDuration, traces.length) : null;
@@ -78,7 +78,8 @@ export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: contr
     </div>}
     {results.map(result => result.error && <p key={result.trace.id} role="status" className={styles.note}>{result.trace.name}: {result.error}</p>)}
     {signalRange && signalStop !== null && <p className={styles.note}>Showing the measured signal band through {formatEngineering(signalStop, 'Hz')}. This fits 99.9% of non-DC spectral power with margin. Choose Full Nyquist range to inspect higher-frequency noise and spurs; FFT data and measurements are unchanged.</p>}
-    {frequencyRange === 'peak' && <p className={styles.note}>Centered on the selected channel's measured peak. This is a display crop; Full Nyquist range restores every measured frequency bin.</p>}
+    {frequencyRange === 'peak' && <p className={styles.note}>{centeredSpan ? "Centered on the selected channel's measured peak." : 'No interior peak can be centered; showing the available signal band.'} This is a display crop; Full Nyquist range restores every measured frequency bin.</p>}
+    {spectrum && spectrum.periodicFrequency === null && <p className={styles.note}>This record does not establish a repeating waveform. Steps and settling responses have a broad spectrum; use a longer measured record to resolve repetitions. Increasing sample count alone cannot narrow these peaks.</p>}
     {spectrum && <div className={styles.recordSummary} aria-label="FFT record summary"><strong>{formatEngineering(1 / spectrum.binWidth, 's')} FFT window · {formatEngineering(spectrum.binWidth, 'Hz')} per bin</strong><span>Measured interval {formatEngineering(spectrum.recordStart, 's')} → {formatEngineering(spectrum.recordEnd, 's')} · {usedLength.toLocaleString()} samples · {formatEngineering(spectrum.sampleRate, 'Hz')} sample rate</span></div>}
     {plots.map(plot => plot.x.length > 1 ? <BrowserOscilloscope key={autoVersion + ':' + plot.unit + ':' + frequencyRange} instrumentId={'spectrum:' + plot.unit} onAutoSet={autoSet} x={plot.x} traces={plot.traces} title={plots.length > 1 ? 'FFT spectrum · ' + plot.unit : 'FFT spectrum'} domain="frequency" xScale={logFrequency ? 'log' : 'linear'} xLabel="Frequency" xUnit="Hz" yLabel="Peak amplitude" yUnit={plot.unit} height={300}/> : <p key={plot.unit} className={styles.note}>Select a frequency span containing at least two bins.</p>)}
     {spectrum && trace && <>

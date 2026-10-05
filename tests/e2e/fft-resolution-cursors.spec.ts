@@ -4,6 +4,8 @@ async function lesson(page: Page) {
   await page.goto('/problems/rc-high-pass');
   const work = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
   await expect(work.getByRole('button', { name: 'Capture all probes', exact: true })).toBeEnabled({ timeout: 60000 });
+  await work.getByRole('button', { name: 'Circuit probes', exact: true }).click();
+  await work.getByRole('button', { name: 'Capture all probes', exact: true }).click();
   await expect(work.getByRole('region', { name: 'Oscilloscope', exact: true })).toBeVisible({ timeout: 60000 });
   return work;
 }

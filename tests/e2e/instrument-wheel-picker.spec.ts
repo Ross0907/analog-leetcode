@@ -4,6 +4,10 @@ async function workbench(page: Page, path = '/lab') {
   await page.goto(path);
   const root = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
   await expect(root.getByRole('button', { name: 'Capture all probes', exact: true })).toBeEnabled({ timeout: 60000 });
+  if (await root.getByRole('button', { name: 'AC sweep', exact: true }).count()) {
+    await root.getByRole('button', { name: 'Circuit probes', exact: true }).click();
+    await root.getByRole('button', { name: 'Capture all probes', exact: true }).click();
+  }
   await expect(root.getByRole('region', { name: 'Oscilloscope', exact: true })).toBeVisible({ timeout: 60000 });
   return root;
 }
@@ -93,7 +97,7 @@ test('lesson15 FFT starts with a visible physical 1kHz peak and retains the full
   await root.getByRole('button', { name: 'Spectrum', exact: true }).click();
   const spectrum = root.getByRole('region', { name: 'Spectrum analyzer', exact: true }), plot = spectrum.getByRole('region', { name: 'FFT spectrum', exact: true });
   await expect(spectrum).toHaveAttribute('data-fft-used', '8192');
-  expect(Number(await plot.getAttribute('data-x-max'))).toBeGreaterThan(2000);
+  expect((Number(await plot.getAttribute('data-x-min')) + Number(await plot.getAttribute('data-x-max'))) / 2).toBeCloseTo(1000, -1);
   expect(Number(await plot.getAttribute('data-x-max'))).toBeLessThan(10000);
   await spectrum.getByRole('spinbutton', { name: 'Marker / Hz', exact: true }).fill('1000');
   await expect(spectrum.getByText(/^Marker:/)).toContainText('-5.483 dB');

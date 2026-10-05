@@ -44,6 +44,7 @@ test('BJT artwork leaves clearance at collector/emitter while native posts remai
   const element = { getType: () => 'NTransistorElm', getPostCount: () => 3, getPostX: (post: number) => post === 0 ? 0 : 64, getPostY: (post: number) => post === 1 ? -16 : post === 2 ? 16 : 0 };
   const definition = analogSymbolDefinition(element), placement = analogPlacement(manifest.symbols.npn, definition, element);
   assert(placement);
+  assert.equal(Math.hypot(placement.matrix[0], placement.matrix[1]), .8, 'BJT uses the full available native pin pitch, without extra shrinking.');
   const point = (x: number, y: number) => { const m = placement.matrix; return { x: m[0] * x + m[2] * y + m[4], y: m[1] * x + m[3] * y + m[5] }; };
   // Exact upstream collector elbow and emitter arrow tip have built-in lead clearance.
   const collector = point(0, -13.379732), emitter = point(0, 13.377859);
@@ -71,6 +72,10 @@ test('symbol-fitting preserves the finer body pen independently of native wire t
       const context={lineWidth:0,stroke(){},fill(){}};
       drawAnalogPrimitive(context,{kind:'line',from:{x:0,y:0},to:{x:20,y:0},style:{strokeRole:'emphasis'}},scale);
       assert.equal(context.lineWidth*scale,1.25);
+      for(const symbolId of ['resistor','capacitor','inductor','inductor-compact']) {
+        drawAnalogPrimitive(context,{kind:'line',from:{x:0,y:0},to:{x:20,y:0}},scale,symbolId);
+        assert.equal(context.lineWidth*scale,2,`${symbolId} must match the native wire stroke after fitting.`);
+      }
     }
   } finally { if(original)Object.assign(globalThis,{Path2D:original});else Reflect.deleteProperty(globalThis,'Path2D'); }
 });

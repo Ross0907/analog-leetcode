@@ -5,6 +5,10 @@ import type { SimulationPayload } from '../../lib/simulator-contract';
 // These edits are made to native documents before CircuitJS imports and solves
 // them. They are never injected into the compiled SPICE deck or learner UI.
 const edits: Record<string, [string, string][]> = {
+  'rc-pulse-rise-recovery': [['c 352 128 352 352 0 1e-7 0', 'c 352 128 352 352 0 4.7e-8 0']],
+  'rlc-step-damping': [['r 112 128 304 128 0 20', 'r 112 128 304 128 0 200']],
+  'highpass-signal-rejection': [['r 352 128 352 352 0 10000', 'r 352 128 352 352 0 1590']],
+  'notch-unwanted-tone': [['c 352 272 352 416 0 1e-8 0', 'c 352 272 352 416 0 1e-7 0']],
   'diode-rectifier-ripple': [['c 400 128 400 352 0 0.00022 0', 'c 400 128 400 352 0 0.001 0']],
   'pipeline-residue-block': [['r 352 112 512 112 0 19000', 'r 352 112 512 112 0 20000']],
   'r2r-dac-settling-budget': [['c 128 128 128 16 0 2.2e-10 0', 'c 128 128 128 16 0 1e-10 0']],

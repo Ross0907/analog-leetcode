@@ -69,6 +69,7 @@ test('native branching splits a wire, preserves its electrical node, and support
 test('native probes can be placed on the schematic and saved with an interoperable export', async ({ page }) => {
   await page.goto('/problems/sallen-key-q');
   const frame = await nativeEditor(page);
+  await page.getByRole('button', { name: 'Circuit probes', exact: true }).click();
   await page.getByRole('button', { name: 'Voltage probe', exact: true }).click();
   const initialCount = await page.getByRole('button', { name: /^Move probe / }).count();
   const ground = await frame.evaluate(() => { const element = (window as unknown as { CircuitJS1: CircuitJsApi }).CircuitJS1.getElements().find(element => element.getType() === 'GroundElm')!; return {x:element.getPostX(0),y:element.getPostY(0)}; });
@@ -90,6 +91,7 @@ test('native probes can be placed on the schematic and saved with an interoperab
   if (stream) for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   expect(Buffer.concat(chunks).toString('utf8')).toMatch(/^<cir[\s>]/);
   await page.reload(); await nativeEditor(page);
+  await page.getByRole('button', { name: 'Circuit probes', exact: true }).click();
   await showProbeSettings(page);
   await expect(page.getByRole('textbox', { name: addedProbeName })).toHaveValue('Ground reference');
   await expect(page.getByLabel('Capture duration in seconds')).toHaveValue('0.02');

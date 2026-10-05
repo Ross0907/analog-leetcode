@@ -37,7 +37,8 @@ function ResultViews({ payload, preferredInstrument, recordDuration, onRequestCa
     const magnitude = payload.traces.filter((trace) => trace.quantity === "magnitude");
     const phase = payload.traces.filter((trace) => trace.quantity === "phase");
     return (
-      <div className="scope-host bode-analyzer-stack">
+      <section className="scope-host bode-analyzer-stack" aria-label="AC sweep analyzer">
+        <p style={{ margin: '0 0 8px', color: 'var(--muted)', fontSize: 12 }}>AC sweep · Small-signal magnitude and phase versus frequency. Each display can be expanded, zoomed and measured independently.</p>
         <BrowserOscilloscope
           key={`magnitude:${magnitude.map((trace) => trace.id).join("|")}`}
           instrumentId="bode-magnitude"
@@ -66,7 +67,7 @@ function ResultViews({ payload, preferredInstrument, recordDuration, onRequestCa
           title="Bode phase"
           height={270}
         />
-      </div>
+      </section>
     );
   }
   const domain: OscilloscopeDomain = payload.analysis === "dc-sweep" ? "sweep" : "time";

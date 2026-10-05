@@ -17,6 +17,8 @@ replace('if(chango&&"vec"===chango.kind)', 'if(chango&&"vec"===chango.kind&&!lan
 replace('gl.uniform1f(loco.tilt,3/width)', 'gl.uniform4fv(loco.colors,globalThis.AnacodeVcdrom?.colors()||cColors),gl.uniform1f(loco.tilt,3/width)');
 replace('if(mPre)return vPre?', 'if(mPre&&!fmt?.anacodeRadix)return vPre?');
 replace('let txtOrig=vPre.toString(base);', 'let txtOrig=fmt?.anacodeRadix?globalThis.AnacodeVcdrom.formatValue(vPre,mPre,fmt.anacodeWidth,fmt.anacodeRadix):vPre.toString(base);');
+// Zero is a real numeric bus value and must remain visible in the selected radix.
+replace('if(vPre||mPre){if(xPre>width', 'if(vPre||mPre||lane.format?.anacodeRadix){if(xPre>width');
 // ASCII bus contents are text, never SVG. Escape after native label truncation
 // so partial entity sequences cannot alter either the title or visible label.
 replace('["title",txtOrig],txtShort]', '["title",globalThis.AnacodeVcdrom?.escapeSvgText(txtOrig)??txtOrig],globalThis.AnacodeVcdrom?.escapeSvgText(txtShort)??txtShort]');

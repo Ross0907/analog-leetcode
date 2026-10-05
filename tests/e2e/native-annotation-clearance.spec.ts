@@ -69,3 +69,27 @@ test('junction dots use a larger radius only at three physical connected branche
   expect(await page.evaluate(() => (window as unknown as NativeWindow).junctions.some(p => p.x === 192 && p.y === 80))).toBe(false);
   await page.screenshot({ path: '.tmp/anacod3-physical-junctions.png' });
 });
+
+test('BJT base, collector and emitter show junction dots where two wires meet the device post', async ({ page }) => {
+  await page.goto(`/circuitjs/circuitjs.html?running=false&hideSidebar=true&hideInfoBox=true&cct=${encodeURIComponent('$ 4 .000001 10 50 5 50')}`);
+  await page.waitForFunction(() => Boolean((window as unknown as NativeWindow).CircuitJS1?.ensureAnalyzed && (window as unknown as NativeWindow).AnaCodeKiCad?.ready));
+  await page.evaluate(() => {
+    const w = window as unknown as NativeWindow, ctx = document.querySelector('canvas')!.getContext('2d')!, arc = ctx.arc.bind(ctx), fill = ctx.fillRect.bind(ctx);
+    w.junctions = [];
+    ctx.fillRect = (x,y,width,height) => { if(width > 400 && height > 400) w.junctions = []; fill(x,y,width,height); };
+    ctx.arc = (x,y,radius,start,end,counterclockwise) => { if(radius === 3 && ctx.globalAlpha > .5) w.junctions.push({x,y,radius}); arc(x,y,radius,start,end,counterclockwise); };
+  });
+  for(const polarity of [1,-1]) {
+    const posts = await page.evaluate(polarity => {
+      const a = (window as unknown as NativeWindow).CircuitJS1;
+      const circuit = `$ 4 .000001 10 50 5 50\nt 160 160 224 160 0 ${polarity} 0 0 120 default`;
+      a.importCircuit(circuit,false);
+      const transistor = a.getElements()[0];
+      const posts = Array.from({length:3},(_,p)=>({x:transistor.getPostX(p),y:transistor.getPostY(p)}));
+      const wires = posts.flatMap((p,index) => [`w ${p.x} ${p.y} ${p.x+(index===0?-64:64)} ${p.y} 0`, `w ${p.x} ${p.y} ${p.x} ${p.y+(index===2?64:-64)} 0`]);
+      a.importCircuit([circuit,...wires].join('\n'),false); a.setTheme('light'); a.ensureAnalyzed!();
+      return posts;
+    },polarity);
+    await expect.poll(()=>page.evaluate(posts => posts.every(p => (window as unknown as NativeWindow).junctions.some(dot=>dot.x===p.x && dot.y===p.y)),posts)).toBe(true);
+  }
+});
