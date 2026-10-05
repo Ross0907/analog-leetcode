@@ -47,10 +47,12 @@ objects, values, direction and ordering, then requests native analysis once.
 Saved user documents and file imports retain their authored coordinates. Unsupported
 artwork retains the separately attributed KiCad or native CircuitJS rendering.
 
-The fitted Analog Canvas bodies use a finer 1.25-world-unit stroke, separate
-from the two-unit native wires and display leads. The adapter compensates for
+The fitted R/C/L bodies use the same two-world-unit stroke as native wires
+and display leads; active-device bodies retain a finer 1.25-unit stroke.
+The adapter compensates for
 symbol-fit scale while normal viewport zoom scales everything together. BJT
-fitting translates the unchanged body toward its base by at most ten units,
+fitting uses the full available native pin pitch (without the previous extra
+30% reduction) and translates the unchanged body toward its base by at most ten units,
 extending collector/emitter clearance to the original connected native posts.
 The exact upstream `opamp-wide` definition has
 40-unit input pitch: a uniform .8 scale matches CircuitJS's normal 32-unit

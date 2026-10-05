@@ -9,6 +9,7 @@ test('VCD cursor lookup observes event boundaries and does not use a future samp
 test('HDL bus radices preserve width, signedness, ASCII and values above Number precision',()=>{
   assert.equal(formatValue(128,0,8,'binary'),'10000000');assert.equal(formatValue(128,0,8,'octal'),'200');assert.equal(formatValue(128,0,8,'hex'),'80');
   assert.equal(formatValue(128,0,8,'unsigned'),'128');assert.equal(formatValue(128,0,8,'signed'),'-128');assert.equal(formatValue(65,0,8,'ascii'),'"A"');
+  assert.equal(formatValue(0b00000101,0,8,'unsigned'),'5');assert.equal(formatValue(0,0,8,'unsigned'),'0');
   assert.equal(formatValue('0xffffffffffffffff',0,64,'signed'),'-1');assert.equal(formatValue('0x20000000000001',0,64,'unsigned'),'9007199254740993');
   assert.equal(formatValue(0x4142,0,16,'ascii'),'"AB"');assert.equal(formatValue(0,0,8,'ascii'),'"\\x00"');
   assert.equal(formatValue(0x225c,0,16,'ascii'),'"\\"\\\\"');

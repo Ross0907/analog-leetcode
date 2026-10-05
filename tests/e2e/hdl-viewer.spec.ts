@@ -1,5 +1,33 @@
 import {test,expect} from '@playwright/test';
 
+test('HDL columns resize independently, persist, and lock protects the timeline',async({page})=>{
+  await page.goto('/hdl/viewer/index.html');
+  const vcd='$timescale 1 ns $end\n$scope module tb $end\n$var wire 8 ! count $end\n$upscope $end\n$enddefinitions $end\n#0\nb00000000 !\n#10\nb00000101 !\n#20\nb00000010 !\n#30\n';
+  const load=async()=>{await page.evaluate(vcd=>window.postMessage({type:'anacode-vcd',vcd},location.origin),vcd);await expect(page.getByLabel('Digital waveform timeline')).toHaveAttribute('data-viewer-ready','true');};
+  await load();
+  const timeline=page.getByLabel('Digital waveform timeline'),pane=page.getByRole('separator',{name:'Resize signal table',exact:true}),columns=page.getByRole('separator',{name:'Resize signal and value columns',exact:true});
+  const initial=Number(await pane.getAttribute('aria-valuenow'));
+  const bounds=(await pane.boundingBox())!;await page.mouse.move(bounds.x+bounds.width/2,bounds.y+50);await page.mouse.down();await page.mouse.move(bounds.x+123,bounds.y+50,{steps:8});await page.mouse.up();
+  await expect.poll(async()=>Number(await pane.getAttribute('aria-valuenow'))).toBeGreaterThan(initial+110);
+  const resized=Number(await pane.getAttribute('aria-valuenow')),nameWidth=Number(await columns.getAttribute('aria-valuenow'));
+  await columns.focus();await columns.press('Shift+ArrowRight');await expect.poll(async()=>Number(await columns.getAttribute('aria-valuenow'))).toBe(nameWidth+40);
+  await expect(pane).toHaveAttribute('aria-valuenow',String(resized));
+  await page.getByRole('button',{name:'Signal options: tb.count'}).click({button:'right'});await page.getByRole('menuitemradio',{name:'Unsigned decimal',exact:true}).click();
+  await expect(page.getByLabel('Value of tb.count',{exact:true})).toHaveText('0');
+  await expect(page.locator('.wd-values title').first()).toHaveText('0');
+  const input=page.getByRole('textbox',{name:'Waveform cursor position'});await input.fill('12 ns');await input.press('Enter');await expect(page.getByLabel('Value of tb.count',{exact:true})).toHaveText('5');
+  expect(await page.locator('.wd-values title').allTextContents()).toContain('5');
+  const lock=page.getByRole('button',{name:'Lock waveform view'});await lock.click();await expect(lock).toHaveAttribute('aria-pressed','true');await expect(input).toBeDisabled();
+  const cursorBefore=await page.getByLabel('Waveform cursor time',{exact:true}).getAttribute('data-time-seconds'),gridBefore=await page.locator('.wd-grid').innerHTML();
+  await timeline.click({position:{x:resized+100,y:55}});await timeline.press('Alt+ArrowRight');await timeline.press('Alt+.');await timeline.hover({position:{x:resized+100,y:55}});await page.keyboard.down('Control');await page.mouse.wheel(0,-120);await page.keyboard.up('Control');
+  await expect(page.getByLabel('Waveform cursor time',{exact:true})).toHaveAttribute('data-time-seconds',cursorBefore!);expect(await page.locator('.wd-grid').innerHTML()).toBe(gridBefore);
+  await columns.focus();await columns.press('ArrowLeft');await expect.poll(async()=>Number(await columns.getAttribute('aria-valuenow'))).toBe(nameWidth+30);
+  await lock.click();await expect(input).toBeEnabled();await timeline.click({position:{x:resized+100,y:55}});await expect(page.getByLabel('Waveform cursor time',{exact:true})).not.toHaveAttribute('data-time-seconds',cursorBefore!);
+  await page.reload();await load();await expect(pane).toHaveAttribute('aria-valuenow',String(resized));
+  await page.setViewportSize({width:390,height:844});await expect.poll(async()=>Number(await pane.getAttribute('aria-valuenow'))).toBeLessThan(220);
+  expect(await timeline.evaluate(node=>{const side=node.querySelector('.signal-pane')!.getBoundingClientRect(),cursor=node.querySelector<HTMLElement>('.time-cursor')!;return cursor.hidden||cursor.getBoundingClientRect().left>=side.right;})).toBeTruthy();
+});
+
 test('HDL waveform values use the real cursor sample with radix, analog, themes and fixed columns',async({page})=>{
   test.setTimeout(90_000);
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
@@ -82,7 +110,7 @@ test('HDL viewer handles zero-time values and scrolls signal rows without moving
   await page.evaluate(vcd=>window.postMessage({type:'anacode-vcd',vcd},location.origin),many);
   await expect(page.getByLabel('Value of tb.flag0',{exact:true})).toHaveText('0');
   const header=page.locator('.signal-header'),top=(await header.boundingBox())!.y;
-  await page.locator('.signal-scroll').hover();await page.mouse.wheel(0,1500);
+  await page.locator('.signal-scroll').hover({position:{x:20,y:50}});await page.mouse.wheel(0,1500);
   await expect(page.getByLabel('Value of tb.flag79',{exact:true})).toHaveText('0');
   expect((await header.boundingBox())!.y).toBe(top);
   const markup='$timescale 1 ns $end\n$scope module tb $end\n$var wire 32 ! markup $end\n$upscope $end\n$enddefinitions $end\n#0\nb'+(0x3c672f3e).toString(2)+' !\n#10\n';

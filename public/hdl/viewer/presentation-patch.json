@@ -4,8 +4,8 @@
   "input": "source/vcdrom-1.6.0.js.gz",
   "inputSha256": "85588198b8944e889b9ecb504f1ca8db5f1b252b1b962dc2e8f7afcd7c3b80a8",
   "patch": "source/patch-vcdrom.mjs",
-  "patchSha256": "784ae2f53829071010d5b993da8e6a832ab9924f7656ca5f48ae1fd4ebdec783",
-  "outputSha256": "8d9c8001718dcb4dc4f56bab7b7b9e6c1779c1b8217037e1edf2eb4e3146b242",
+  "patchSha256": "3433ffd1e54f5afe6b6b2653662232858d2bd87cd5de9a2259ee737a5f48d8d4",
+  "outputSha256": "c71c8a7198caef6a0a09467aa252a377f1168378dda3a62d5307627a7f459b36",
   "changes": [
     "Expose existing parsed lanes and native viewport to the local presentation adapter",
     "Native digital draw skips lanes explicitly shown as analog numeric traces",

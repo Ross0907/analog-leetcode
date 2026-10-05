@@ -178,7 +178,7 @@
     {
       "path": "viewer/presentation-patch.json",
       "bytes": 762,
-      "sha256": "222f46506bc9a412814fbbd157c329988e486ad88868b39359ba7ffc22b58c6f"
+      "sha256": "859803e3e6a3c2c7c3c7290a3a82f9f7770cde5d36d7828b92a8fa2061288b56"
     },
     {
       "path": "viewer/signal-values.mjs",
@@ -187,8 +187,8 @@
     },
     {
       "path": "viewer/source/patch-vcdrom.mjs",
-      "bytes": 3135,
-      "sha256": "784ae2f53829071010d5b993da8e6a832ab9924f7656ca5f48ae1fd4ebdec783"
+      "bytes": 3318,
+      "sha256": "3433ffd1e54f5afe6b6b2653662232858d2bd87cd5de9a2259ee737a5f48d8d4"
     },
     {
       "path": "viewer/source/vcdrom-1.6.0.js.gz",
@@ -202,18 +202,18 @@
     },
     {
       "path": "viewer/vcdrom.js",
-      "bytes": 1150275,
-      "sha256": "8d9c8001718dcb4dc4f56bab7b7b9e6c1779c1b8217037e1edf2eb4e3146b242"
+      "bytes": 1150302,
+      "sha256": "c71c8a7198caef6a0a09467aa252a377f1168378dda3a62d5307627a7f459b36"
     },
     {
       "path": "viewer/viewer-shell.js",
-      "bytes": 17105,
-      "sha256": "36423468fa6b67ba843159c9efe957f6f5e17d4d62fd0a228da21b8542631a16"
+      "bytes": 21997,
+      "sha256": "b83504111a5ffd5f1d50ff32811a6929d8b048dde65e55ffa3416d72263ad6b3"
     },
     {
       "path": "viewer/viewer.css",
-      "bytes": 7155,
-      "sha256": "dc0d27779fc62bfa692e0d67850fa86d14314f348e594919599b5ae58dc386d5"
+      "bytes": 7633,
+      "sha256": "d965ebaf05a5a80ca032c2b49306200cdc0dd75a55c1a77588f681a3bf9d05ad"
     }
   ]
 }

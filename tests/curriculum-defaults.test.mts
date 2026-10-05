@@ -5,7 +5,7 @@ import { textbookLessonSources } from '../lib/native-lesson-format';
 import { curriculumVariants } from './fixtures/curriculum-witnesses';
 
 test('every catalogue lesson declares native circuits, real probes and a bounded useful acquisition window', () => {
-  assert.equal(challenges.length, 41);
+  assert.equal(challenges.length, 45);
   for (const lesson of challenges) {
     assert.ok(lesson.nativeCircuit?.startsWith('$ '), lesson.slug);
     assert.doesNotMatch(lesson.nativeCircuit!, /^R /m, 'authored rail supplies use vertical source/ground returns');

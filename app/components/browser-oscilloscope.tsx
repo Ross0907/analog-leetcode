@@ -448,6 +448,22 @@ function OscilloscopePlot({
     else setCursorB(normalized);
   }
 
+  function setCursorPosition(cursor: 'a' | 'b', value: number) {
+    const transformed = transformX(value, effectiveXScale), span = xView.maximum - xView.minimum;
+    let minimum = xView.minimum;
+    if (transformed < minimum || transformed > xView.maximum) {
+      const center = clamp(transformed, xBounds.transformedMin + span / 2, xBounds.transformedMax - span / 2);
+      minimum = center - span / 2;
+      setXCenter(center);
+      // Preserve the other cursor's physical position where it remains visible.
+      const other = cursor === 'a' ? cursorB : cursorA;
+      const next = clamp((xView.minimum + other * span - minimum) / span, 0, 1);
+      if (cursor === 'a') setCursorB(next); else setCursorA(next);
+    }
+    const normalized = clamp((transformed - minimum) / span, 0, 1);
+    if (cursor === 'a') setCursorA(normalized); else setCursorB(normalized);
+  }
+
   function canvasPoint(event: { clientX: number; clientY: number }) {
     const bounds = canvasRef.current!.getBoundingClientRect();
     return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
@@ -461,7 +477,7 @@ function OscilloscopePlot({
     event.preventDefault(); closeTraceMenu(); canvas.setPointerCapture(event.pointerId);
     if (event.button === 1 || event.shiftKey) {
       panningRef.current = { clientX: event.clientX, center: (xView.minimum + xView.maximum) / 2 };
-    } else if (event.altKey) {
+    } else if (event.altKey || Math.min(Math.abs(point.x - plot.left - cursorA * plot.width), Math.abs(point.x - plot.left - cursorB * plot.width)) <= 7) {
       const normalized = (point.x - plot.left) / plot.width;
       const cursor = Math.abs(normalized - cursorA) <= Math.abs(normalized - cursorB) ? "a" : "b";
       draggingCursorRef.current = cursor; updateCursorFromPointer(event, cursor);
@@ -547,6 +563,43 @@ function OscilloscopePlot({
   const visibleCount = preparedTraces.length;
   const totalSamples = Math.min(x.length, sampleLimit);
   const pointLabel = domain === 'time' ? 'samples' : 'plotted points';
+  const horizontalCursors = (<div className="anacode-scope__cursor-panel" style={styles.cursorPanel}>
+        <div style={styles.cursorHeading}><SlidersHorizontal size={15} aria-hidden="true" /><strong>{domain === "time" ? "Time" : domain === "frequency" ? "Frequency" : "Sweep"} cursors</strong></div>
+        <div style={styles.cursorControl}>
+          <span style={{ ...styles.cursorBadge, background: "#e4e4e7", color: "#111214" }}>A</span>
+          <input
+            id={`${controlId}-cursor-a`}
+            aria-label="Cursor A slider"
+            type="range"
+            min="0"
+            max="1000"
+            value={Math.round(cursorA * 1000)}
+            onChange={(event) => setCursorA(Number(event.currentTarget.value) / 1000)}
+            style={styles.range}
+          />
+          <CursorValueInput label="Cursor A position" value={cursorReadout.cursorA} minimum={xBounds.minimum} maximum={xBounds.maximum} unit={effectiveXUnit} style={styles.select} onChange={value => setCursorPosition('a', value)}/>
+        </div>
+        <div style={styles.cursorControl}>
+          <span style={{ ...styles.cursorBadge, background: "#22c7df", color: "#081012" }}>B</span>
+          <input
+            id={`${controlId}-cursor-b`}
+            aria-label="Cursor B slider"
+            type="range"
+            min="0"
+            max="1000"
+            value={Math.round(cursorB * 1000)}
+            onChange={(event) => setCursorB(Number(event.currentTarget.value) / 1000)}
+            style={styles.range}
+          />
+          <CursorValueInput label="Cursor B position" value={cursorReadout.cursorB} minimum={xBounds.minimum} maximum={xBounds.maximum} unit={effectiveXUnit} style={styles.select} onChange={value => setCursorPosition('b', value)}/>
+        </div>
+        <div style={styles.deltaReadout} aria-live="polite">
+          <span>Δ{effectiveXLabel.toLowerCase()}</span>
+          <strong>{formatQuantity(cursorReadout.deltaX, effectiveXUnit)}</strong>
+          {cursorReadout.reciprocalDeltaX !== null && <small>1/Δt {formatQuantity(cursorReadout.reciprocalDeltaX, "Hz")}</small>}
+        </div>
+      </div>);
+
   const scopeSummary = `${title}. ${yLabel} against ${effectiveXLabel}. ${visibleCount} visible ${visibleCount === 1 ? "channel" : "channels"}; ${totalSamples.toLocaleString()} ${pointLabel}. Cursor delta ${formatQuantity(cursorReadout.deltaX, effectiveXUnit)}.`;
 
   return (
@@ -616,7 +669,8 @@ function OscilloscopePlot({
       </div>
       {hasOffsets && <p style={styles.interactionHint}>Display offsets separate traces. The readout table uses actual values; axis cursors use display coordinates. <button type="button" style={styles.iconButton} onClick={() => { setAppearances(current => ({ ...current, ...Object.fromEntries(activeTraces.map(trace => [trace.id, { ...current[trace.id], offset: 0 }])) })); setYPerDivision(null); setYCenter(null); }}>Clear offsets</button></p>}
       {exportError && <p role="alert" style={styles.interactionHint}>{exportError}</p>}
-      <p style={styles.interactionHint}>Drag to zoom · Ctrl+wheel: both axes · Ctrl+Shift+wheel: horizontal · Alt+wheel: vertical · Shift-drag to pan · Right-click a trace to style · Double-click to reset</p>
+      <p style={styles.interactionHint}>Drag a cursor line to move it · Drag elsewhere to zoom · Ctrl+wheel: both axes · Ctrl+Shift+wheel: horizontal · Alt+wheel: vertical · Shift-drag to pan · Right-click a trace to style · Double-click to reset</p>
+      {domain === "frequency" && horizontalCursors}
       <details className="anacode-scope__details"><summary style={styles.detailsSummary}>Measurements, cursors{domain === 'time' ? ' & trigger' : ''}</summary>
       <div style={{ ...styles.controls, padding: "10px 12px" }}>
           <button type="button" style={styles.iconButton} onClick={() => setXPerDivision((xView.maximum - xView.minimum) / 20)} aria-label="Zoom in waveform">Zoom +</button>
@@ -713,42 +767,7 @@ function OscilloscopePlot({
       </label>
 
 
-      <div className="anacode-scope__cursor-panel" style={styles.cursorPanel}>
-        <div style={styles.cursorHeading}><SlidersHorizontal size={15} aria-hidden="true" /><strong>{domain === "time" ? "Time" : domain === "frequency" ? "Frequency" : "Sweep"} cursors</strong></div>
-        <div style={styles.cursorControl}>
-          <span style={{ ...styles.cursorBadge, background: "#e4e4e7", color: "#111214" }}>A</span>
-          <input
-            id={`${controlId}-cursor-a`}
-            aria-label="Cursor A slider"
-            type="range"
-            min="0"
-            max="1000"
-            value={Math.round(cursorA * 1000)}
-            onChange={(event) => setCursorA(Number(event.currentTarget.value) / 1000)}
-            style={styles.range}
-          />
-          <CursorValueInput label="Cursor A position" value={cursorReadout.cursorA} minimum={inverseTransformX(xView.minimum, effectiveXScale)} maximum={inverseTransformX(xView.maximum, effectiveXScale)} unit={effectiveXUnit} style={styles.select} onChange={value => setCursorA((transformX(value, effectiveXScale) - xView.minimum) / (xView.maximum - xView.minimum))}/>
-        </div>
-        <div style={styles.cursorControl}>
-          <span style={{ ...styles.cursorBadge, background: "#22c7df", color: "#081012" }}>B</span>
-          <input
-            id={`${controlId}-cursor-b`}
-            aria-label="Cursor B slider"
-            type="range"
-            min="0"
-            max="1000"
-            value={Math.round(cursorB * 1000)}
-            onChange={(event) => setCursorB(Number(event.currentTarget.value) / 1000)}
-            style={styles.range}
-          />
-          <CursorValueInput label="Cursor B position" value={cursorReadout.cursorB} minimum={inverseTransformX(xView.minimum, effectiveXScale)} maximum={inverseTransformX(xView.maximum, effectiveXScale)} unit={effectiveXUnit} style={styles.select} onChange={value => setCursorB((transformX(value, effectiveXScale) - xView.minimum) / (xView.maximum - xView.minimum))}/>
-        </div>
-        <div style={styles.deltaReadout} aria-live="polite">
-          <span>Δ{effectiveXLabel.toLowerCase()}</span>
-          <strong>{formatQuantity(cursorReadout.deltaX, effectiveXUnit)}</strong>
-          {cursorReadout.reciprocalDeltaX !== null && <small>1/Δt {formatQuantity(cursorReadout.reciprocalDeltaX, "Hz")}</small>}
-        </div>
-      </div>
+      {domain !== "frequency" && horizontalCursors}
 
       <div style={styles.cursorPanel}>
         <strong style={styles.cursorHeading}>{hasOffsets ? 'Display-axis cursors' : 'Amplitude cursors'}</strong>

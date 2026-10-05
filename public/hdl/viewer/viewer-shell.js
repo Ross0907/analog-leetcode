@@ -25,7 +25,8 @@ function attach({container,deso,cm}){
   const {elo,pstate}=container,host=elo.container;
   const events=new AbortController(),cleanups=[];
   const listen=(target,type,callback,options={})=>target.addEventListener(type,callback,{...options,signal:events.signal});
-  let cursorTime=0,selected=null,menu=null,drawQueued=0,previousWidth=0;
+  let cursorTime=0,selected=null,menu=null,drawQueued=0,previousWidth=0,locked=false,preferredSide=null,nameFraction=.5;
+  try{const saved=JSON.parse(localStorage.getItem('anacode.hdl.columns')||'null');if(Number.isFinite(saved?.width)&&saved.width>=100&&saved.width<=1600)preferredSide=saved.width;if(Number.isFinite(saved?.nameFraction))nameFraction=clamp(saved.nameFraction,.15,.85);}catch{/* Storage may be unavailable. */}
   const lanes=lanesFrom(deso.wires),laneByPath=new Map(lanes.map(lane=>[lane.path,lane])),nativeRender=deso.render;
   deso.view=lanes;pstate.numLanes=lanes.length;
   host.classList.add('anacode-viewer');host.setAttribute('aria-label','Digital waveform timeline');
@@ -40,10 +41,24 @@ function attach({container,deso,cm}){
   cursorError.setAttribute('role','alert');cursorError.hidden=true;
   cursorControls.append(element('span','','Cursor'),cursorInput,cursorReadout,cursorError);
   side.append(header,body,cursorControls);host.append(side);
+  const paneDivider=element('div','signal-resizer pane-resizer'),columnDivider=element('div','signal-resizer column-resizer');
+  for(const [divider,label]of [[paneDivider,'Resize signal table'],[columnDivider,'Resize signal and value columns']]){divider.tabIndex=0;divider.setAttribute('role','separator');divider.setAttribute('aria-orientation','vertical');divider.setAttribute('aria-label',label);divider.title=label+' · drag, or use Left/Right arrows';side.append(divider);}
   const analog=svg('svg',{class:'analog-lanes','aria-label':'Analog signal display'});host.append(analog);
   const cursor=element('div','time-cursor'),cursorLabel=element('span','');cursor.append(cursorLabel);host.append(cursor);
   const tools=element('div','timeline-tools');
   for(const [label,text,action]of [['Fit timeline','Fit',()=>fit()],['Zoom out timeline','−',()=>zoom(2/3)],['Zoom in timeline','+',()=>zoom(1.5)]]){const button=element('button','',text);button.type='button';button.setAttribute('aria-label',label);listen(button,'click',action);tools.append(button);}host.append(tools);
+  const lockButton=element('button','','Lock');lockButton.type='button';lockButton.setAttribute('aria-label','Lock waveform view');lockButton.setAttribute('aria-pressed','false');lockButton.title='Prevent accidental pan, zoom, and cursor changes';tools.append(lockButton);
+  listen(lockButton,'click',()=>{locked=!locked;lockButton.textContent=locked?'Unlock':'Lock';lockButton.setAttribute('aria-pressed',String(locked));host.dataset.locked=String(locked);cursorInput.disabled=locked;for(const button of tools.querySelectorAll('button'))if(button!==lockButton)button.disabled=locked;});
+  function columnBounds(){const width=host.clientWidth;return [Math.min(128,width*.45),Math.max(Math.min(128,width*.45),width*(width<600?.55:.72))];}
+  function saveColumns(){try{localStorage.setItem('anacode.hdl.columns',JSON.stringify({width:preferredSide??pstate.sidebarWidth,nameFraction}));}catch{/* Keep resizing usable without storage. */}}
+  function resizeColumn(divider,position){const [min,max]=columnBounds();if(divider===paneDivider)preferredSide=clamp(position,min,max);else nameFraction=clamp(position,Math.min(64,pstate.sidebarWidth*.35),pstate.sidebarWidth-Math.min(64,pstate.sidebarWidth*.35))/pstate.sidebarWidth;schedule();}
+  for(const divider of [paneDivider,columnDivider]){
+    listen(divider,'pointerdown',event=>{if(event.button!==0)return;event.preventDefault();event.stopPropagation();divider.focus();divider.setPointerCapture(event.pointerId);});
+    listen(divider,'pointermove',event=>{if(!divider.hasPointerCapture(event.pointerId))return;event.preventDefault();event.stopPropagation();resizeColumn(divider,event.clientX-host.getBoundingClientRect().left);});
+    const finish=event=>{if(divider.hasPointerCapture(event.pointerId)){divider.releasePointerCapture(event.pointerId);saveColumns();}};
+    listen(divider,'pointerup',finish);listen(divider,'pointercancel',finish);
+    listen(divider,'keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();event.stopPropagation();const [min,max]=divider===paneDivider?columnBounds():[Math.min(64,pstate.sidebarWidth*.35),pstate.sidebarWidth-Math.min(64,pstate.sidebarWidth*.35)];const current=divider===paneDivider?pstate.sidebarWidth:pstate.sidebarWidth*nameFraction;resizeColumn(divider,event.key==='Home'?min:event.key==='End'?max:current+(event.key==='ArrowLeft'?-1:1)*(event.shiftKey?40:10));render();saveColumns();});
+  }
   function closeMenu(){menu?.remove();menu=null;}
   function openMenu(lane,x,y){
     closeMenu();selected=lane;menu=element('div','signal-menu');menu.setAttribute('role','menu');menu.setAttribute('aria-label','Signal display: '+lane.path);
@@ -130,28 +145,34 @@ function attach({container,deso,cm}){
   function render(){
     if(!host.isConnected)return;
     const width=host.clientWidth,height=host.clientHeight;if(width<1||height<1)return;
-    const sideWidth=clamp(Math.round(width*.36),Math.min(128,width*.5),300),span=Math.max(1,deso.time);
+    const [minSide,maxSide]=columnBounds(),sideWidth=clamp(preferredSide??Math.min(300,Math.round(width*.36)),minSide,maxSide),span=Math.max(1,deso.time);
+    const oldSide=pstate.sidebarWidth,oldMinimum=pstate.xScaleMin,oldScale=pstate.xScale,oldOffset=pstate.xOffset;
     pstate.width=width;pstate.height=height;pstate.sidebarWidth=sideWidth;pstate.xScaleMin=(width-sideWidth)/span;pstate.xScaleMax=Math.max(1000,pstate.xScaleMin);
     if(!previousWidth||!Number.isFinite(pstate.xScale)||!Number.isFinite(pstate.xOffset)){pstate.xScale=pstate.xScaleMin;pstate.xOffset=sideWidth;}else{pstate.xScale=Math.max(pstate.xScaleMin,pstate.xScale);}
+    if(previousWidth&&(previousWidth!==width||oldSide!==sideWidth)){const leftTime=(oldSide-oldOffset)/oldScale;pstate.xScale=clamp(oldScale/oldMinimum*pstate.xScaleMin,pstate.xScaleMin,pstate.xScaleMax);pstate.xOffset=sideWidth-leftTime*pstate.xScale;}
     previousWidth=width;pstate.xOffset=clamp(pstate.xOffset,width-pstate.xScale*span,sideWidth);pstate.xCursor=clamp(cursorTime*pstate.xScale+pstate.xOffset,sideWidth,width);pstate.yOffset=body.scrollTop;
-    host.style.setProperty('--signal-width',sideWidth+'px');host.style.setProperty('--lane-offset',-pstate.yOffset+'px');
+    const nameWidth=clamp(sideWidth*nameFraction,Math.min(64,sideWidth*.35),sideWidth-Math.min(64,sideWidth*.35));
+    host.style.setProperty('--signal-width',sideWidth+'px');host.style.setProperty('--signal-name-width',nameWidth+'px');host.style.setProperty('--lane-offset',-pstate.yOffset+'px');
+    for(const [divider,min,max,current]of [[paneDivider,minSide,maxSide,sideWidth],[columnDivider,Math.min(64,sideWidth*.35),sideWidth-Math.min(64,sideWidth*.35),nameWidth]]){divider.setAttribute('aria-valuemin',String(Math.round(min)));divider.setAttribute('aria-valuemax',String(Math.round(max)));divider.setAttribute('aria-valuenow',String(Math.round(current)));divider.setAttribute('aria-valuetext',Math.round(current)+' pixels');}
     nativeRender();
     // Centered native tick captions at the plot edge would otherwise be cut in half.
     for(const label of elo.grid.querySelectorAll('text.wd-grid-time')){const x=Number(label.getAttribute('x')),half=label.getComputedTextLength()/2;label.style.textAnchor='middle';if(x-half<sideWidth+4){label.style.textAnchor='start';label.setAttribute('x',String(sideWidth+4));}else if(x+half>width-4){label.style.textAnchor='end';label.setAttribute('x',String(width-4));}}
     rows();drawAnalog();drawCursor();
   }
   function schedule(){if(!drawQueued)drawQueued=requestAnimationFrame(()=>{drawQueued=0;render();});}
-  function fit(){pstate.xScale=pstate.xScaleMin;pstate.xOffset=pstate.sidebarWidth;render();}
-  function zoom(factor){const anchor=clamp(cursorTime*pstate.xScale+pstate.xOffset,pstate.sidebarWidth,pstate.width),time=(anchor-pstate.xOffset)/pstate.xScale;pstate.xScale=clamp(pstate.xScale*factor,pstate.xScaleMin,pstate.xScaleMax);pstate.xOffset=anchor-time*pstate.xScale;render();}
-  function setCursor(event){const rect=host.getBoundingClientRect(),x=event.clientX-rect.left;if(x<pstate.sidebarWidth||event.clientY-rect.top<24)return;cursorTime=clamp((x-pstate.xOffset)/pstate.xScale,0,deso.time);pstate.xCursor=x;drawCursor();updateValues();}
+  function fit(){if(locked)return;pstate.xScale=pstate.xScaleMin;pstate.xOffset=pstate.sidebarWidth;render();}
+  function zoom(factor){if(locked)return;const anchor=clamp(cursorTime*pstate.xScale+pstate.xOffset,pstate.sidebarWidth,pstate.width),time=(anchor-pstate.xOffset)/pstate.xScale;pstate.xScale=clamp(pstate.xScale*factor,pstate.xScaleMin,pstate.xScaleMax);pstate.xOffset=anchor-time*pstate.xScale;render();}
+  function setCursor(event){if(locked)return;const rect=host.getBoundingClientRect(),x=event.clientX-rect.left;if(x<pstate.sidebarWidth||event.clientY-rect.top<24)return;cursorTime=clamp((x-pstate.xOffset)/pstate.xScale,0,deso.time);pstate.xCursor=x;drawCursor();updateValues();}
+  for(const type of ['pointerdown','pointermove','pointerup','mousedown','mousemove','mouseup','dblclick'])listen(host,type,event=>{if(locked&&!event.target.closest('button,input,.signal-pane')){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
   listen(host,'pointerdown',event=>{if(event.button!==0||event.target.closest('button,.signal-pane'))return;closeMenu();host.focus();setCursor(event);host.setPointerCapture(event.pointerId);}, {capture:true});
   listen(host,'pointermove',event=>{if(host.hasPointerCapture(event.pointerId))setCursor(event);});
   listen(host,'pointerup',event=>{if(host.hasPointerCapture(event.pointerId))host.releasePointerCapture(event.pointerId);});
   listen(host,'contextmenu',event=>{const rect=host.getBoundingClientRect(),index=Math.floor((event.clientY-rect.top-pstate.topBarHeight+pstate.yOffset)/pstate.yStep);if(event.clientX-rect.left>=pstate.sidebarWidth&&lanes[index]){event.preventDefault();openMenu(lanes[index],event.clientX,event.clientY);}});
   listen(body,'scroll',schedule);
-  listen(host,'wheel',event=>{event.preventDefault();event.stopImmediatePropagation();const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?host.clientHeight:1);if(event.ctrlKey||event.metaKey){zoom(delta>0?2/3:1.5);}else if(event.shiftKey){pstate.xOffset-=delta;render();}else{body.scrollTop+=delta;schedule();}}, {capture:true,passive:false});
+  listen(host,'wheel',event=>{event.preventDefault();event.stopImmediatePropagation();if(locked&&(event.ctrlKey||event.metaKey||event.shiftKey||!event.target.closest('.signal-pane')))return;const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?host.clientHeight:1);if(event.ctrlKey||event.metaKey){zoom(delta>0?2/3:1.5);}else if(event.shiftKey){pstate.xOffset-=delta;render();}else{body.scrollTop+=delta;schedule();}}, {capture:true,passive:false});
   listen(host,'keydown',event=>{
     if(event.key==='Escape'){closeMenu();return;}
+    if(locked&&!event.target.closest('button,input,.signal-pane')&&event.key!=='Tab'){event.preventDefault();event.stopImmediatePropagation();return;}
     if(!event.altKey)return;
     const action=({'0':fit,'=':()=>zoom(1.5),'+':()=>zoom(1.5),'-':()=>zoom(2/3),',':()=>{pstate.xOffset+=pstate.width*.2;render();},'.':()=>{pstate.xOffset-=pstate.width*.2;render();},'[':()=>{pstate.xOffset=pstate.sidebarWidth;render();},']':()=>{pstate.xOffset=pstate.width-pstate.xScale*Math.max(1,deso.time);render();}})[event.key];
     if(action){event.preventDefault();event.stopImmediatePropagation();action();}

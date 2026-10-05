@@ -2,6 +2,8 @@
 
 The waveform footer accepts an exact cursor time (for example `12.345 ns` or `1.2u`). Press Enter to apply or Escape to revert. Values outside the recorded interval are rejected; displayed signal values remain the real last VCD event at or before the selected time.
 
+Drag the table's right edge to resize the fixed Signal/Value area, or drag the divider between Signal and Value to adjust those columns independently. Both dividers support Left/Right, Shift for larger steps, and Home/End; their widths are remembered locally and bounded to preserve timeline space on narrow screens. **Lock** protects the waveform's pan, zoom and cursor position until **Unlock** is selected. Signal options, vertical table scrolling and column resizing remain available while locked. Decimal values have no leading zeroes, and zero-valued bus intervals display `0`.
+
 `/hdl` is the Verilog and SystemVerilog practice track, reachable through **HDL Practice** in desktop/mobile navigation, the home page, and the practice-track switch above both problem libraries. Search, difficulty, topic and local pass-status filters help find an exercise. The six original exercises cover a word multiplexer, saturating adder, enabled counter, flash-ADC thermometer encoder, PWM DAC and a 4-bit SAR controller. The playground opens a working counter example.
 
 ## Execution and results

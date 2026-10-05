@@ -30,6 +30,7 @@ test('compact description, schematic width/height and probe drawer remain adjust
 test('capture stays beside the schematic and probe artwork stays compact through native zoom', async ({ page }) => {
   await page.goto('/problems/rc-cutoff-1khz');
   await expect(page.getByRole('button', { name: 'Capture all probes', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Circuit probes', exact: true }).click();
   const editor = page.frameLocator('iframe[title="CircuitJS schematic editor"]');
   const frame = page.frames().find(frame => frame.url().includes('/circuitjs/circuitjs.html'))!;
   const overlay = page.getByRole('button', { name: /^Move probe 1 / });
