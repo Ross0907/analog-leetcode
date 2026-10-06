@@ -28,7 +28,7 @@
     "@supabase/supabase-js": "2.117.2",
     "@tisoap/react-flow-smart-edge": "5.0.0",
     "@xyflow/react": "12.11.6",
-    "drizzle-orm": "0.45.2",
+    "drizzle-orm": "0.45.3",
     "eecircuit-engine": "file:vendor/eecircuit-engine",
     "fft.js": "4.0.4",
     "lucide-react": "1.45.0",
