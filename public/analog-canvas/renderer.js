@@ -63,21 +63,14 @@ export function analogPlacement(symbol, definition, element) {
       scale = targetLength / sourceLength;
       if (scale * Math.abs(sc / sourceLength) > Math.abs(tc / targetLength) + 1e-6) return null;
     }
-    // The upstream transistor geometry is unchanged; fitting reserves visible
-    // clearance between its collector/emitter elbow and the actual native post.
+    // The upstream transistor geometry is unchanged. Its collector/emitter
+    // terminal axis stays aligned with the actual native post axis.
   }
   const angle = Math.atan2(posts[b].y - posts[a].y, posts[b].x - posts[a].x) - Math.atan2((pins[b].y - pins[a].y) * reflection, pins[b].x - pins[a].x);
   const c = Math.cos(angle) * scale, s = Math.sin(angle) * scale;
   const center = { x: (pins[a].x + pins[b].x) / 2, y: (pins[a].y + pins[b].y) / 2 };
   const target = { x: (posts[a].x + posts[b].x) / 2, y: (posts[a].y + posts[b].y) / 2 };
   const matrix = [c, s, -s * reflection, c * reflection, target.x - c * center.x + s * center.y * reflection, target.y - s * center.x - c * center.y * reflection];
-  if (symbol.id === 'npn' || symbol.id === 'pnp') {
-    // Reserve visible collector/emitter lead length without changing body shape
-    // or any native terminal: move the body slightly toward its base post.
-    const dx = posts[0].x - target.x, dy = posts[0].y - target.y;
-    const distance = Math.hypot(dx, dy), extension = Math.min(10, distance * .16);
-    if (distance > 0) { matrix[4] += dx / distance * extension; matrix[5] += dy / distance * extension; }
-  }
   if (amplifier) {
     // Center its three-pin envelope between the real input and output posts.
     // Both input extensions remain straight along the symbol's horizontal axis.
@@ -152,7 +145,7 @@ export async function createAnalogCanvasRenderer() {
       pins.forEach((pin, index) => {
         const x = matrix[0] * pin.x + matrix[2] * pin.y + matrix[4], y = matrix[1] * pin.x + matrix[3] * pin.y + matrix[5], post = posts[index];
         context.moveTo(post.x, post.y);
-        if (!symbol.id.startsWith('opamp') && Math.abs(x - post.x) > 0.1 && Math.abs(y - post.y) > 0.1) context.lineTo(x, post.y);
+        if (!symbol.id.startsWith('opamp') && symbol.id !== 'npn' && symbol.id !== 'pnp' && Math.abs(x - post.x) > 0.1 && Math.abs(y - post.y) > 0.1) context.lineTo(x, post.y);
         context.lineTo(x, y);
       }); context.stroke();
       context.save();

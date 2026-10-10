@@ -171,7 +171,7 @@ test('HDL fills the window with three code/results layouts and bounded waveform 
   await viewer.getByRole('button',{name:/Shortcuts/}).click();
   const dialog=viewer.getByRole('dialog',{name:'Waveform shortcuts'});
   await expect(dialog).toBeVisible();
-  // Its shortcut table comes from the loaded VCDrom build, not a guessed list.
+  // Help describes the adapter's active controls rather than hidden upstream UI.
   expect(await dialog.locator('.wd-help-panel-row').count()).toBeGreaterThan(8);
   expect(await dialog.evaluate(element=>{
     const box=element.getBoundingClientRect();

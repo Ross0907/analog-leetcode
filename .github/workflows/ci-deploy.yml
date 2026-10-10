@@ -138,7 +138,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4.145.0"
+          wranglerVersion: "4.149.0"
           command: deploy --config dist/server/wrangler.json --secrets-file "${{ steps.deployment.outputs.secrets_file }}"
 
       - name: Remove temporary deployment secret file

@@ -162,13 +162,13 @@
     },
     {
       "path": "viewer/bridge.js",
-      "bytes": 4195,
-      "sha256": "2366658853b59bf30f57975d3722bcfdc66674a8627db87d16a8aa615b0e7723"
+      "bytes": 4900,
+      "sha256": "6d737f52f2ff7206b641d2fe0e329356eeef070fcf9df3271403513dff67ec0e"
     },
     {
       "path": "viewer/index.html",
-      "bytes": 984,
-      "sha256": "d077d5a19c8a4db00fb4c3b5583409b85aa7663d31b1868ae4b2b7086a1804fb"
+      "bytes": 1295,
+      "sha256": "2f2eba9a46bc2f90ecafc22c5a6482bc0265bb7198c25e1e08b9cbfe91f15c80"
     },
     {
       "path": "viewer/package-provenance.json",
@@ -207,13 +207,13 @@
     },
     {
       "path": "viewer/viewer-shell.js",
-      "bytes": 21997,
-      "sha256": "b83504111a5ffd5f1d50ff32811a6929d8b048dde65e55ffa3416d72263ad6b3"
+      "bytes": 27547,
+      "sha256": "ed6902a7b641d6fcd5aee77ffd5cc5629be68eeaab610e6852cb4cd0f005963d"
     },
     {
       "path": "viewer/viewer.css",
-      "bytes": 7633,
-      "sha256": "d965ebaf05a5a80ca032c2b49306200cdc0dd75a55c1a77588f681a3bf9d05ad"
+      "bytes": 8748,
+      "sha256": "53f050d9a4a7d6cb481791ebc122bb41e0547d3848443b171deb9213fd3b4c2f"
     }
   ]
 }

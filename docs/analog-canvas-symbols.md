@@ -52,8 +52,10 @@ and display leads; active-device bodies retain a finer 1.25-unit stroke.
 The adapter compensates for
 symbol-fit scale while normal viewport zoom scales everything together. BJT
 fitting uses the full available native pin pitch (without the previous extra
-30% reduction) and translates the unchanged body toward its base by at most ten units,
-extending collector/emitter clearance to the original connected native posts.
+30% reduction). Collector/emitter terminal leads retain their original north/south
+direction, including after rotation or reflection; the body is not shifted toward
+the base and no sideways terminal stubs are added. The original native posts remain
+fixed, with the catalog's own collector/emitter clearance intact.
 The exact upstream `opamp-wide` definition has
 40-unit input pitch: a uniform .8 scale matches CircuitJS's normal 32-unit
 signed input pitch. Its two input leads stay straight at every rotation and

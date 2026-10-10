@@ -74,11 +74,15 @@ test('FFT, logic and DC readouts provide working Auto set and instrument PNG exp
   const workspace = await measuredLab(page);
   await workspace.getByRole('button', { name: 'Spectrum', exact: true }).click();
   const spectrum = workspace.getByRole('region', { name: 'Spectrum analyzer', exact: true });
+  const fittedStart = await spectrum.getByRole('spinbutton', { name: 'Start / Hz', exact: true }).inputValue();
+  const fittedStop = await spectrum.getByRole('spinbutton', { name: 'Stop / Hz (0 = full)', exact: true }).inputValue();
   await spectrum.getByRole('spinbutton', { name: 'Start / Hz', exact: true }).fill('1000000000');
   await expect(spectrum.getByText('Select a frequency span containing at least two bins.')).toBeVisible();
   await spectrum.getByRole('button', { name: 'Auto set', exact: true }).click();
   await expect(spectrum.getByRole('region', { name: 'FFT spectrum', exact: true })).toBeVisible();
-  await expect(spectrum.getByRole('spinbutton', { name: 'Start / Hz', exact: true })).toHaveValue('0');
+  await expect(spectrum.getByLabel('Spectrum frequency range', { exact: true })).toHaveValue('peak');
+  await expect(spectrum.getByRole('spinbutton', { name: 'Start / Hz', exact: true })).toHaveValue(fittedStart);
+  await expect(spectrum.getByRole('spinbutton', { name: 'Stop / Hz (0 = full)', exact: true })).toHaveValue(fittedStop);
   await expectPngDownload(page, spectrum.getByRole('region', { name: 'FFT spectrum', exact: true }), 'fft-spectrum.png');
   await workspace.getByRole('button', { name: 'Logic analyzer', exact: true }).click();
   const logic = workspace.getByRole('region', { name: 'Logic analyzer', exact: true });

@@ -598,7 +598,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
       <NativeAnalysisControls key={spiceRunRequest} api={nativeApi} settings={{ ...analysisSettings, duration: Number(duration), samples: Number(samples) }} onChange={changeAnalysis} onApplySource={applySource} section="analysis" action={<button type="button" className={styles.capture} disabled={!ready || capturing || spiceRunning} onClick={runAnalysis}><Play size={14}/>{spiceRunning ? 'Running analysis…' : analysisAction}</button>}/>
     </fieldset>}
     <details className={styles.timeCaptureControls} open={analysisSettings.type === 'transient' || timeControlsOpen} onToggle={event => setTimeControlsOpen(event.currentTarget.open)}>
-    <summary hidden={analysisSettings.type === 'transient'}>Time capture · Oscilloscope, FFT &amp; logic</summary>
+    <summary hidden={analysisSettings.type === 'transient' || resultSource === 'circuit'}>Time capture · Oscilloscope, FFT &amp; logic</summary>
     <div className={styles.recordControls}>
       <label>Duration (s)<input aria-label="Capture duration in seconds" disabled={live || capturing || spiceRunning} type="number" min="0.000000001" max="10" step="any" value={duration} onChange={event => setDuration(event.target.value)}/></label>
       <label>Samples / probe<select aria-label="Capture target samples" disabled={live || capturing || spiceRunning} value={samples} onChange={event => setSamples(event.target.value)}>{[...new Set([...ACQUISITION_SAMPLE_OPTIONS, Number(samples)])].sort((a,b)=>a-b).map(count=><option key={count} value={count}>{count.toLocaleString('en-US')}</option>)}</select></label>
