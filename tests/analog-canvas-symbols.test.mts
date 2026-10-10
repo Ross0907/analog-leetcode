@@ -48,9 +48,29 @@ test('BJT artwork leaves clearance at collector/emitter while native posts remai
   const point = (x: number, y: number) => { const m = placement.matrix; return { x: m[0] * x + m[2] * y + m[4], y: m[1] * x + m[3] * y + m[5] }; };
   // Exact upstream collector elbow and emitter arrow tip have built-in lead clearance.
   const collector = point(0, -13.379732), emitter = point(0, 13.377859);
-  assert(Math.hypot(collector.x - 64, collector.y + 16) >= 8.4);
-  assert(Math.hypot(emitter.x - 64, emitter.y - 16) >= 8.4);
+  assert(Math.hypot(collector.x - 64, collector.y + 16) >= 5.2);
+  assert(Math.hypot(emitter.x - 64, emitter.y - 16) >= 5.2);
+  assert.equal(collector.x, 64, 'The collector lead extends north without a rightward stub.');
+  assert.equal(emitter.x, 64, 'The emitter lead extends south without a rightward stub.');
   assert.deepEqual(placement.posts, [{x:0,y:0}, {x:64,y:-16}, {x:64,y:16}]);
+});
+
+test('BJT collector and emitter extensions follow their upstream terminal axis under rotation and reflection', () => {
+  for (const type of ['NTransistorElm','PTransistorElm']) for (const span of [32,64,128]) for (const pitch of [32,64]) for (const flip of [-1,1]) for (const angle of [0,Math.PI/2,Math.PI,Math.PI*1.5]) {
+    const posts = [[0,0],[span,-pitch/2*flip],[span,pitch/2*flip]].map(([x,y]) => ({x:x*Math.cos(angle)-y*Math.sin(angle),y:x*Math.sin(angle)+y*Math.cos(angle)}));
+    const element = {getType:()=>type,getPostCount:()=>3,getPostX:(p:number)=>posts[p].x,getPostY:(p:number)=>posts[p].y};
+    const definition = analogSymbolDefinition(element), placed = analogPlacement(manifest.symbols[definition[0]],definition,element);
+    assert(placed);
+    assert.deepEqual(placed.posts,posts,'Display changes must never move native electrical posts.');
+    assert(Math.abs(Math.hypot(placed.matrix[0],placed.matrix[1])-Math.min(pitch/40,1))<1e-10,'The body retains full available pin pitch.');
+    for(const index of [1,2]) {
+      const pin: {x:number;y:number} = placed.pins[index], m: number[] = placed.matrix;
+      const dx: number = posts[index].x-(m[0]*pin.x+m[2]*pin.y+m[4]),dy: number = posts[index].y-(m[1]*pin.x+m[3]*pin.y+m[5]);
+      assert(Math.abs(dx*Math.cos(angle)+dy*Math.sin(angle))<1e-10,'C/E extensions must stay on their upstream terminal axis, without a sideways dogleg.');
+      const outward = (dy*Math.cos(angle)-dx*Math.sin(angle))*flip*(index===1?-1:1);
+      assert(outward>=-1e-10,'Extensions point outward from the body.');
+    }
+  }
 });
 
 test('ground bars always face downward without moving their electrical post', () => {

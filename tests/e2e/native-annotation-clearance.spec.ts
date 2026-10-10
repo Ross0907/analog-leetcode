@@ -91,5 +91,6 @@ test('BJT base, collector and emitter show junction dots where two wires meet th
       return posts;
     },polarity);
     await expect.poll(()=>page.evaluate(posts => posts.every(p => (window as unknown as NativeWindow).junctions.some(dot=>dot.x===p.x && dot.y===p.y)),posts)).toBe(true);
+    await page.screenshot({path:`.tmp/oct10-bjt-${polarity===1?'npn':'pnp'}-junctions.png`});
   }
 });

@@ -25,7 +25,7 @@ function attach({container,deso,cm}){
   const {elo,pstate}=container,host=elo.container;
   const events=new AbortController(),cleanups=[];
   const listen=(target,type,callback,options={})=>target.addEventListener(type,callback,{...options,signal:events.signal});
-  let cursorTime=0,selected=null,menu=null,drawQueued=0,previousWidth=0,locked=false,preferredSide=null,nameFraction=.5;
+  let cursorTime=0,selected=null,menu=null,drawQueued=0,previousWidth=0,locked=false,preferredSide=null,nameFraction=.5,areaMode=false,areaDrag=null;
   try{const saved=JSON.parse(localStorage.getItem('anacode.hdl.columns')||'null');if(Number.isFinite(saved?.width)&&saved.width>=100&&saved.width<=1600)preferredSide=saved.width;if(Number.isFinite(saved?.nameFraction))nameFraction=clamp(saved.nameFraction,.15,.85);}catch{/* Storage may be unavailable. */}
   const lanes=lanesFrom(deso.wires),laneByPath=new Map(lanes.map(lane=>[lane.path,lane])),nativeRender=deso.render;
   deso.view=lanes;pstate.numLanes=lanes.length;
@@ -45,10 +45,24 @@ function attach({container,deso,cm}){
   for(const [divider,label]of [[paneDivider,'Resize signal table'],[columnDivider,'Resize signal and value columns']]){divider.tabIndex=0;divider.setAttribute('role','separator');divider.setAttribute('aria-orientation','vertical');divider.setAttribute('aria-label',label);divider.title=label+' · drag, or use Left/Right arrows';side.append(divider);}
   const analog=svg('svg',{class:'analog-lanes','aria-label':'Analog signal display'});host.append(analog);
   const cursor=element('div','time-cursor'),cursorLabel=element('span','');cursor.append(cursorLabel);host.append(cursor);
-  const tools=element('div','timeline-tools');
-  for(const [label,text,action]of [['Fit timeline','Fit',()=>fit()],['Zoom out timeline','−',()=>zoom(2/3)],['Zoom in timeline','+',()=>zoom(1.5)]]){const button=element('button','',text);button.type='button';button.setAttribute('aria-label',label);listen(button,'click',action);tools.append(button);}host.append(tools);
+  const tools=document.getElementById('timeline-tools');tools.replaceChildren();
+  function tool(label,text,action,title=label){const button=element('button','',text);button.type='button';button.setAttribute('aria-label',label);button.title=title;listen(button,'click',action);tools.append(button);return button;}
+  tool('Fit timeline','Fit',()=>fit(),'Fit the full record · F');
+  tool('Zoom out timeline','−',()=>zoom(2/3),'Zoom out around the cursor · −');
+  tool('Zoom in timeline','+',()=>zoom(1.5),'Zoom in around the cursor · +');
+  const areaButton=tool('Zoom to selected time area','Zoom area',()=>setAreaMode(!areaMode),'Drag across the waveform to zoom to a time range · Z');areaButton.setAttribute('aria-pressed','false');
+  tool('Move cursor to start','|←',()=>moveCursor(0),'Move cursor to the start of the record · Home');
+  tool('Previous signal transition','←',()=>transition(-1),'Previous transition of the selected signal · Alt+Left');
+  tool('Next signal transition','→',()=>transition(1),'Next transition of the selected signal · Alt+Right');
+  tool('Move cursor to end','→|',()=>moveCursor(deso.time),'Move cursor to the end of the record · End');
+  tool('Center view on cursor','Center cursor',()=>centerCursor(),'Center the visible time range on the cursor · C');
+  const selection=element('div','time-selection');selection.hidden=true;host.append(selection);
+  const scrollControls=document.getElementById('viewport-controls');scrollControls.replaceChildren();
+  const viewStart=element('output','viewport-start'),viewEnd=element('output','viewport-end'),timeScroll=element('input','time-scroll');
+  timeScroll.type='range';timeScroll.min='0';timeScroll.max='0';timeScroll.step='any';timeScroll.value='0';timeScroll.setAttribute('aria-label','Horizontal waveform position');timeScroll.title='Scroll the visible time range';
+  scrollControls.append(viewStart,timeScroll,viewEnd);listen(timeScroll,'input',()=>{if(locked)return;pstate.xOffset=pstate.sidebarWidth-Number(timeScroll.value)*pstate.xScale;render();});
   const lockButton=element('button','','Lock');lockButton.type='button';lockButton.setAttribute('aria-label','Lock waveform view');lockButton.setAttribute('aria-pressed','false');lockButton.title='Prevent accidental pan, zoom, and cursor changes';tools.append(lockButton);
-  listen(lockButton,'click',()=>{locked=!locked;lockButton.textContent=locked?'Unlock':'Lock';lockButton.setAttribute('aria-pressed',String(locked));host.dataset.locked=String(locked);cursorInput.disabled=locked;for(const button of tools.querySelectorAll('button'))if(button!==lockButton)button.disabled=locked;});
+  listen(lockButton,'click',()=>{locked=!locked;setAreaMode(false);lockButton.textContent=locked?'Unlock':'Lock';lockButton.setAttribute('aria-pressed',String(locked));host.dataset.locked=String(locked);cursorInput.disabled=locked;for(const button of tools.querySelectorAll('button'))if(button!==lockButton)button.disabled=locked;render();});
   function columnBounds(){const width=host.clientWidth;return [Math.min(128,width*.45),Math.max(Math.min(128,width*.45),width*(width<600?.55:.72))];}
   function saveColumns(){try{localStorage.setItem('anacode.hdl.columns',JSON.stringify({width:preferredSide??pstate.sidebarWidth,nameFraction}));}catch{/* Keep resizing usable without storage. */}}
   function resizeColumn(divider,position){const [min,max]=columnBounds();if(divider===paneDivider)preferredSide=clamp(position,min,max);else nameFraction=clamp(position,Math.min(64,pstate.sidebarWidth*.35),pstate.sidebarWidth-Math.min(64,pstate.sidebarWidth*.35))/pstate.sidebarWidth;schedule();}
@@ -140,7 +154,7 @@ function attach({container,deso,cm}){
     event.preventDefault();
     const next=parseCursorTime(cursorInput.value,deso.tgcd,deso.timescale,deso.time);
     if(next===null){cursorError.textContent='Enter 0 to '+timeText(deso.time,deso.tgcd,deso.timescale,12)+'.';cursorError.hidden=false;cursorInput.setAttribute('aria-invalid','true');return;}
-    cursorTime=next;cursorError.hidden=true;cursorInput.removeAttribute('aria-invalid');cursorInput.value=timeText(cursorTime,deso.tgcd,deso.timescale,12);drawCursor();updateValues();
+    moveCursor(next);cursorError.hidden=true;cursorInput.removeAttribute('aria-invalid');cursorInput.value=timeText(cursorTime,deso.tgcd,deso.timescale,12);
   });
   function render(){
     if(!host.isConnected)return;
@@ -157,24 +171,41 @@ function attach({container,deso,cm}){
     nativeRender();
     // Centered native tick captions at the plot edge would otherwise be cut in half.
     for(const label of elo.grid.querySelectorAll('text.wd-grid-time')){const x=Number(label.getAttribute('x')),half=label.getComputedTextLength()/2;label.style.textAnchor='middle';if(x-half<sideWidth+4){label.style.textAnchor='start';label.setAttribute('x',String(sideWidth+4));}else if(x+half>width-4){label.style.textAnchor='end';label.setAttribute('x',String(width-4));}}
+    const visibleSpan=(width-sideWidth)/pstate.xScale,leftTime=(sideWidth-pstate.xOffset)/pstate.xScale,maxStart=Math.max(0,deso.time-visibleSpan);
+    timeScroll.max=String(maxStart);timeScroll.value=String(clamp(leftTime,0,maxStart));timeScroll.disabled=locked||maxStart<=0;timeScroll.setAttribute('aria-valuetext',timeText(leftTime,deso.tgcd,deso.timescale)+' to '+timeText(Math.min(deso.time,leftTime+visibleSpan),deso.tgcd,deso.timescale));
+    viewStart.textContent=timeText(leftTime,deso.tgcd,deso.timescale);viewEnd.textContent=timeText(Math.min(deso.time,leftTime+visibleSpan),deso.tgcd,deso.timescale);
+    host.dataset.viewStartSeconds=String(leftTime*deso.tgcd*10**deso.timescale);host.dataset.viewEndSeconds=String(Math.min(deso.time,leftTime+visibleSpan)*deso.tgcd*10**deso.timescale);
     rows();drawAnalog();drawCursor();
   }
   function schedule(){if(!drawQueued)drawQueued=requestAnimationFrame(()=>{drawQueued=0;render();});}
   function fit(){if(locked)return;pstate.xScale=pstate.xScaleMin;pstate.xOffset=pstate.sidebarWidth;render();}
   function zoom(factor){if(locked)return;const anchor=clamp(cursorTime*pstate.xScale+pstate.xOffset,pstate.sidebarWidth,pstate.width),time=(anchor-pstate.xOffset)/pstate.xScale;pstate.xScale=clamp(pstate.xScale*factor,pstate.xScaleMin,pstate.xScaleMax);pstate.xOffset=anchor-time*pstate.xScale;render();}
+  function centerCursor(){if(locked)return;pstate.xOffset=(pstate.sidebarWidth+pstate.width)/2-cursorTime*pstate.xScale;render();}
+  function moveCursor(time){if(locked)return;cursorTime=clamp(time,0,deso.time);const x=cursorTime*pstate.xScale+pstate.xOffset;if(x<pstate.sidebarWidth||x>pstate.width)centerCursor();else{drawCursor();updateValues();}}
+  function transition(direction){
+    if(locked)return;
+    const lane=selected??lanes[0],wave=deso.chango[lane?.ref]?.wave;if(!wave?.length)return;
+    let low=0,high=wave.length;while(low<high){const middle=(low+high)>>>1;if(wave[middle][0]<=cursorTime)low=middle+1;else high=middle;}
+    let index=direction>0?low:low-1;if(direction<0&&wave[index]?.[0]===cursorTime)index--;
+    if(index>=0&&index<wave.length)moveCursor(wave[index][0]);
+  }
+  function setAreaMode(enabled){areaMode=enabled&&!locked;if(areaDrag&&host.hasPointerCapture(areaDrag.pointerId))host.releasePointerCapture(areaDrag.pointerId);areaDrag=null;selection.hidden=true;areaButton.setAttribute('aria-pressed',String(areaMode));host.dataset.zoomArea=String(areaMode);if(areaMode)host.focus();}
+  function plotX(event){return clamp(event.clientX-host.getBoundingClientRect().left,pstate.sidebarWidth,pstate.width);}
   function setCursor(event){if(locked)return;const rect=host.getBoundingClientRect(),x=event.clientX-rect.left;if(x<pstate.sidebarWidth||event.clientY-rect.top<24)return;cursorTime=clamp((x-pstate.xOffset)/pstate.xScale,0,deso.time);pstate.xCursor=x;drawCursor();updateValues();}
   for(const type of ['pointerdown','pointermove','pointerup','mousedown','mousemove','mouseup','dblclick'])listen(host,type,event=>{if(locked&&!event.target.closest('button,input,.signal-pane')){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
-  listen(host,'pointerdown',event=>{if(event.button!==0||event.target.closest('button,.signal-pane'))return;closeMenu();host.focus();setCursor(event);host.setPointerCapture(event.pointerId);}, {capture:true});
-  listen(host,'pointermove',event=>{if(host.hasPointerCapture(event.pointerId))setCursor(event);});
-  listen(host,'pointerup',event=>{if(host.hasPointerCapture(event.pointerId))host.releasePointerCapture(event.pointerId);});
+  listen(host,'pointerdown',event=>{if(locked||event.button!==0||event.target.closest('button,input,.signal-pane'))return;closeMenu();host.focus();if(areaMode){event.preventDefault();event.stopImmediatePropagation();areaDrag={start:plotX(event),end:plotX(event),pointerId:event.pointerId};selection.style.top=pstate.topBarHeight+'px';selection.style.bottom=pstate.botBarHeight+'px';}else setCursor(event);host.setPointerCapture(event.pointerId);}, {capture:true});
+  listen(host,'pointermove',event=>{if(!host.hasPointerCapture(event.pointerId))return;if(areaDrag){event.preventDefault();event.stopImmediatePropagation();areaDrag.end=plotX(event);selection.hidden=false;selection.style.left=Math.min(areaDrag.start,areaDrag.end)+'px';selection.style.width=Math.abs(areaDrag.end-areaDrag.start)+'px';}else setCursor(event);},{capture:true});
+  listen(host,'pointerup',event=>{if(!host.hasPointerCapture(event.pointerId))return;host.releasePointerCapture(event.pointerId);if(areaDrag){event.preventDefault();event.stopImmediatePropagation();const left=Math.min(areaDrag.start,plotX(event)),right=Math.max(areaDrag.start,plotX(event)),from=(left-pstate.xOffset)/pstate.xScale,to=(right-pstate.xOffset)/pstate.xScale;if(right-left>=5){pstate.xScale=clamp((pstate.width-pstate.sidebarWidth)/(to-from),pstate.xScaleMin,pstate.xScaleMax);pstate.xOffset=pstate.sidebarWidth-from*pstate.xScale;}setAreaMode(false);render();}},{capture:true});
+  listen(host,'pointercancel',()=>setAreaMode(false));
+  for(const type of ['mousedown','mousemove','mouseup'])listen(host,type,event=>{if(areaMode&&!event.target.closest('.signal-pane')){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
   listen(host,'contextmenu',event=>{const rect=host.getBoundingClientRect(),index=Math.floor((event.clientY-rect.top-pstate.topBarHeight+pstate.yOffset)/pstate.yStep);if(event.clientX-rect.left>=pstate.sidebarWidth&&lanes[index]){event.preventDefault();openMenu(lanes[index],event.clientX,event.clientY);}});
   listen(body,'scroll',schedule);
-  listen(host,'wheel',event=>{event.preventDefault();event.stopImmediatePropagation();if(locked&&(event.ctrlKey||event.metaKey||event.shiftKey||!event.target.closest('.signal-pane')))return;const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?host.clientHeight:1);if(event.ctrlKey||event.metaKey){zoom(delta>0?2/3:1.5);}else if(event.shiftKey){pstate.xOffset-=delta;render();}else{body.scrollTop+=delta;schedule();}}, {capture:true,passive:false});
+  listen(host,'wheel',event=>{event.preventDefault();event.stopImmediatePropagation();const horizontal=event.shiftKey||Math.abs(event.deltaX)>Math.abs(event.deltaY);if(locked&&(event.ctrlKey||event.metaKey||horizontal||!event.target.closest('.signal-pane')))return;const delta=(horizontal&&Math.abs(event.deltaX)>Math.abs(event.deltaY)?event.deltaX:event.deltaY)*(event.deltaMode===1?16:event.deltaMode===2?host.clientHeight:1);if(event.ctrlKey||event.metaKey){if(delta)zoom(delta>0?2/3:1.5);}else if(horizontal){pstate.xOffset-=delta;render();}else{body.scrollTop+=delta;schedule();}}, {capture:true,passive:false});
   listen(host,'keydown',event=>{
-    if(event.key==='Escape'){closeMenu();return;}
+    if(event.key==='Escape'){closeMenu();setAreaMode(false);return;}
     if(locked&&!event.target.closest('button,input,.signal-pane')&&event.key!=='Tab'){event.preventDefault();event.stopImmediatePropagation();return;}
-    if(!event.altKey)return;
-    const action=({'0':fit,'=':()=>zoom(1.5),'+':()=>zoom(1.5),'-':()=>zoom(2/3),',':()=>{pstate.xOffset+=pstate.width*.2;render();},'.':()=>{pstate.xOffset-=pstate.width*.2;render();},'[':()=>{pstate.xOffset=pstate.sidebarWidth;render();},']':()=>{pstate.xOffset=pstate.width-pstate.xScale*Math.max(1,deso.time);render();}})[event.key];
+    if(event.target.closest('button,input,.signal-pane')||event.ctrlKey||event.metaKey)return;
+    const action=event.altKey?({'0':fit,'=':()=>zoom(1.5),'+':()=>zoom(1.5),'-':()=>zoom(2/3),',':()=>{pstate.xOffset+=pstate.width*.2;render();},'.':()=>{pstate.xOffset-=pstate.width*.2;render();},'[':()=>{pstate.xOffset=pstate.sidebarWidth;render();},']':()=>{pstate.xOffset=pstate.width-pstate.xScale*Math.max(1,deso.time);render();},ArrowLeft:()=>transition(-1),ArrowRight:()=>transition(1)})[event.key]:({f:fit,F:fit,'=':()=>zoom(1.5),'+':()=>zoom(1.5),'-':()=>zoom(2/3),Home:()=>moveCursor(0),End:()=>moveCursor(deso.time),c:centerCursor,C:centerCursor,z:()=>setAreaMode(!areaMode),Z:()=>setAreaMode(!areaMode)})[event.key];
     if(action){event.preventDefault();event.stopImmediatePropagation();action();}
   },{capture:true});
   listen(document,'pointerdown',event=>{if(menu&&!menu.contains(event.target))closeMenu();},{capture:true});

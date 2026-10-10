@@ -3,7 +3,9 @@ import { readFile } from 'node:fs/promises';
 import type { CircuitJsApi } from '../../lib/circuitjs';
 
 async function nativeEditor(page: Page): Promise<Frame> {
-  await expect(page.locator('p[role="status"]')).toContainText('Captured', { timeout: 45000 });
+  // AC lessons open their sweep display without acquiring a transient record.
+  // Editor readiness must not depend on an unrelated time-domain capture.
+  await expect(page.locator('p[role="status"]')).toContainText(/Editor ready|Captured/, { timeout: 45000 });
   await expect(page.getByRole('button', { name: 'Capture all probes' })).toBeEnabled({ timeout: 30_000 });
   const frame = await (await page.locator('iframe[title="CircuitJS schematic editor"]').elementHandle())?.contentFrame();
   if (!frame) throw new Error('The native editor frame is missing.');
