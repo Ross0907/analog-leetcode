@@ -26,6 +26,7 @@ const eslintConfig = defineConfig([
     ".tmp/**",
     "public/circuitjs/**",
     "public/hdl/icarus/**",
+    "public/hdl/yosys/**",
     "public/hdl/viewer/vcdrom.js",
     "vendor/eecircuit-engine/dist/**",
     "vendor/braces/**",

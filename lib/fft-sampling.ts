@@ -73,3 +73,11 @@ export function fftCaptureRequest(sampling: FftSampling, fftLength: number, chan
   const minimumSamples = Math.min(MAX_FFT_LENGTH, 2 ** Math.ceil(Math.log2(Math.max(fftLength * 2, estimate * 1.05))));
   return { minimumSamples, fftLength, reason: `A ${fftLength.toLocaleString()}-point FFT needs a denser measured record. No zero padding or invented samples are used.` };
 }
+
+/** Explicit bandwidth-for-resolution trade, always acquiring new solver samples. */
+export function fftLongRecordRequest(currentDuration: number, recordDuration: number, settleDuration: number, channels: number) {
+  if (![currentDuration, recordDuration, settleDuration].every(Number.isFinite) || recordDuration <= currentDuration * 1.001 || settleDuration < 0 || recordDuration + settleDuration > 10) return null;
+  const fftLength = 2 ** Math.floor(Math.log2(Math.min(MAX_FFT_LENGTH, Math.floor(2097152 / (Math.max(1, channels) + 1)))));
+  if (fftLength < 128) return null;
+  return { minimumSamples: fftLength, fftLength, recordDuration, settleDuration, reason: `Acquire ${fftLength} new samples over ${recordDuration} s. Bin spacing ${1 / recordDuration} Hz; Nyquist ${fftLength / recordDuration / 2} Hz. The longer record changes acquisition bandwidth.` };
+}

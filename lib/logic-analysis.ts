@@ -12,21 +12,27 @@ export function heldSampleIndex(time: readonly number[], target: number): number
 }
 
 export function logicPath(time: readonly number[], values: readonly number[], start: number, end: number, low: number, high: number, maximumTransitions = 6000) {
-  if (time.length === 0 || !(end > start)) return { path: '', truncated: false };
+  const empty = { path: '', unknownPath: '', unknown: [] as { start: number; end: number }[], truncated: false };
+  if (!time.length || !(end > start)) return empty;
   const capturedStart = Math.max(start, time[0]!), capturedEnd = Math.min(end, time.at(-1)!);
-  if (!(capturedEnd >= capturedStart)) return { path: '', truncated: false };
-  const position = (time: number) => 1000 * (time - start) / (end - start);
-  const y = (value: number) => { const state = logicState(value, low, high); return state === 1 ? 9 : state === 0 ? 37 : 23; };
-  const first = heldSampleIndex(time, capturedStart);
-  const path = ['M' + position(capturedStart) + ' ' + y(values[first]!)];
-  let transitions = 0;
-  for (let sample = first + 1; sample < time.length && time[sample]! <= capturedEnd; sample++) {
-    if (logicState(values[sample]!, low, high) === logicState(values[sample - 1]!, low, high)) continue;
-    if (++transitions > maximumTransitions) return { path: path.join(' '), truncated: true };
-    path.push('H' + position(time[sample]!) + 'V' + y(values[sample]!));
+  if (!(capturedEnd >= capturedStart)) return empty;
+  const position = (t: number) => 1000 * (t - start) / (end - start);
+  let state = logicState(values[heldSampleIndex(time, capturedStart)]!, low, high), began = capturedStart, transitions = 0;
+  const path: string[] = [], unknownPath: string[] = [], unknown: {start:number;end:number}[] = [];
+  function segment(stop: number) {
+    const a = position(began), b = position(stop);
+    if (state === 'X') { unknownPath.push(`M${a} 9H${b}M${a} 37H${b}`); unknown.push({start:a,end:b}); }
+    else path.push(`M${a} ${state === 1 ? 9 : 37}H${b}`);
   }
-  path.push('H' + position(capturedEnd));
-  return { path: path.join(' '), truncated: false };
+  for (let i = heldSampleIndex(time, capturedStart) + 1; i < time.length && time[i]! <= capturedEnd; i++) {
+    const next = logicState(values[i]!, low, high); if (next === state) continue;
+    segment(time[i]!);
+    if (++transitions > maximumTransitions) return {path:path.join(' '),unknownPath:unknownPath.join(' '),unknown,truncated:true};
+    if (state !== 'X' && next !== 'X') path.push(`M${position(time[i]!)} ${state === 1 ? 9 : 37}V${next === 1 ? 9 : 37}`);
+    state = next; began = time[i]!;
+  }
+  segment(capturedEnd);
+  return {path:path.join(' '),unknownPath:unknownPath.join(' '),unknown,truncated:false};
 }
 
 export function automaticLogicThresholds(channels: readonly (readonly number[])[]) {

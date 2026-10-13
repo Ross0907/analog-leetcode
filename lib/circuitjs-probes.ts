@@ -1,18 +1,22 @@
 import { supportsCircuitJsCurrent, type CircuitJsApi, type CircuitJsElement, type CircuitJsProbe } from './circuitjs';
+import { distinctTraceColors } from './probe-colors';
 import type { SimulationPayload, Trace } from './simulator-contract';
 
-export function spiceProbeMatches(probe: CircuitJsProbe, trace: Pick<Trace,'name'|'node'>, api: CircuitJsApi, bindings: {element:CircuitJsElement;expression:string}[]) {
+export function spiceProbeMatches(probe: CircuitJsProbe, trace: Pick<Trace,'name'|'node'>, api: CircuitJsApi, bindings: {element:CircuitJsElement;expression:string;post?:number}[]) {
   const vector=(trace.node ?? trace.name).replace(/^∠/,'').toLowerCase();
   if (/^i\(/.test(vector)) return probe.kind==='current' && bindings.some(binding=>binding.element===probe.element && binding.expression.toLowerCase()===vector);
+  const voltageBindings=bindings.filter(binding=>binding.post!==undefined);
+  if(voltageBindings.length) return probe.kind==='voltage' && voltageBindings.some(binding=>binding.element.getNodeId(binding.post!)===probe.element.getNodeId(probe.post) && binding.expression.toLowerCase().replace(/^v\((.*)\)$/,'$1')===vector.replace(/^v\((.*)\)$/,'$1'));
   return probe.kind==='voltage' && probeNodeName(api,probe.element,probe.post).toLowerCase().replace(/^node\s+/,'node')===vector.replace(/^v\((.*)\)$/,'$1');
 }
 
 /** Presentation only: retain canonical solver names, IDs, signs and sample arrays. */
-export function spiceProbePayloadAppearance(payload: SimulationPayload, probes: CircuitJsProbe[], api: CircuitJsApi, bindings: {element:CircuitJsElement;expression:string}[]): SimulationPayload {
-  return {...payload,traces:payload.traces.map(trace=>{
-    const probe=probes.find(probe=>spiceProbeMatches(probe,trace,api,bindings));
-    return probe?{...trace,color:probe.color}:trace;
-  })};
+export function spiceProbePayloadAppearance(payload: SimulationPayload, probes: CircuitJsProbe[], api: CircuitJsApi, bindings: {element:CircuitJsElement;expression:string;post?:number}[]): SimulationPayload {
+  const key = (trace: Trace) => (trace.node ?? trace.name).replace(/^∠/,'').toLowerCase();
+  const preferred: Record<string,string> = {};
+  for(const trace of payload.traces) { const probe=probes.find(probe=>spiceProbeMatches(probe,trace,api,bindings)); if(probe)preferred[key(trace)]=probe.color; }
+  const colors=distinctTraceColors(payload.traces.map(key),preferred);
+  return {...payload,traces:payload.traces.map(trace=>({...trace,color:colors[key(trace)]}))};
 }
 
 export const isProbeWire = (element: CircuitJsElement) => ['WireElm', 'RoutedWireElm'].includes(element.getType());

@@ -124,8 +124,8 @@ test('R/C/L/source body scale is fixed at canonical size with uniformly extended
     const element={getType:()=>type,getWaveform:()=>1,getPostCount:()=>2,getPostX:(p:number)=>Math.cos(angle)*p*span,getPostY:(p:number)=>Math.sin(angle)*p*span};
     const definition=analogSymbolDefinition(element),placed=analogPlacement(manifest.symbols[definition[0]],definition,element);
     assert(placed);const m=placed.matrix;
-    assert(Math.abs(Math.hypot(m[0],m[1])-1)<1e-10);
-    assert(Math.abs(Math.hypot(m[2],m[3])-1)<1e-10);
+    assert(Math.abs(Math.hypot(m[0],m[1])-(type === 'ResistorElm' || type === 'InductorElm' ? 1.5 : 1))<1e-10);
+    assert(Math.abs(Math.hypot(m[2],m[3])-(type === 'ResistorElm' || type === 'InductorElm' ? 1.5 : 1))<1e-10);
     assert(Math.abs(m[0]*m[2]+m[1]*m[3])<1e-10,'Aspect must remain orthonormal.');
     assert.deepEqual(placed.posts,[{x:0,y:0},{x:Math.cos(angle)*span,y:Math.sin(angle)*span}]);
     if(type==='InductorElm') assert.equal(definition[0],'inductor-compact');

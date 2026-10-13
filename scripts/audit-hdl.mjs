@@ -24,7 +24,10 @@ function inventory(directory){return readdirSync(directory,{withFileTypes:true})
   assert.ok(bytes.length<25*1024*1024,`Cloudflare asset exceeds 25 MiB: ${path}`);
   return [{path:relative(root,path).replaceAll('\\','/'),bytes:bytes.length,sha256:hash(bytes)}];
 });}
+const yosys=JSON.parse(readFileSync(join(root,'yosys/provenance.json'),'utf8'));
+assert.equal(yosys.version,'0.70.1258');
+for(const file of yosys.files){const bytes=readFileSync(join(root,'yosys',file.path));assert.equal(hash(bytes),file.sha256);assert.equal(hash(file.path.endsWith('.gz')?gunzipSync(bytes):bytes),file.sourceSha256);}
 const files=inventory(root);
-if(process.argv.includes('--record'))writeFileSync(join(root,'artifact-manifest.json'),JSON.stringify({schemaVersion:1,engines:['Icarus Verilog','VCDrom 1.6.0'],files},null,2)+'\n');
+if(process.argv.includes('--record'))writeFileSync(join(root,'artifact-manifest.json'),JSON.stringify({schemaVersion:1,engines:['Icarus Verilog','VCDrom 1.6.0','Yosys 0.70'],files},null,2)+'\n');
 else assert.deepEqual(files,JSON.parse(readFileSync(join(root,'artifact-manifest.json'),'utf8')).files,'HDL assets changed; review and record the inventory.');
 console.log(`HDL: ${files.length} runtime, source and license files verified.`);

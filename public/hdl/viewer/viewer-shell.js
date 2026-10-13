@@ -25,7 +25,8 @@ function attach({container,deso,cm}){
   const {elo,pstate}=container,host=elo.container;
   const events=new AbortController(),cleanups=[];
   const listen=(target,type,callback,options={})=>target.addEventListener(type,callback,{...options,signal:events.signal});
-  let cursorTime=0,selected=null,menu=null,drawQueued=0,previousWidth=0,locked=false,preferredSide=null,nameFraction=.5,areaMode=false,areaDrag=null;
+  const preferences=()=>{try{return JSON.parse(localStorage.getItem('anacode.workspace.preferences.v1')||'{}')||{};}catch{return {};}};
+  let cursorTime=0,selected=null,menu=null,drawQueued=0,previousWidth=0,locked=false,preferredSide=null,nameFraction=.5,areaMode=true,areaDrag=null;
   try{const saved=JSON.parse(localStorage.getItem('anacode.hdl.columns')||'null');if(Number.isFinite(saved?.width)&&saved.width>=100&&saved.width<=1600)preferredSide=saved.width;if(Number.isFinite(saved?.nameFraction))nameFraction=clamp(saved.nameFraction,.15,.85);}catch{/* Storage may be unavailable. */}
   const lanes=lanesFrom(deso.wires),laneByPath=new Map(lanes.map(lane=>[lane.path,lane])),nativeRender=deso.render;
   deso.view=lanes;pstate.numLanes=lanes.length;
@@ -50,7 +51,7 @@ function attach({container,deso,cm}){
   tool('Fit timeline','Fit',()=>fit(),'Fit the full record · F');
   tool('Zoom out timeline','−',()=>zoom(2/3),'Zoom out around the cursor · −');
   tool('Zoom in timeline','+',()=>zoom(1.5),'Zoom in around the cursor · +');
-  const areaButton=tool('Zoom to selected time area','Zoom area',()=>setAreaMode(!areaMode),'Drag across the waveform to zoom to a time range · Z');areaButton.setAttribute('aria-pressed','false');
+  const areaButton=tool('Zoom to selected time area','Zoom area',()=>setAreaMode(!areaMode),'Drag across the waveform to zoom to a time range · Z');areaButton.setAttribute('aria-pressed','true');host.dataset.zoomArea='true';
   tool('Move cursor to start','|←',()=>moveCursor(0),'Move cursor to the start of the record · Home');
   tool('Previous signal transition','←',()=>transition(-1),'Previous transition of the selected signal · Alt+Left');
   tool('Next signal transition','→',()=>transition(1),'Next transition of the selected signal · Alt+Right');
@@ -191,12 +192,12 @@ function attach({container,deso,cm}){
   }
   function setAreaMode(enabled){areaMode=enabled&&!locked;if(areaDrag&&host.hasPointerCapture(areaDrag.pointerId))host.releasePointerCapture(areaDrag.pointerId);areaDrag=null;selection.hidden=true;areaButton.setAttribute('aria-pressed',String(areaMode));host.dataset.zoomArea=String(areaMode);if(areaMode)host.focus();}
   function plotX(event){return clamp(event.clientX-host.getBoundingClientRect().left,pstate.sidebarWidth,pstate.width);}
-  function setCursor(event){if(locked)return;const rect=host.getBoundingClientRect(),x=event.clientX-rect.left;if(x<pstate.sidebarWidth||event.clientY-rect.top<24)return;cursorTime=clamp((x-pstate.xOffset)/pstate.xScale,0,deso.time);pstate.xCursor=x;drawCursor();updateValues();}
+  function setCursor(event){if(locked)return;const rect=host.getBoundingClientRect(),x=event.clientX-rect.left;if(x<pstate.sidebarWidth)return;cursorTime=clamp((x-pstate.xOffset)/pstate.xScale,0,deso.time);pstate.xCursor=x;drawCursor();updateValues();}
   for(const type of ['pointerdown','pointermove','pointerup','mousedown','mousemove','mouseup','dblclick'])listen(host,type,event=>{if(locked&&!event.target.closest('button,input,.signal-pane')){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
-  listen(host,'pointerdown',event=>{if(locked||event.button!==0||event.target.closest('button,input,.signal-pane'))return;closeMenu();host.focus();if(areaMode){event.preventDefault();event.stopImmediatePropagation();areaDrag={start:plotX(event),end:plotX(event),pointerId:event.pointerId};selection.style.top=pstate.topBarHeight+'px';selection.style.bottom=pstate.botBarHeight+'px';}else setCursor(event);host.setPointerCapture(event.pointerId);}, {capture:true});
-  listen(host,'pointermove',event=>{if(!host.hasPointerCapture(event.pointerId))return;if(areaDrag){event.preventDefault();event.stopImmediatePropagation();areaDrag.end=plotX(event);selection.hidden=false;selection.style.left=Math.min(areaDrag.start,areaDrag.end)+'px';selection.style.width=Math.abs(areaDrag.end-areaDrag.start)+'px';}else setCursor(event);},{capture:true});
-  listen(host,'pointerup',event=>{if(!host.hasPointerCapture(event.pointerId))return;host.releasePointerCapture(event.pointerId);if(areaDrag){event.preventDefault();event.stopImmediatePropagation();const left=Math.min(areaDrag.start,plotX(event)),right=Math.max(areaDrag.start,plotX(event)),from=(left-pstate.xOffset)/pstate.xScale,to=(right-pstate.xOffset)/pstate.xScale;if(right-left>=5){pstate.xScale=clamp((pstate.width-pstate.sidebarWidth)/(to-from),pstate.xScaleMin,pstate.xScaleMax);pstate.xOffset=pstate.sidebarWidth-from*pstate.xScale;}setAreaMode(false);render();}},{capture:true});
-  listen(host,'pointercancel',()=>setAreaMode(false));
+  listen(host,'pointerdown',event=>{if(locked||event.button!==0||event.target.closest('button,input,.signal-pane'))return;closeMenu();host.focus();if(event.clientX-host.getBoundingClientRect().left<pstate.sidebarWidth)return;if(areaMode&&event.clientY-host.getBoundingClientRect().top>=pstate.topBarHeight){event.preventDefault();event.stopImmediatePropagation();areaDrag={start:plotX(event),end:plotX(event),pointerId:event.pointerId};selection.style.top=pstate.topBarHeight+'px';selection.style.bottom=pstate.botBarHeight+'px';}else setCursor(event);host.setPointerCapture(event.pointerId);}, {capture:true});
+  listen(host,'pointermove',event=>{if(!host.hasPointerCapture(event.pointerId)){if(!locked&&event.clientY-host.getBoundingClientRect().top<pstate.topBarHeight&&!event.target.closest('.signal-pane'))setCursor(event);return;}if(areaDrag){event.preventDefault();event.stopImmediatePropagation();areaDrag.end=plotX(event);selection.hidden=false;selection.style.left=Math.min(areaDrag.start,areaDrag.end)+'px';selection.style.width=Math.abs(areaDrag.end-areaDrag.start)+'px';}else setCursor(event);},{capture:true});
+  listen(host,'pointerup',event=>{if(!host.hasPointerCapture(event.pointerId))return;host.releasePointerCapture(event.pointerId);if(areaDrag){event.preventDefault();event.stopImmediatePropagation();const left=Math.min(areaDrag.start,plotX(event)),right=Math.max(areaDrag.start,plotX(event)),from=(left-pstate.xOffset)/pstate.xScale,to=(right-pstate.xOffset)/pstate.xScale;if(right-left>=5){pstate.xScale=clamp((pstate.width-pstate.sidebarWidth)/(to-from),pstate.xScaleMin,pstate.xScaleMax);pstate.xOffset=pstate.sidebarWidth-from*pstate.xScale;}else if(preferences().clickAction!=='cursor')fit();else setCursor(event);setAreaMode(true);render();}},{capture:true});
+  listen(host,'pointercancel',()=>setAreaMode(true));
   for(const type of ['mousedown','mousemove','mouseup'])listen(host,type,event=>{if(areaMode&&!event.target.closest('.signal-pane')){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
   listen(host,'contextmenu',event=>{const rect=host.getBoundingClientRect(),index=Math.floor((event.clientY-rect.top-pstate.topBarHeight+pstate.yOffset)/pstate.yStep);if(event.clientX-rect.left>=pstate.sidebarWidth&&lanes[index]){event.preventDefault();openMenu(lanes[index],event.clientX,event.clientY);}});
   listen(body,'scroll',schedule);
@@ -205,7 +206,9 @@ function attach({container,deso,cm}){
     if(event.key==='Escape'){closeMenu();setAreaMode(false);return;}
     if(locked&&!event.target.closest('button,input,.signal-pane')&&event.key!=='Tab'){event.preventDefault();event.stopImmediatePropagation();return;}
     if(event.target.closest('button,input,.signal-pane')||event.ctrlKey||event.metaKey)return;
-    const action=event.altKey?({'0':fit,'=':()=>zoom(1.5),'+':()=>zoom(1.5),'-':()=>zoom(2/3),',':()=>{pstate.xOffset+=pstate.width*.2;render();},'.':()=>{pstate.xOffset-=pstate.width*.2;render();},'[':()=>{pstate.xOffset=pstate.sidebarWidth;render();},']':()=>{pstate.xOffset=pstate.width-pstate.xScale*Math.max(1,deso.time);render();},ArrowLeft:()=>transition(-1),ArrowRight:()=>transition(1)})[event.key]:({f:fit,F:fit,'=':()=>zoom(1.5),'+':()=>zoom(1.5),'-':()=>zoom(2/3),Home:()=>moveCursor(0),End:()=>moveCursor(deso.time),c:centerCursor,C:centerCursor,z:()=>setAreaMode(!areaMode),Z:()=>setAreaMode(!areaMode)})[event.key];
+    const settings=preferences(), custom=event.altKey?null:({[settings.fitKey||'f']:fit,[settings.areaKey||'z']:()=>setAreaMode(!areaMode),[settings.centerKey||'c']:centerCursor})[event.key.toLowerCase()];
+    if(custom){event.preventDefault();event.stopImmediatePropagation();custom();return;}
+    const action=event.altKey?({'0':fit,'=':()=>zoom(1.5),'+':()=>zoom(1.5),'-':()=>zoom(2/3),',':()=>{pstate.xOffset+=pstate.width*.2;render();},'.':()=>{pstate.xOffset-=pstate.width*.2;render();},'[':()=>{pstate.xOffset=pstate.sidebarWidth;render();},']':()=>{pstate.xOffset=pstate.width-pstate.xScale*Math.max(1,deso.time);render();},ArrowLeft:()=>transition(-1),ArrowRight:()=>transition(1)})[event.key]:({'=':()=>zoom(1.5),'+':()=>zoom(1.5),'-':()=>zoom(2/3),Home:()=>moveCursor(0),End:()=>moveCursor(deso.time),})[event.key];
     if(action){event.preventDefault();event.stopImmediatePropagation();action();}
   },{capture:true});
   listen(document,'pointerdown',event=>{if(menu&&!menu.contains(event.target))closeMenu();},{capture:true});

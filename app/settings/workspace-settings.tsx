@@ -1,0 +1,19 @@
+"use client";
+import { useState, useSyncExternalStore } from 'react';
+import { DEFAULT_PREFERENCES } from '../../lib/workspace-preferences';
+import { useWorkspacePreferences, savePreferences } from '../components/workspace-preferences';
+import { ThemeToggle } from '../components/theme-toggle';
+import styles from './workspace-settings.module.css';
+const subscribeHydration = () => () => {};
+export function WorkspaceSettings() {
+  const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
+  const preferences = useWorkspacePreferences(), [message, setMessage] = useState('');
+  function update(change: Partial<typeof preferences>) { try { savePreferences({ ...preferences, ...change }); setMessage('Saved on this browser.'); } catch { setMessage('Browser storage is unavailable; settings could not be saved.'); } }
+  return <main className={styles.page}><h1>Workspace settings</h1><p>Personal controls for Circuit Lab and HDL. Changes apply immediately and are saved in this browser.</p>
+    <fieldset disabled={!hydrated} style={{border:0,padding:0,margin:0}}><section><h2>Appearance &amp; layout</h2><div>Color theme <ThemeToggle/></div><label>Compact HDL description<input type="checkbox" checked={preferences.compactDescription} onChange={event => update({ compactDescription: event.target.checked })}/></label><p>Signal and value columns can be resized in the waveform viewer. Right-click a trace to customize its color, width or radix.</p></section>
+    <section><h2>Waveform gestures</h2><label>Plain click in the plot<select value={preferences.clickAction} onChange={event => update({ clickAction: event.target.value as typeof preferences.clickAction })}><option value="reset">Reset displayed range</option><option value="cursor">Move cursor</option></select></label><p>Drag an area to zoom. Drag a cursor line to move it. In HDL, the top time ruler always moves the cursor. Shift-drag pans analog plots. Double-click fits the range.</p><label>Ctrl + wheel<select value={preferences.wheelMode} onChange={event => update({ wheelMode: event.target.value as typeof preferences.wheelMode })}><option value="both">Zoom both axes</option><option value="horizontal">Zoom horizontal axis</option></select></label><p>Ctrl + Shift + wheel: horizontal zoom. Alt + wheel: vertical zoom. HDL uses Ctrl + wheel for time and Shift + wheel to scroll time.</p></section>
+    <section><h2>Keyboard shortcuts</h2><p>Active when the plot has focus. Choose different letters for each action.</p>{(['fitKey','areaKey','centerKey'] as const).map((key, index) => <label key={key}>{['Fit displayed range (all plots)','Toggle area zoom (HDL)','Center on cursor (HDL)'][index]}<select aria-label={['Fit key','Area zoom key','Center cursor key'][index]} value={preferences[key]} onChange={event => update({ [key]: event.target.value })}>{'abcdefghijklmnopqrstuvwxyz'.split('').map(letter => <option key={letter} disabled={Object.entries(preferences).some(([name, value]) => name !== key && name.endsWith('Key') && value === letter)} value={letter}>{letter.toUpperCase()}</option>)}</select></label>)}<p>HDL: Home / End move to the first / last time; Alt + ← / → step transitions; + / − zoom; Escape cancels the current gesture. Analog: ← / → move cursor A; Alt + ← / → move cursor B.</p></section>
+    <section><h2>Measurement controls</h2><p>Each plot exposes X and Y limits next to the display. Enter decimal, exponent, or engineering values such as 2k or 50m. FFT acquisition controls show the actual record length, bin spacing and Nyquist bandwidth before capturing.</p><a href="/lab">Open Circuit Lab →</a></section>
+    <button type="button" onClick={() => { try { savePreferences(DEFAULT_PREFERENCES); setMessage('Default settings restored.'); } catch { setMessage('Browser storage is unavailable.'); } }}>Restore defaults</button><p role="status">{message}</p></fieldset>
+  </main>;
+}

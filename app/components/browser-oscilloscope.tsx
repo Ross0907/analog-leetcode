@@ -22,6 +22,9 @@ import { TraceContextMenu } from "./trace-context-menu";
 import { exportInstrumentPng } from "./instrument-export";
 import { CursorValueInput } from './cursor-value-input';
 
+import { useWorkspacePreferences } from './workspace-preferences';
+import { AxisRangeControls } from './axis-range-controls';
+
 export type OscilloscopeDomain = "time" | "frequency" | "sweep";
 export type OscilloscopeCoupling = "DC" | "AC";
 export type OscilloscopeTriggerEdge = "rising" | "falling";
@@ -71,6 +74,7 @@ export interface BrowserOscilloscopeProps {
   title?: string;
   height?: number;
   className?: string;
+  initialXRange?: readonly [number, number];
   initialXPerDivision?: OscilloscopeScale;
   initialYPerDivision?: OscilloscopeScale;
   initialTrigger?: Partial<OscilloscopeTrigger>;
@@ -144,6 +148,7 @@ function OscilloscopePlot({
   title = "Oscilloscope",
   height = 410,
   className,
+  initialXRange,
   initialXPerDivision = "auto",
   initialYPerDivision = "auto",
   initialTrigger,
@@ -158,6 +163,7 @@ function OscilloscopePlot({
   onAutoSet,
 }: BrowserOscilloscopeProps) {
   const controlId = useId();
+  const preferences = useWorkspacePreferences();
   const theme = useInstrumentTheme();
   const panel = useInstrumentPanel(instrumentId ?? controlId);
   const { selectedTraceId, selectTrace } = useTraceSelection();
@@ -223,11 +229,14 @@ function OscilloscopePlot({
   );
   const fullTransformedSpan = Math.max(xBounds.transformedMax - xBounds.transformedMin, Number.EPSILON);
   const xView = useMemo(() => {
-    const requestedSpan = xPerDivision === null ? fullTransformedSpan : xPerDivision * HORIZONTAL_DIVISIONS;
+    const defaultMin = initialXRange ? transformX(Math.max(xBounds.minimum, initialXRange[0]), effectiveXScale) : xBounds.transformedMin;
+    const defaultMax = initialXRange ? transformX(Math.min(xBounds.maximum, initialXRange[1]), effectiveXScale) : xBounds.transformedMax;
+    const defaultSpan = defaultMax > defaultMin ? defaultMax - defaultMin : fullTransformedSpan;
+    const requestedSpan = xPerDivision === null ? defaultSpan : xPerDivision * HORIZONTAL_DIVISIONS;
     const span = clamp(requestedSpan, fullTransformedSpan * 1e-9, fullTransformedSpan);
-    const center = clamp(xCenter ?? (xBounds.transformedMin + xBounds.transformedMax) / 2, xBounds.transformedMin + span / 2, xBounds.transformedMax - span / 2);
+    const center = clamp(xCenter ?? (defaultMin + defaultMax) / 2, xBounds.transformedMin + span / 2, xBounds.transformedMax - span / 2);
     return { minimum: center - span / 2, maximum: center + span / 2 };
-  }, [fullTransformedSpan, xBounds.transformedMax, xBounds.transformedMin, xPerDivision, xCenter]);
+  }, [fullTransformedSpan, xBounds, xPerDivision, xCenter, initialXRange, effectiveXScale]);
 
   const preparedTraces = useMemo(
     () => prepareTraces({
@@ -269,6 +278,7 @@ function OscilloscopePlot({
     const wheel = (event: WheelEvent) => {
       const plot = plotRectRef.current, bounds = canvas.getBoundingClientRect();
       const gesture = instrumentWheelGesture(event, plot?.height);
+      if (gesture && preferences.wheelMode === 'horizontal' && event.ctrlKey && !event.altKey) gesture.y = false;
       if (!gesture || !plot) return;
       const px = event.clientX - bounds.left, py = event.clientY - bounds.top;
       if (px < plot.left || px > plot.left + plot.width || py < plot.top || py > plot.top + plot.height) return;
@@ -283,7 +293,7 @@ function OscilloscopePlot({
     };
     canvas.addEventListener('wheel', wheel, { passive: false });
     return () => canvas.removeEventListener('wheel', wheel);
-  }, [xView, yBounds, xBounds.transformedMin, xBounds.transformedMax]);
+  }, [xView, yBounds, xBounds.transformedMin, xBounds.transformedMax, preferences.wheelMode]);
 
   const effectiveTriggerChannel = activeTraces.some((trace) => trace.id === triggerChannel)
     ? triggerChannel
@@ -507,7 +517,8 @@ function OscilloscopePlot({
         setYCenter((view.y.minimum + view.y.maximum) / 2); setYPerDivision((view.y.maximum - view.y.minimum) / VERTICAL_DIVISIONS);
       } else if (Math.hypot(selected.end.x - selected.start.x, selected.end.y - selected.start.y) < 6) {
         const normalized = (selected.start.x - plotRectRef.current.left) / plotRectRef.current.width;
-        updateCursorFromPointer(event, Math.abs(normalized - cursorA) <= Math.abs(normalized - cursorB) ? 'a' : 'b');
+        if (preferences.clickAction === 'reset') resetView();
+        else updateCursorFromPointer(event, Math.abs(normalized - cursorA) <= Math.abs(normalized - cursorB) ? 'a' : 'b');
         selectRenderedTrace(canvasPoint(event));
       }
     }
@@ -536,7 +547,7 @@ function OscilloscopePlot({
 
   function handleCanvasKeyDown(event: ReactKeyboardEvent<HTMLCanvasElement>) {
     if (event.key === "Escape") { selectionRef.current = null; setSelection(null); closeTraceMenu(); return; }
-    if (event.key.toLowerCase() === "r") { resetView(); return; }
+    if (!event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === preferences.fitKey) { resetView(); return; }
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const amount = event.shiftKey ? 0.01 : 0.002;
@@ -649,6 +660,12 @@ function OscilloscopePlot({
         {traces.length > channelLimit && <span role="alert" style={styles.limitNote}>This capture exceeds {channelLimit} channels. Remove probes and capture again.</span>}
       </div>
 
+      <AxisRangeControls x={[inverseTransformX(xView.minimum, effectiveXScale), inverseTransformX(xView.maximum, effectiveXScale)]} y={[yBounds.minimum, yBounds.maximum]} xUnit={effectiveXUnit} yUnit={yUnit} xBounds={[xBounds.minimum, xBounds.maximum]} onApply={(nextX, nextY) => {
+        if (effectiveXScale === 'log' && nextX[0] <= 0) return;
+        const left = transformX(nextX[0], effectiveXScale), right = transformX(nextX[1], effectiveXScale);
+        setXCenter((left + right) / 2); setXPerDivision((right - left) / HORIZONTAL_DIVISIONS);
+        if (nextY) { setYCenter((nextY[0] + nextY[1]) / 2); setYPerDivision((nextY[1] - nextY[0]) / VERTICAL_DIVISIONS); }
+      }}/>
       <div className="anacode-scope__viewport" ref={viewportRef} style={{ ...styles.viewport, height: boundedHeight }}>
         <canvas
           ref={canvasRef}
@@ -669,7 +686,7 @@ function OscilloscopePlot({
       </div>
       {hasOffsets && <p style={styles.interactionHint}>Display offsets separate traces. The readout table uses actual values; axis cursors use display coordinates. <button type="button" style={styles.iconButton} onClick={() => { setAppearances(current => ({ ...current, ...Object.fromEntries(activeTraces.map(trace => [trace.id, { ...current[trace.id], offset: 0 }])) })); setYPerDivision(null); setYCenter(null); }}>Clear offsets</button></p>}
       {exportError && <p role="alert" style={styles.interactionHint}>{exportError}</p>}
-      <p style={styles.interactionHint}>Drag a cursor line to move it · Drag elsewhere to zoom · Ctrl+wheel: both axes · Ctrl+Shift+wheel: horizontal · Alt+wheel: vertical · Shift-drag to pan · Right-click a trace to style · Double-click to reset</p>
+      <p style={styles.interactionHint}>Click to {preferences.clickAction === 'reset' ? 'reset range' : 'move cursor'} · Drag a cursor line to move it · Drag elsewhere to zoom · Ctrl+wheel: {preferences.wheelMode === 'horizontal' ? 'horizontal' : 'both axes'} · Ctrl+Shift+wheel: horizontal · Alt+wheel: vertical · Shift-drag to pan · Right-click a trace to style · Double-click to reset</p>
       {domain === "frequency" && horizontalCursors}
       <details className="anacode-scope__details"><summary style={styles.detailsSummary}>Measurements, cursors{domain === 'time' ? ' & trigger' : ''}</summary>
       <div style={{ ...styles.controls, padding: "10px 12px" }}>

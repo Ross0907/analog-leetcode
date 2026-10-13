@@ -1,0 +1,44 @@
+{
+  "package": "@yowasp/yosys",
+  "version": "0.70.1258",
+  "license": "ISC",
+  "repository": "git+https://github.com/YoWASP/yosys.git",
+  "files": [
+    {
+      "path": "bundle.js",
+      "bytes": 479434,
+      "sha256": "d8876e45078dbeac02f5d69bc3546fecd0ad29f9ab3faa6c8bc12f16e02787e8",
+      "sourceSha256": "d8876e45078dbeac02f5d69bc3546fecd0ad29f9ab3faa6c8bc12f16e02787e8"
+    },
+    {
+      "path": "yosys-resources.0.tar",
+      "bytes": 10567680,
+      "sha256": "99173527c83b864f4c7918084b282294d360b4a543bea2c0f59224693360deb5",
+      "sourceSha256": "99173527c83b864f4c7918084b282294d360b4a543bea2c0f59224693360deb5"
+    },
+    {
+      "path": "yosys.core.wasm.gz",
+      "bytes": 15556966,
+      "sha256": "b536cc059962cd4e3508c0d3906da270d5e8671dbeba920aa208963fbbfa193d",
+      "sourceSha256": "a35c25e046acdccbbebe315d93fff65fd64747141a540ecc7e602549d154eb4f"
+    },
+    {
+      "path": "yosys.core2.wasm",
+      "bytes": 34681,
+      "sha256": "ace1cb4255004a19b981504ed09b89a3434ac6793b2eb63c1b9b94f832787663",
+      "sourceSha256": "ace1cb4255004a19b981504ed09b89a3434ac6793b2eb63c1b9b94f832787663"
+    },
+    {
+      "path": "yosys.core3.wasm",
+      "bytes": 1382,
+      "sha256": "7a150b14646a4399c6808550bc6d002159b866a5bdeec53d1fb862037513c497",
+      "sourceSha256": "7a150b14646a4399c6808550bc6d002159b866a5bdeec53d1fb862037513c497"
+    },
+    {
+      "path": "yosys.core4.wasm",
+      "bytes": 630,
+      "sha256": "619c1d191cf4aa9a55e6650f35f6c3e6d976a2268cf702fa697370c4ad317990",
+      "sourceSha256": "619c1d191cf4aa9a55e6650f35f6c3e6d976a2268cf702fa697370c4ad317990"
+    }
+  ]
+}

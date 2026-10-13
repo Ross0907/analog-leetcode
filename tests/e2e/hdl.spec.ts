@@ -111,6 +111,7 @@ test('HDL panes resize with keyboard and pointer while editor state survives fil
   await page.goto('/hdl/word-multiplexer');
   const editor=page.getByRole('textbox',{name:'Design source'}), code=page.getByRole('region',{name:'HDL source files'});
   await expect(editor).toBeVisible();
+  await page.getByRole('button',{name:'Description',exact:true}).click();
   const side=page.getByRole('separator',{name:'Resize problem description'});
   const before=(await code.boundingBox())!.width;
   await side.focus();await side.press('ArrowRight');await side.press('ArrowRight');
@@ -201,7 +202,7 @@ test('HDL fills the window with three code/results layouts and bounded waveform 
   await expect(page.getByRole('button',{name:'Description',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Description',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Your digital design playground'})).toBeVisible();
-  await page.getByRole('button',{name:'Back to code',exact:true}).click();
+  await page.getByRole('button',{name:'Hide description',exact:true}).click();
   await expect(results).toBeVisible();
   await viewer.getByRole('button',{name:/Shortcuts/}).click();
   expect(await dialog.evaluate(element=>{const box=element.getBoundingClientRect();return box.bottom<=innerHeight&&box.right<=innerWidth;})).toBeTruthy();

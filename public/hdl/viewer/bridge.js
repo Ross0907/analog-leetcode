@@ -13,10 +13,11 @@ function openShortcuts() {
   if (!document.querySelector('[data-viewer-ready=true]')) return;
   // Describe the adapter's actual controls, rather than the hidden upstream UI.
   shortcutsContent.replaceChildren();
+  let preferences={};try{preferences=JSON.parse(localStorage.getItem('anacode.workspace.preferences.v1')||'{}')||{};}catch{/* Use defaults. */}
   for(const [action,keys]of [
-    ['Place or drag the cursor','Click / drag waveform'],['Scroll signal rows','Wheel'],['Scroll time','Shift + wheel / time scrollbar'],['Zoom around the cursor','Ctrl / ⌘ + wheel'],
-    ['Fit the whole record','F'],['Zoom in / out','+ / −'],['Zoom to a time area','Z, then drag waveform'],['Cancel area zoom','Escape'],
-    ['Cursor to start / end','Home / End'],['Center view on cursor','C'],['Previous / next signal transition','Alt + ← / →'],['Signal radix and analog display','Right-click signal'],
+    ['Move cursor','Move / drag in the top time ruler'],['Plot click',preferences.clickAction==='cursor'?'Move cursor':'Reset displayed range'],['Scroll signal rows','Wheel'],['Scroll time','Shift + wheel / time scrollbar'],['Zoom around the cursor','Ctrl / ⌘ + wheel'],
+    ['Fit the whole record',(preferences.fitKey||'f').toUpperCase()],['Zoom in / out','+ / −'],['Zoom to a time area','Drag waveform (default); '+(preferences.areaKey||'z').toUpperCase()+' toggles'],['Cancel area zoom','Escape'],
+    ['Cursor to start / end','Home / End'],['Center view on cursor',(preferences.centerKey||'c').toUpperCase()],['Previous / next signal transition','Alt + ← / →'],['Signal radix and analog display','Right-click signal'],
     ['Resize signal table or columns','Drag divider / ← / →'],['Open shortcuts','?'],
   ]){const row=document.createElement('div');row.className='wd-help-panel-row';const name=document.createElement('span'),key=document.createElement('kbd');name.textContent=action;key.textContent=keys;row.append(name,key);shortcutsContent.append(row);}
   if (!shortcuts.open) shortcuts.showModal();

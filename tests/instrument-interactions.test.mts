@@ -56,10 +56,10 @@ test('logic zoom preserves native nonuniform transition timing and held cursor s
   assert.equal(heldSampleIndex(time, 0.5), 3);
   assert.equal(heldSampleIndex(time, 9), 5);
   assert.equal(heldSampleIndex([], 1), -1);
-  assert.deepEqual(logicPath(time, values, 0.25, 0.75, 0.8, 2), { path: 'M0 9 H500V37 H1000', truncated: false });
+  assert.deepEqual(logicPath(time, values, 0.25, 0.75, 0.8, 2), { path: 'M0 9H500 M500 9V37 M500 37H1000', unknownPath:'', unknown:[], truncated: false });
   const bounded = logicPath(time, values, 0, 1, 0.8, 2, 1);
   assert.equal(bounded.truncated, true);
-  assert.equal(bounded.path, 'M0 37 H1V9'); // Never invent a flat continuation after truncation.
+  assert.equal(bounded.path, 'M0 37H1 M1 37V9 M1 9H500'); // Never invent a flat continuation after truncation.
 });
 
 
@@ -78,8 +78,8 @@ test('requested time windows never invent digital samples outside the captured i
   assert.deepEqual(fitTimeWindow({ minimum: 0.002, maximum: 0.005 }, 'elapsed'), { minimum: 0, maximum: 0.005 });
   assert.deepEqual(fitTimeWindow({ minimum: 0.002, maximum: 0.005 }, 'requested', 0.01), { minimum: 0, maximum: 0.01 });
   assert.deepEqual(fitTimeWindow({ minimum: 0.002, maximum: 0.005 }, 'samples'), { minimum: 0.002, maximum: 0.005 });
-  assert.deepEqual(logicPath([0.002, 0.004], [0, 5], 0, 0.01, 0.8, 2), { path: 'M200 37 H400V9 H400', truncated: false });
-  assert.deepEqual(logicPath([0.002, 0.004], [0, 5], 0.005, 0.01, 0.8, 2), { path: '', truncated: false });
+  assert.deepEqual(logicPath([0.002, 0.004], [0, 5], 0, 0.01, 0.8, 2), { path: 'M200 37H400 M400 37V9 M400 9H400', unknownPath:'', unknown:[], truncated: false });
+  assert.deepEqual(logicPath([0.002, 0.004], [0, 5], 0.005, 0.01, 0.8, 2), { path: '', unknownPath:'', unknown:[], truncated: false });
 });
 
 test('Auto set uses measured voltage range and physically available FFT spacing', () => {
