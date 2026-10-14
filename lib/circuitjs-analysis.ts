@@ -262,7 +262,7 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
     if (usedNames.has(name.toLowerCase())) throw new Error('Two different nodes resolve to the same SPICE name. Rename one of the labels before analysis.');
     usedNames.add(name.toLowerCase());
     netLabels.push({ id: 'native-label-' + node, name, target: pins[0], position: { x: 0, y: 0 } });
-    if (probes.length < 32) probes.push({ id: 'native-probe-' + node, label: 'V(' + name + ')', quantity: 'voltage', target: pins[0] });
+    if (node < 1_000_000 && probes.length < 32) probes.push({ id: 'native-probe-' + node, label: 'V(' + name + ')', quantity: 'voltage', target: pins[0] });
   }
   if (nodePins.size > 33) throw new Error('SPICE analysis supports up to 32 signal nodes in this workspace. Reduce the circuit or use live probes.');
   const selectedSourceId = settings.dcSource === undefined ? sourceIds.values().next().value : sourceIds.get(settings.dcSource);
@@ -299,5 +299,9 @@ export function circuitJsAnalysis(api: CircuitJsApi, settings: NativeAnalysisSet
     if (!name) throw new Error('The compiled current branch is missing its device name.');
     return { element, expression: `I(${name})` };
   });
-  return { document, deck: generated.deck, probes: Object.values(generated.probeExpressions), currentBindings, modelAssignments, notes };
+  const voltageBindings = topLevel.flatMap(element => Array.from({length:element.getPostCount()}, (_,post) => {
+    const expression=generated.probeExpressions['native-probe-'+element.getNodeId(post)];
+    return expression ? {element,post,expression} : null;
+  }).filter((binding): binding is {element:CircuitJsElement;post:number;expression:string}=>binding!==null));
+  return { document, deck: generated.deck, probes: Object.values(generated.probeExpressions), currentBindings, voltageBindings, modelAssignments, notes };
 }

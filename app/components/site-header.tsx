@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, Braces, ChevronDown, FlaskConical, Gauge, Menu } from "lucide-react";
+import { BookOpen, Braces, ChevronDown, FlaskConical, Gauge, Menu, Settings } from "lucide-react";
 import { BrandMark } from "./brand-mark";
 import { ThemeToggle } from "./theme-toggle";
 import { getUser } from "../auth";
@@ -19,6 +19,7 @@ export async function SiteHeader({ active, compact = false }: { active?: "proble
           <Link className={active === "hdl" ? "nav-link active" : "nav-link"} href="/hdl">HDL Practice</Link>
         </nav>
         <div className="header-actions">
+          <Link className="text-button" href="/settings" aria-label="Settings"><Settings size={18}/></Link>
           <ThemeToggle />
           <Link className="text-button desktop-only" href={user ? "/profile" : "/login"}>{user ? "Your profile" : "Sign in"}</Link>
           {!compact && <Link className="button button-small button-dark desktop-only" href="/problems/precision-voltage-divider">Start solving</Link>}

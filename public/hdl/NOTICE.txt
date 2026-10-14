@@ -58,3 +58,10 @@ All deployed runtime files and their SHA-256 hashes:
   /hdl/artifact-manifest.json
 
 Repository: https://github.com/Ross0907/analog-leetcode
+
+RTL elaboration: YoWASP Yosys 0.70.1258, Yosys 0.70, ISC license.
+https://github.com/YoWASP/yosys and https://github.com/YosysHQ/yosys
+Pinned npm distribution, copied by scripts/package-yosys.mjs. Main WASM is
+gzip-compressed for static hosting and decoded locally in the worker.
+See yosys/LICENSE.txt, yosys/README.md and yosys/provenance.json.
+The schematic renders the real Yosys JSON graph, before device mapping.

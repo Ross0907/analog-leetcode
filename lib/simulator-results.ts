@@ -1,7 +1,7 @@
 import type { ResultType } from "eecircuit-engine";
 import { SIMULATOR_NETLIST_LIMITS } from "./simulator-netlist-policy";
 import type { SimulationPayload, Trace } from "./simulator-contract";
-import { probeColor } from "./probe-colors";
+import { distinctTraceColors } from "./probe-colors";
 
 type Vector = { key: string; name: string; unit: string; quantity: "voltage" | "current" };
 
@@ -44,6 +44,7 @@ export function normalizeNgspiceResult(result: ResultType, analysisLine: string,
     if (x.some((value, i) => value <= 0 || (i > 0 && value <= x[i - 1]!))) throw new Error("AC frequency axis must increase and remain positive.");
     const vectors = result.data.flatMap((series) => { const info = vector(series.name, series.type); return info ? [{ ...info, series }] : []; });
     const selected = chooseProbes(vectors.map((v) => v.key), requested);
+    const colors = distinctTraceColors(selected);
     const traces = selected.flatMap((key): Trace[] => {
       const v = vectors.find((candidate) => candidate.key === key)!;
       samples(v.series.values.map((p) => p.real), v.name);
@@ -51,8 +52,8 @@ export function normalizeNgspiceResult(result: ResultType, analysisLine: string,
       const magnitude = v.series.values.map((p) => 20 * Math.log10(Math.max(Math.hypot(p.real, p.img), 1e-15)));
       const phase = unwrapPhase(v.series.values.map((p) => Math.atan2(p.img, p.real) * 180 / Math.PI));
       return [
-        { id: `magnitude:${key}`, name: v.name, values: magnitude, unit: "dB", quantity: "magnitude", node: key, color: probeColor(key) },
-        { id: `phase:${key}`, name: `∠${v.name}`, values: phase, unit: "°", quantity: "phase", node: key, color: probeColor(key) },
+        { id: `magnitude:${key}`, name: v.name, values: magnitude, unit: "dB", quantity: "magnitude", node: key, color: colors[key] },
+        { id: `phase:${key}`, name: `∠${v.name}`, values: phase, unit: "°", quantity: "phase", node: key, color: colors[key] },
       ];
     });
     return { ...base, analysis: "ac", xLabel: "Frequency", xUnit: "Hz", yLabel: "Response", yUnit: "dB", x, traces };
@@ -74,9 +75,10 @@ export function normalizeNgspiceResult(result: ResultType, analysisLine: string,
   if (transient && x.some((value, i) => i > 0 && value <= x[i - 1]!)) throw new Error("Transient time axis must increase.");
   const candidates = vectors.filter((v) => v.series !== axis);
   const selected = chooseProbes(candidates.map((v) => v.key), requested);
+  const colors = distinctTraceColors(selected);
   const traces = selected.map((key): Trace => {
     const v = candidates.find((candidate) => candidate.key === key)!;
-    return { id: `${v.quantity}:${key}`, name: v.name, values: samples(v.series.values, v.name), unit: v.unit, quantity: v.quantity, node: key, color: probeColor(key) };
+    return { id: `${v.quantity}:${key}`, name: v.name, values: samples(v.series.values, v.name), unit: v.unit, quantity: v.quantity, node: key, color: colors[key] };
   });
   return { ...base, analysis: transient ? "transient" : "dc-sweep", xLabel: transient ? "Time" : "Sweep value", xUnit: transient ? "s" : axis.type === "current" ? "A" : "V", yLabel: "Amplitude", yUnit: "V", x, traces };
 }

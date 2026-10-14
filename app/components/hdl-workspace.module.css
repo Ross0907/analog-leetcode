@@ -110,3 +110,13 @@
   .split .pane { flex:0 0 260px; }
   .split .pane+.pane { border-left:0; border-top:1px solid var(--line); }
 }
+
+@media(min-width:851px) {
+.workspace .descriptionToggle { display:inline-flex; }
+.workspace[data-description-compact=true] .problemContent { padding:12px; }
+.workspace[data-description-compact=true] .problem h1 { font-size:19px; margin:8px 0; }
+.workspace[data-description-compact=true] .problem p,.workspace[data-description-compact=true] .problem li { font-size:12px; line-height:1.5; }
+.workspace[data-description-compact=true] .body { grid-template-columns:minmax(190px,var(--question-width)) 8px minmax(0,1fr); }
+.workspace[data-description-open=false] .body { grid-template-columns:minmax(0,1fr); }
+.workspace[data-description-open=false] .problem,.workspace[data-description-open=false] .body > .resizeHandle { display:none; }
+}

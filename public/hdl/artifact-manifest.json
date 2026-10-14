@@ -2,13 +2,19 @@
   "schemaVersion": 1,
   "engines": [
     "Icarus Verilog",
-    "VCDrom 1.6.0"
+    "VCDrom 1.6.0",
+    "Yosys 0.70"
   ],
   "files": [
     {
       "path": "NOTICE.txt",
-      "bytes": 2975,
-      "sha256": "c7c1db18a03ea4bdbd8f6d4ce35fe5733fc50cd050fac88d1042d4b8827e920d"
+      "bytes": 3394,
+      "sha256": "4927a6733602a97eff1129281f53b093e010ba5fe81e2f0cf2d487b45d7f27a3"
+    },
+    {
+      "path": "elaborate.worker.js",
+      "bytes": 2194,
+      "sha256": "4ab75cf3211c3de52ed71049ddb01358db18f734a99718bfaa10584dfafc0ffc"
     },
     {
       "path": "icarus/LICENSE",
@@ -162,8 +168,8 @@
     },
     {
       "path": "viewer/bridge.js",
-      "bytes": 4900,
-      "sha256": "6d737f52f2ff7206b641d2fe0e329356eeef070fcf9df3271403513dff67ec0e"
+      "bytes": 5262,
+      "sha256": "499edaf2a2708ab52777ef7db4baec91b61481a880f6598d4d742be5df8b93d0"
     },
     {
       "path": "viewer/index.html",
@@ -207,13 +213,58 @@
     },
     {
       "path": "viewer/viewer-shell.js",
-      "bytes": 27547,
-      "sha256": "ed6902a7b641d6fcd5aee77ffd5cc5629be68eeaab610e6852cb4cd0f005963d"
+      "bytes": 28234,
+      "sha256": "7acfc59e0b88797cbd757a62dd195b95190a1c73223e6f3b08e6430f0d0690ca"
     },
     {
       "path": "viewer/viewer.css",
       "bytes": 8748,
       "sha256": "53f050d9a4a7d6cb481791ebc122bb41e0547d3848443b171deb9213fd3b4c2f"
+    },
+    {
+      "path": "yosys/LICENSE.txt",
+      "bytes": 777,
+      "sha256": "6998b5724d4cb3f459d1c12b6bd0cdbfa9c949ef14d0fb6d7d97d97404e5b5f3"
+    },
+    {
+      "path": "yosys/README.md",
+      "bytes": 2151,
+      "sha256": "e8d9ac87f62b34b92877faa23b766bcef30b8aa01a54695c98fdb6b7f215ae2d"
+    },
+    {
+      "path": "yosys/bundle.js",
+      "bytes": 479434,
+      "sha256": "d8876e45078dbeac02f5d69bc3546fecd0ad29f9ab3faa6c8bc12f16e02787e8"
+    },
+    {
+      "path": "yosys/provenance.json",
+      "bytes": 1611,
+      "sha256": "caa8a4e1eda8f68c3d2f042985934ada5652fa8df1a97a8ed2895bb249e3664e"
+    },
+    {
+      "path": "yosys/yosys-resources.0.tar",
+      "bytes": 10567680,
+      "sha256": "99173527c83b864f4c7918084b282294d360b4a543bea2c0f59224693360deb5"
+    },
+    {
+      "path": "yosys/yosys.core.wasm.gz",
+      "bytes": 15556966,
+      "sha256": "b536cc059962cd4e3508c0d3906da270d5e8671dbeba920aa208963fbbfa193d"
+    },
+    {
+      "path": "yosys/yosys.core2.wasm",
+      "bytes": 34681,
+      "sha256": "ace1cb4255004a19b981504ed09b89a3434ac6793b2eb63c1b9b94f832787663"
+    },
+    {
+      "path": "yosys/yosys.core3.wasm",
+      "bytes": 1382,
+      "sha256": "7a150b14646a4399c6808550bc6d002159b866a5bdeec53d1fb862037513c497"
+    },
+    {
+      "path": "yosys/yosys.core4.wasm",
+      "bytes": 630,
+      "sha256": "619c1d191cf4aa9a55e6650f35f6c3e6d976a2268cf702fa697370c4ad317990"
     }
   ]
 }

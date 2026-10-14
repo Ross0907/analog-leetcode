@@ -55,7 +55,7 @@ test('wheel zoom works on scope, FFT, logic, logarithmic Bode and DC curves with
   const logic = root.getByRole('region', { name: 'Logic analyzer', exact: true }), initialLogic = await range(logic);
   await wheel(page, logic.getByRole('img').first(), ['Control']);
   await expect.poll(async () => (await range(logic)).x1 - (await range(logic)).x0).toBeLessThan((initialLogic.x1 - initialLogic.x0) * .85);
-  await logic.getByRole('button', { name: 'Reset view', exact: true }).click();
+  await logic.focus(); await logic.press('f');
   expect((await range(logic)).x1 - (await range(logic)).x0).toBeCloseTo(initialLogic.x1 - initialLogic.x0, 7);
   await root.getByLabel('Schematic analysis type', { exact: true }).selectOption('ac-sweep');
   await root.getByRole('button', { name: 'Run simulation', exact: true }).click();

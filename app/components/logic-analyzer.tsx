@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useMemo, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Download, Maximize2, Minimize2 } from 'lucide-react';
 import { formatEngineering } from '../../lib/engineering';
 import { heldSampleIndex, logicState, logicWord, logicPath } from '../../lib/logic-analysis';
@@ -11,10 +11,14 @@ import { useInstrumentTheme, useTraceAppearance, useInstrumentPanel, useTraceSel
 import { TraceContextMenu } from './trace-context-menu';
 import { exportInstrumentPng, instrumentPlots } from './instrument-export';
 import { automaticLogicThresholds } from '../../lib/logic-analysis';
+import { useWorkspacePreferences } from './workspace-preferences';
+import { AxisRangeControls } from './axis-range-controls';
+import { CursorValueInput } from './cursor-value-input';
 import styles from './instrument-workspace.module.css';
 
 export function LogicAnalyzer({ payload, recordDuration }: { payload: SimulationPayload; recordDuration?: number }) {
   const id = useId();
+  const preferences = useWorkspacePreferences();
   const theme = useInstrumentTheme();
   const panel = useInstrumentPanel('logic');
   const { selectedTraceId, selectTrace } = useTraceSelection();
@@ -33,7 +37,7 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
   const [view, setView] = useState({ start: 0, end: 1 });
   const [selection, setSelection] = useState<{ id: string; start: number; end: number } | null>(null);
   const selectionRef = useRef(selection);
-  const channels = payload.traces.filter((trace) => trace.quantity === 'voltage');
+  const channels = useMemo(()=>payload.traces.filter((trace) => trace.quantity === 'voltage'),[payload.traces]);
   const recordedStart = payload.x[0] ?? 0, recordedEnd = payload.x.at(-1) ?? recordedStart;
   const bounds = fitTimeWindow({ minimum: recordedStart, maximum: recordedEnd }, timeWindow, recordDuration);
   const start = bounds.minimum, end = bounds.maximum;
@@ -52,6 +56,7 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
     root.addEventListener('wheel', wheel, { passive: false });
     return () => root.removeEventListener('wheel', wheel);
   }, [view]);
+  const paths = useMemo(()=>new Map(channels.map(trace=>[trace.id,logicPath(payload.x,trace.values,visibleStart,visibleEnd,low,high)])),[channels,payload.x,visibleStart,visibleEnd,low,high]);
   const cursorTime = visibleStart + cursor * (visibleEnd - visibleStart);
   const index = cursorTime < recordedStart || cursorTime > recordedEnd ? -1 : heldSampleIndex(payload.x, cursorTime);
   const selected = channels.filter((trace) => busIds.includes(trace.id)).slice(0, 16);
@@ -75,7 +80,7 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
   }
   const pointerDown = (event: ReactPointerEvent<SVGSVGElement>, traceId: string) => {
     if (event.button !== 0) return;
-    event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); closeMenu();
+    event.preventDefault(); rootRef.current?.focus({ preventScroll: true }); event.currentTarget.setPointerCapture(event.pointerId); closeMenu();
     selectTrace(traceId);
     const fraction = xFraction(event);
     selectionRef.current = { id: traceId, start: fraction, end: fraction };
@@ -95,12 +100,14 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
         const span = view.end - view.start;
         setView({ start: view.start + Math.min(selection.start, finish) * span, end: view.start + Math.max(selection.start, finish) * span });
         setCursor(0.5);
-      } else setCursor(finish);
+      } else if(preferences.clickAction === 'reset') reset(); else setCursor(finish);
     }
     selectionRef.current = null; setSelection(null);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
-  return <section ref={rootRef} className={styles.logic} aria-label="Logic analyzer" hidden={panel.hidden} data-instrument-maximized={panel.maximized} data-theme={theme} data-x-min={visibleStart} data-x-max={visibleEnd}>
+  // This interactive plot is a keyboard-focusable application surface; form controls retain their own keys.
+  // eslint-disable-next-line jsx-a11y-x/no-noninteractive-element-interactions, jsx-a11y-x/no-noninteractive-tabindex
+  return <section tabIndex={0} onKeyDown={event => { if (event.target instanceof HTMLElement && event.target.matches('input,select,textarea,button')) return; if (!event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === preferences.fitKey) { event.preventDefault(); reset(); } }} ref={rootRef} className={styles.logic} aria-label="Logic analyzer" hidden={panel.hidden} data-instrument-maximized={panel.maximized} data-theme={theme} data-x-min={visibleStart} data-x-max={visibleEnd}>
     <div className={styles.heading}><strong>Logic analyzer</strong><div className={styles.controls}>
       <button type="button" onClick={autoSet}>Auto set</button>
       <button type="button" onClick={panel.toggleMaximized} title={panel.maximized ? 'Restore instrument' : 'Maximize instrument'} aria-label={panel.maximized ? 'Restore instrument' : 'Maximize instrument'}>{panel.maximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}</button>
@@ -116,15 +123,20 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
       <label>Lane spacing<select aria-label="Logic lane spacing" value={laneHeight} onChange={event => setLaneHeight(Number(event.target.value))}><option value="46">Compact</option><option value="64">Comfortable</option><option value="88">Wide</option></select></label>
       <label>Traces<select aria-label="Logic analyzer trace layout" value={layout} onChange={event => setLayout(event.target.value as typeof layout)}><option value="overlap">Overlap</option><option value="separate">Separate</option></select></label>
     </div>
+    <AxisRangeControls x={[visibleStart,visibleEnd]} xUnit="s" xBounds={[start,end]} onApply={range => { const span=end-start; if(span>0)setView({start:Math.max(0,(range[0]-start)/span),end:Math.min(1,(range[1]-start)/span)}); }}/>
+    <CursorValueInput label="Logic cursor position" value={cursorTime} minimum={visibleStart} maximum={visibleEnd} unit="s" onChange={value=>setCursor((value-visibleStart)/(visibleEnd-visibleStart))}/>
+    <p className={styles.note}>X / unknown: red dashed rails and X labels mark voltages between the thresholds.</p>
     {high <= low ? <p role="alert">The high threshold must exceed the low threshold.</p> : channels.length === 0 ? <p>Add a voltage probe to view digital states.</p> : <>
       <div className={styles.logicRows}>{channels.map((trace, channel) => {
         const appearance = appearances[trace.id];
         const color = instrumentTraceColor(appearance?.color ?? trace.color ?? probeColor(trace.id), theme);
-        const waveform = logicPath(payload.x, trace.values, visibleStart, visibleEnd, low, high);
+        const waveform = paths.get(trace.id)!;
         return <div className={styles.logicRow} key={trace.id} data-selected={selectedTraceId === trace.id || undefined} data-overlap={layout === 'overlap' || undefined}>
           <label style={{ color }}><input aria-label={'Include ' + trace.name + ' in bus'} type="checkbox" checked={busIds.includes(trace.id)} disabled={!busIds.includes(trace.id) && busIds.length >= 16} onChange={(event) => setBusIds(event.target.checked ? [...busIds, trace.id] : busIds.filter((value) => value !== trace.id))}/><button type="button" aria-label={'Select ' + trace.name} aria-pressed={selectedTraceId === trace.id} title="Select trace; right-click for appearance" onClick={() => selectTrace(trace.id)} onContextMenu={event => { event.preventDefault(); selectTrace(trace.id); setMenu({ id: trace.id, x: event.clientX, y: event.clientY }); }}>D{channel} · {trace.name}</button></label>
           {layout === 'separate' && <svg style={{ height: panel.maximized ? Math.max(64, laneHeight) : laneHeight }} viewBox="0 0 1000 46" preserveAspectRatio="none" role="img" aria-label={trace.name + ' digital waveform'} onPointerDown={(event) => pointerDown(event, trace.id)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onDoubleClick={reset} onContextMenu={(event) => { event.preventDefault(); if (event.target instanceof SVGPathElement) { selectTrace(trace.id); setMenu({ id: trace.id, x: event.clientX, y: event.clientY }); } else closeMenu(); }}>
             <path d={waveform.path} fill="none" stroke={color} strokeWidth={appearance?.width ?? 1.8} vectorEffect="non-scaling-stroke" pointerEvents="stroke"/>
+            <path aria-label="Unknown X intervals" d={waveform.unknownPath} fill="none" stroke="#e34f5f" strokeWidth="2" strokeDasharray="5 4" vectorEffect="non-scaling-stroke"/>
+            {waveform.unknown.filter(segment=>segment.end-segment.start>12).map(segment=><text key={segment.start} x={(segment.start+segment.end)/2} y="27" textAnchor="middle" fill="#e34f5f" fontSize="12">X</text>)}
             <line x1={cursor * 1000} x2={cursor * 1000} y1="0" y2="46" stroke="currentColor" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" pointerEvents="none"/>
             {selection?.id === trace.id && <rect className={styles.logicSelection} x={1000 * Math.min(selection.start, selection.end)} y="0" width={1000 * Math.abs(selection.end - selection.start)} height="46"/>}
           </svg>}
@@ -133,7 +145,8 @@ export function LogicAnalyzer({ payload, recordDuration }: { payload: Simulation
         </div>;
       })}</div>
       {layout === 'overlap' && <svg className={styles.logicOverlap} viewBox="0 0 1000 46" preserveAspectRatio="none" role="img" aria-label="Overlapping digital waveforms" onPointerDown={event => pointerDown(event, event.target instanceof SVGPathElement ? event.target.dataset.traceId! : selectedTraceId ?? channels[0]!.id)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onDoubleClick={reset} onContextMenu={event => { event.preventDefault(); if (event.target instanceof SVGPathElement && event.target.dataset.traceId) { selectTrace(event.target.dataset.traceId); setMenu({ id: event.target.dataset.traceId, x: event.clientX, y: event.clientY }); } }}>
-        {channels.map(trace => <path key={trace.id} data-trace-id={trace.id} d={logicPath(payload.x, trace.values, visibleStart, visibleEnd, low, high).path} fill="none" stroke={instrumentTraceColor(appearances[trace.id]?.color ?? trace.color ?? probeColor(trace.id), theme)} strokeWidth={(appearances[trace.id]?.width ?? 1.8) + (selectedTraceId === trace.id ? 1.5 : 0)} vectorEffect="non-scaling-stroke" pointerEvents="stroke"/>)}
+        {channels.map(trace => <path key={trace.id} data-trace-id={trace.id} d={paths.get(trace.id)!.path} fill="none" stroke={instrumentTraceColor(appearances[trace.id]?.color ?? trace.color ?? probeColor(trace.id), theme)} strokeWidth={(appearances[trace.id]?.width ?? 1.8) + (selectedTraceId === trace.id ? 1.5 : 0)} vectorEffect="non-scaling-stroke" pointerEvents="stroke"/>)}
+        {channels.map(trace=><path key={'x:'+trace.id} data-trace-id={trace.id} aria-label={trace.name+' unknown X intervals'} d={paths.get(trace.id)!.unknownPath} fill="none" stroke="#e34f5f" strokeWidth="2" strokeDasharray="5 4" vectorEffect="non-scaling-stroke"/>)}
         <line x1={cursor * 1000} x2={cursor * 1000} y1="0" y2="46" stroke="currentColor" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" pointerEvents="none"/>
         {selection && <rect className={styles.logicSelection} x={1000 * Math.min(selection.start, selection.end)} y="0" width={1000 * Math.abs(selection.end - selection.start)} height="46"/>}
       </svg>}

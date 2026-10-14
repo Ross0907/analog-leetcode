@@ -48,7 +48,8 @@ export function analogPlacement(symbol, definition, element) {
   if (sourceLength < 1e-6 || targetLength < 2) return null;
   // Terminal span changes only the straight extensions, never enlarges a body.
   // Very short authored components shrink uniformly to stay inside their posts.
-  let scale = Math.min(targetLength / sourceLength, 1);
+  const bodyScale = symbol.id === 'resistor' || symbol.id === 'inductor-compact' ? 1.5 : 1;
+  let scale = Math.min(targetLength / sourceLength, bodyScale);
   let reflection = 1;
   if (pins.length === 3) {
     const other = a === 0 ? 2 : 0;

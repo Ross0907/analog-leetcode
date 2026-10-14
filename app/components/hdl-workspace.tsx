@@ -5,9 +5,11 @@ import { CheckCheck, Download, Play, RotateCcw, Square, Terminal, Waves, Code2, 
 import type { HdlChallenge } from '@/lib/hdl-challenges';
 import { hdlCheckResult } from '@/lib/hdl-challenges';
 import { simulateHdl, type HdlLanguage, type HdlResult } from '@/lib/hdl-client';
+import { HdlSchematic } from './hdl-schematic';
 import { HdlCodeEditor } from './hdl-code-editor';
 import { HdlResizeHandle } from './hdl-resize-handle';
 import { hdlDiagnostics, hdlFailureExamples, saveHdlPractice } from '@/lib/hdl-practice';
+import { useWorkspacePreferences } from './workspace-preferences';
 import styles from './hdl-workspace.module.css';
 
 function download(name: string, contents: BlobPart, type = 'text/plain') {
@@ -18,6 +20,7 @@ function download(name: string, contents: BlobPart, type = 'text/plain') {
 
 export function HdlWorkspace({ challenge, playground=false }: { challenge: Omit<HdlChallenge, 'solution'>; playground?: boolean }) {
   const paneId=useId();
+  const preferences = useWorkspacePreferences();
   const [design,setDesign] = useState(challenge.starter);
   const [testbench,setTestbench] = useState(challenge.testbench);
   const [language,setLanguage] = useState<HdlLanguage>('2012');
@@ -26,7 +29,7 @@ export function HdlWorkspace({ challenge, playground=false }: { challenge: Omit<
   const [workspaceLayout,setWorkspaceLayout] = useState<'tabs'|'split'|'stacked'>('stacked');
   const [workspacePanel,setWorkspacePanel] = useState<'code'|'results'>('code');
   const [showDescription,setShowDescription] = useState(false);
-  const [panel,setPanel] = useState<'tests'|'console'|'waveforms'>('tests');
+  const [panel,setPanel] = useState<'tests'|'console'|'waveforms'|'schematic'>('tests');
   const [status,setStatus] = useState('Ready');
   const [busy,setBusy] = useState(false);
   const [result,setResult] = useState<HdlResult|null>(null);
@@ -37,7 +40,7 @@ export function HdlWorkspace({ challenge, playground=false }: { challenge: Omit<
   const frameRef = useRef<HTMLIFrameElement>(null);
   const revisionRef = useRef(0);
   const [waveReady,setWaveReady] = useState(false);
-  const [questionWidth,setQuestionWidth]=useState(31), [editorShare,setEditorShare]=useState(53), [dragging,setDragging]=useState(false);
+  const [questionWidth,setQuestionWidth]=useState(24), [editorShare,setEditorShare]=useState(53), [dragging,setDragging]=useState(false);
   const [editorWidth,setEditorWidth]=useState(50);
   const [runKind,setRunKind]=useState<'run'|'submit'>('run');
   const [reveal,setReveal]=useState<{file:'design'|'testbench'|'supplied';line:number;revision:number}>();
@@ -132,11 +135,11 @@ export function HdlWorkspace({ challenge, playground=false }: { challenge: Omit<
   const jump=(target:{file:'design'|'testbench';line:number})=>{const destination=target.file==='testbench'&&runKind==='submit'?'supplied':target.file;setFile(destination);setWorkspacePanel('code');setShowDescription(false);setReveal(previous=>({...target,file:destination,revision:(previous?.revision??0)+1}));};
   // Capture Run/Submit before CodeMirror's Mod-Enter inserts a blank line; the region
   // adds no focus stop and all actions also have ordinary accessible buttons.
-  return <div className={styles.workspace} role="region" aria-label="HDL workbench" data-resizing={dragging} data-workspace-layout={workspaceLayout} data-description-open={showDescription} style={{'--question-width':questionWidth+'%','--editor-share':editorShare+'%','--editor-width':editorWidth+'%'} as CSSProperties} onKeyDownCapture={event=>{
+  return <div className={styles.workspace} role="region" aria-label="HDL workbench" data-resizing={dragging} data-workspace-layout={workspaceLayout} data-description-open={showDescription} data-description-compact={preferences.compactDescription} style={{'--question-width':questionWidth+'%','--editor-share':editorShare+'%','--editor-width':editorWidth+'%'} as CSSProperties} onKeyDownCapture={event=>{
     if((event.ctrlKey||event.metaKey)&&event.key==='Enter'&&!event.nativeEvent.isComposing){event.preventDefault();event.stopPropagation();if(hydrated&&!busy&&!event.repeat)void run(event.shiftKey&&!playground);}
   }}>
     <div className={styles.toolbar}>
-      <div className={styles.workspaceTools}><strong><Code2 size={16}/> HDL workbench</strong><button type="button" className={styles.descriptionToggle} aria-expanded={showDescription} aria-controls={`${paneId}-description`} onClick={()=>setShowDescription(value=>!value)}><FileText size={14}/>{showDescription?'Back to code':'Description'}</button><label><span className={styles.visuallyHidden}>Workspace layout</span><select aria-label="Workspace layout" value={workspaceLayout} onChange={event=>setWorkspaceLayout(event.target.value as typeof workspaceLayout)}><option value="stacked">Stacked</option><option value="split">Side by side</option><option value="tabs">Tabs</option></select></label></div>
+      <div className={styles.workspaceTools}><strong><Code2 size={16}/> HDL workbench</strong><button type="button" className={styles.descriptionToggle} aria-expanded={showDescription} aria-controls={`${paneId}-description`} onClick={()=>setShowDescription(value=>!value)}><FileText size={14}/>{showDescription?'Hide description':'Description'}</button><label><span className={styles.visuallyHidden}>Workspace layout</span><select aria-label="Workspace layout" value={workspaceLayout} onChange={event=>setWorkspaceLayout(event.target.value as typeof workspaceLayout)}><option value="stacked">Stacked</option><option value="split">Side by side</option><option value="tabs">Tabs</option></select></label></div>
       <div className={styles.actions}>
         <label><span className={styles.visuallyHidden}>HDL language</span><select aria-label="HDL language" value={language} disabled={busy||!hydrated} onChange={event=>{invalidateOutput();setLanguage(event.target.value as HdlLanguage);}}><option value="2012">SystemVerilog 2012</option><option value="2005">Verilog 2005</option></select></label>
         <button type="button" disabled={!hydrated} onClick={()=>void exportProject()} title="Download sources and local simulator commands"><Download size={14}/>Project</button>
@@ -167,10 +170,11 @@ export function HdlWorkspace({ challenge, playground=false }: { challenge: Omit<
         {workspaceLayout!=='tabs'&&<HdlResizeHandle axis={workspaceLayout==='split'?'x':'y'} value={workspaceLayout==='split'?editorWidth:editorShare} min={30} max={68} container={codingRef} label="Resize editor and results" controls={`${paneId}-editor`} onChange={workspaceLayout==='split'?setEditorWidth:setEditorShare} onDragging={setDragging}/>}
         <section className={styles.results} aria-label="HDL simulation results" hidden={workspaceLayout==='tabs'&&workspacePanel!=='results'}>
           <div className={styles.resultsHeader}>
-            <div className={styles.tabs} role="tablist" aria-label="HDL output"><button type="button" role="tab" aria-selected={panel==='tests'} onClick={()=>setPanel('tests')}><CheckCheck size={14}/>Test results</button><button type="button" role="tab" aria-selected={panel==='console'} onClick={()=>setPanel('console')}><Terminal size={14}/>Console</button><button type="button" role="tab" aria-selected={panel==='waveforms'} onClick={()=>setPanel('waveforms')}><Waves size={15}/>Waveforms</button></div>
+            <div className={styles.tabs} role="tablist" aria-label="HDL output"><button type="button" role="tab" aria-selected={panel==='tests'} onClick={()=>setPanel('tests')}><CheckCheck size={14}/>Test results</button><button type="button" role="tab" aria-selected={panel==='console'} onClick={()=>setPanel('console')}><Terminal size={14}/>Console</button><button type="button" role="tab" aria-selected={panel==='waveforms'} onClick={()=>setPanel('waveforms')}><Waves size={15}/>Waveforms</button><button type="button" role="tab" aria-selected={panel==='schematic'} onClick={()=>setPanel('schematic')}><Code2 size={15}/>Schematic</button></div>
             <div className={styles.actions}><label><span className={styles.visuallyHidden}>Output layout</span><select aria-label="Output layout" value={layout} onChange={event=>{setLayout(event.target.value as typeof layout);if(panel==='tests')setPanel('console');}}><option value="tabs">Tabs</option><option value="split">Side by side</option><option value="stacked">Stacked / scroll</option></select></label><button type="button" disabled={!result?.vcd} onClick={()=>result?.vcd&&download('dump.vcd',result.vcd)}><Download size={13}/>VCD</button></div>
           </div>
           <div className={styles.statusbar}><span className={`${styles.status} ${verdict==='passed'?styles.success:verdict==='failed'?styles.error:''}`} role="status">{verdict==='passed'?`All ${challenge.checks.toLocaleString()} practice checks passed`:verdict==='failed'?'Some practice checks failed':status}{result&&` · ${(result.runtimeMs/1000).toFixed(2)} s`}</span><span>{runKind==='submit'?'Supplied testbench':'Editable testbench'}</span></div>
+          {panel==='schematic'&&<HdlSchematic design={design}/>}
           {panel==='tests'&&<div className={styles.testResults} aria-label="Test case results">
             {error?<p className={styles.error}>{error}</p>:!result?<p>{busy?'Running your design…':playground?'Run your design and editable testbench to inspect its output and waveforms.':`Submit your design to run all ${challenge.checks.toLocaleString()} supplied checks. Run lets you experiment with your own testbench first.`}</p>:<>
               <div className={styles.verdict}>{checked?.passed?<CircleCheck size={22}/>:<CircleX size={22}/>}<div><strong>{checked?.checks? `${(checked.checks-checked.failures).toLocaleString()} / ${checked.checks.toLocaleString()} checks passed`:'No complete test report'}</strong><p>{runKind==='submit'?'Supplied checks against the current design.':'Results reported by your editable testbench.'}{checked&&checked.checks!==challenge.checks&&runKind==='submit'?' The simulation ended before all supplied checks completed.':''}</p></div></div>
@@ -179,7 +183,7 @@ export function HdlWorkspace({ challenge, playground=false }: { challenge: Omit<
               <pre className={styles.inlineConsole} aria-label="Submission diagnostics">{result.log}</pre>
             </>}
           </div>}
-          <div className={`${styles.outputs} ${layout==='split'?styles.split:layout==='stacked'?styles.stacked:''}`} hidden={panel==='tests'}>
+          <div className={`${styles.outputs} ${layout==='split'?styles.split:layout==='stacked'?styles.stacked:''}`} hidden={panel==='tests'||panel==='schematic'}>
             <div className={styles.pane} hidden={!showConsole}><pre className={`${styles.console} ${error?styles.error:''}`} aria-label="Simulator console">{error||result?.log||'Run your design to see compiler diagnostics and testbench output.'}</pre></div>
             <div className={styles.pane} hidden={!showWaves}>{result?.vcd?<iframe ref={frameRef} title="VCDrom logic waveform viewer" className={styles.waveform} src="/hdl/viewer/index.html" onLoad={()=>setWaveReady(true)}/>:<div className={styles.empty}><Waves size={30}/><span>Run a testbench with $dumpfile(&quot;dump.vcd&quot;) and $dumpvars to inspect its signals.</span></div>}</div>
           </div>

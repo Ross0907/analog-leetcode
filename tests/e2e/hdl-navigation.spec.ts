@@ -18,7 +18,7 @@ test('HDL time scrollbar, cursor navigation and area zoom use the real VCD time 
   await page.getByRole('button',{name:'Zoom in timeline',exact:true}).click();await expect(scroll).toBeEnabled();
   const before=await view(),width=before.end-before.start;
   const bounds=(await timeline.boundingBox())!,side=await timeline.evaluate(node=>parseFloat(getComputedStyle(node).getPropertyValue('--signal-width'))),plotWidth=bounds.width-side;
-  await page.getByRole('button',{name:'Zoom to selected time area',exact:true}).click();await expect(timeline).toBeFocused();await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Zoom to selected time area',exact:true})).toHaveAttribute('aria-pressed','false');
+  await expect(page.getByRole('button',{name:'Zoom to selected time area',exact:true})).toHaveAttribute('aria-pressed','true');await timeline.focus();await expect(timeline).toBeFocused();await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Zoom to selected time area',exact:true})).toHaveAttribute('aria-pressed','false');
   await page.getByRole('button',{name:'Zoom to selected time area',exact:true}).click();
   await page.mouse.move(bounds.x+side+plotWidth*.2,bounds.y+55);await page.mouse.down();await page.mouse.move(bounds.x+side+plotWidth*.6,bounds.y+55,{steps:8});
   await expect(page.locator('.time-selection')).toBeVisible();await page.mouse.up();
@@ -27,7 +27,7 @@ test('HDL time scrollbar, cursor navigation and area zoom use the real VCD time 
   await scroll.focus();await scroll.press('End');const endView=await view();expect(endView.end).toBeCloseTo(100e-9,14);expect(await time()).toBeCloseTo(50e-9,14);
   await page.getByRole('button',{name:'Center view on cursor',exact:true}).click();const centered=await view();expect((centered.start+centered.end)/2).toBeCloseTo(50e-9,14);
   await timeline.hover({position:{x:side+100,y:60}});await page.mouse.wheel(150,0);await expect.poll(async()=>(await view()).start).toBeGreaterThan(centered.start);expect(await time()).toBeCloseTo(50e-9,14);
-  await page.getByRole('button',{name:'Zoom to selected time area',exact:true}).click();const cancelView=await view();
+  await expect(page.getByRole('button',{name:'Zoom to selected time area',exact:true})).toHaveAttribute('aria-pressed','true');const cancelView=await view();
   await page.mouse.move(bounds.x+side+plotWidth*.2,bounds.y+55);await page.mouse.down();await page.mouse.move(bounds.x+side+plotWidth*.4,bounds.y+55);await page.keyboard.press('Escape');await page.mouse.move(bounds.x+side+plotWidth*.6,bounds.y+55);await page.mouse.up();
   expect(await view()).toEqual(cancelView);expect(await time()).toBeCloseTo(50e-9,14);await expect(page.locator('.time-selection')).toBeHidden();
   await page.getByRole('button',{name:'Move cursor to end',exact:true}).click();expect(await time()).toBeCloseTo(100e-9,14);expect((await view()).end).toBeCloseTo(100e-9,14);

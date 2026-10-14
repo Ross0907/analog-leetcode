@@ -23,7 +23,8 @@ for (const engine of ['native', 'ngspice']) test(`${engine} longer settled FFT u
   const spectrum = work.getByRole('region', { name: 'Spectrum analyzer', exact: true });
   const originalSpacing = Number(await spectrum.getAttribute('data-bin-width'));
   expect(originalSpacing).toBeGreaterThan(190);
-  await spectrum.locator('summary').filter({ hasText: 'Finer resolution & settled capture' }).click();
+  await expect(spectrum.getByLabel('FFT capture record length', { exact: true })).toBeVisible();
+  await spectrum.getByLabel('Use maximum depth over a longer record (changes Nyquist bandwidth)',{exact:true}).uncheck();
   await spectrum.getByLabel('FFT capture record length', { exact: true }).fill('.04');
   await spectrum.getByLabel('FFT capture settling time', { exact: true }).fill('.005');
   await spectrum.getByRole('button', { name: 'Capture longer FFT record', exact: true }).click();
@@ -83,4 +84,25 @@ test('precise time, amplitude and logarithmic frequency cursors accept numeric e
   await frequency.fill('1.234567k'); await frequency.press('Enter'); expect(Number(await frequency.inputValue())).toBeCloseTo(1234.567, 7);
   await fft.getByRole('textbox', { name: 'Cursor B position', exact: true }).fill('2k'); await fft.getByRole('textbox', { name: 'Cursor B position', exact: true }).press('Enter');
   await fft.screenshot({ path: 'artifacts/qa/precise-frequency-cursors.png' });
+});
+
+
+test('maximum-depth resolution capture measures a longer window and X zoom can leave the initial FFT crop', async ({ page }) => {
+  test.setTimeout(120000);
+  const work = await lesson(page);
+  await work.getByRole('button', { name: 'Spectrum', exact: true }).click();
+  const spectrum = work.getByRole('region', { name: 'Spectrum analyzer', exact: true });
+  const originalSpacing = Number(await spectrum.getAttribute('data-bin-width'));
+  await spectrum.getByLabel('FFT capture record length', { exact: true }).fill('.04');
+  await spectrum.getByLabel('FFT capture settling time', { exact: true }).fill('.005');
+  await spectrum.getByRole('button', { name: 'Resolve spectrum with a longer capture', exact: true }).click();
+  await expect(spectrum).toHaveAttribute('data-fft-used', '131072', { timeout: 60000 });
+  const spacing = Number(await spectrum.getAttribute('data-bin-width'));
+  expect(spacing).toBeCloseTo(25, 1); expect(spacing).toBeLessThan(originalSpacing / 4);
+  await spectrum.getByLabel('Spectrum frequency range', { exact: true }).selectOption('peak');
+  const plot = spectrum.getByRole('region', { name: 'FFT spectrum', exact: true });
+  const width = async () => Number(await plot.getAttribute('data-x-max')) - Number(await plot.getAttribute('data-x-min'));
+  const before = await width();
+  await plot.locator('canvas').hover(); await page.keyboard.down('Control'); await page.keyboard.down('Shift'); await page.mouse.wheel(0, 650); await page.keyboard.up('Shift'); await page.keyboard.up('Control');
+  await expect.poll(width).toBeGreaterThan(before * 1.1);
 });

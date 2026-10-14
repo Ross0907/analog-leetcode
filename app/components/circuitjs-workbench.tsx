@@ -100,7 +100,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
   const themeRef = useRef(schematicTheme);
   const [analysisSettings, setAnalysisSettings] = useState<NativeAnalysisSettings>({ type: analysis?.initialNetlist.match(/^\s*\.ac\b/m) ? 'ac-sweep' : analysis?.initialNetlist.match(/^\s*\.op\b/m) ? 'operating-point' : 'transient', duration: .01, samples: 65536, startHz: 10, stopHz: 100000, dcStart: 0, dcStop: 5, dcStep: .05, ...analysisDefaults });
   const settingsRef = useRef(analysisSettings);
-  const spiceCurrentBindingsRef = useRef<{element:CircuitJsElement;expression:string}[]>([]);
+  const spiceCurrentBindingsRef = useRef<{element:CircuitJsElement;expression:string;post?:number}[]>([]);
   const [spiceLinked, setSpiceLinked] = useState(false);
   const previousElementsRef = useRef<CircuitJsElement[]>([]);
   const previousAnalysisElementsRef = useRef<CircuitJsElement[]>([]);
@@ -195,7 +195,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
     if (connectionError) throw new Error('Fix the schematic before analysis: ' + connectionError);
     if (analysis?.requireSchematic) prepareGrading();
     const prepared = circuitJsAnalysis(api, { ...settingsRef.current, acSource: settingsRef.current.acSource ?? circuitJsAnalysisOptions(api).sources[0]?.index, duration: Number(duration), samples: Number(samples) });
-    spiceCurrentBindingsRef.current = prepared.currentBindings;
+    spiceCurrentBindingsRef.current = [...prepared.currentBindings, ...prepared.voltageBindings];
     const currents = probesRef.current.filter(probe=>probe.enabled && probe.kind==='current').map(probe=>{
       const binding=prepared.currentBindings.find(binding=>binding.element===probe.element);
       if (!binding) throw new Error('SPICE current probes require a voltage source or inductor. Use Capture all probes for other component currents.');
@@ -360,6 +360,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
           if (event.type !== 'mousedown' || cancelCaptureRef.current) return;
           const canvas = event.target as HTMLCanvasElement;
           const rect = canvas.getBoundingClientRect();
+          const connectionError=api.ensureAnalyzed?.(); if(connectionError){setError(connectionError);return;}
           const hit = api.hitTest?.(event.clientX - rect.left, event.clientY - rect.top);
           const element = modeRef.current === 'current' ? currentProbeElementAt(api, event.clientX - rect.left, event.clientY - rect.top) : hit?.element;
           if (!element || element.getPostCount() < 1) { setStatus('Click a wire or component terminal to place a probe.'); return; }
@@ -521,14 +522,16 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
       const added:CircuitJsProbe={id:crypto.randomUUID(),name:`I(${circuitJsElementName(binding.element,api.getElements().indexOf(binding.element))})`,kind:'current',element:binding.element,post:0,color:trace.color??CIRCUITJS_PROBE_COLORS[probesRef.current.length%CIRCUITJS_PROBE_COLORS.length],enabled:true};
       updateProbes([...probesRef.current,added]);setSelectedProbeId(added.id);return;
     }
-    const node = circuitJsNodeOptions(api.getElements()).find(node => normalizeNode(probeNodeName(api, node.element, node.post)) === normalizeNode(trace.node ?? trace.name));
+    const binding = spiceCurrentBindingsRef.current.find(binding=>binding.post!==undefined && normalizeNode(binding.expression)===normalizeNode(trace.node ?? trace.name));
+    const node = binding ? {element:binding.element,post:binding.post!} : undefined;
     if (!node || probesRef.current.length >= MAX_CIRCUITJS_PROBES) { setSelectedProbeId(null); return; }
     const added: CircuitJsProbe = { id: crypto.randomUUID(), name: `V(${probeNodeName(api,node.element,node.post)})`, kind:'voltage', ...clearProbeAttachment(api.getElements(),node.element,node.post), color: trace.color ?? CIRCUITJS_PROBE_COLORS[probesRef.current.length % CIRCUITJS_PROBE_COLORS.length], enabled:true };
     updateProbes([...probesRef.current, added]); setSelectedProbeId(added.id);
   };
   const selectedTraceId = resultSource === 'spice' ? selectedSpiceTraceId : selectedProbeId;
   function recordWithSettings(record: {duration:number;samples:number;settleDuration?:number}) {
-    if (capturing || spiceRunning || live) return;
+    if (capturing || spiceRunning) return;
+    if (live) stopLive();
     const settleDuration = record.settleDuration ?? settingsRef.current.settleDuration ?? 0;
     if (!Number.isFinite(record.duration) || !Number.isFinite(settleDuration) || settleDuration < 0 || record.duration + settleDuration > 10) { setError('The capture and settling time together must be at most 10 seconds.'); return; }
     settingsRef.current = { ...settingsRef.current, settleDuration };

@@ -49,7 +49,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
               <span><CircleGauge size={14} /> {challenge.acceptance !== null && challenge.attempts > 0 ? `${challenge.acceptance}% acceptance` : "New problem"}</span>
               <span><Waves size={14} /> {challenge.analysis}</span>
             </div>
-            <ThemeToggle />
+            <Link href="/settings" className="text-button" aria-label="Settings">Settings</Link><ThemeToggle />
           </div>
         </div>
       </header>
