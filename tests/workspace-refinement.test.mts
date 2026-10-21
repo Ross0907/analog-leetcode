@@ -28,6 +28,8 @@ test('unknown logic intervals occupy both rails and never draw an ambiguous midp
   assert.ok(!plot.path.includes(' 23'));
 });
 test('default trace colors avoid collisions while custom probe colors are retained',()=>{
+  const native=distinctTraceColors(['node1','out'],{out:'#fbbf24'});
+  assert.equal(native.out,'#fbbf24');assert.equal(native.node1,'#22c7df');
   const colors=distinctTraceColors(['out','node1','node2','out'],{out:'#ffd33d'});
   assert.equal(colors.out,'#ffd33d');assert.equal(new Set(Object.values(colors)).size,3);
   assert.equal(new Set(Object.values(distinctTraceColors(Array.from({length:32},(_,i)=>String(i))))).size,32);
