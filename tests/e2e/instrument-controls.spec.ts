@@ -1,4 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+
+// These tests exercise manual acquisition/display controls; auto quality is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('anacode.fft.quality','short'));});
 import { readFile } from 'node:fs/promises';
 
 async function openDisclosure(workspace: Locator, title: string) {

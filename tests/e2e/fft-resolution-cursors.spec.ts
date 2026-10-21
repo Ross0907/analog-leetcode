@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+// These tests exercise manual acquisition/display controls; auto quality is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('anacode.fft.quality','short'));});
+
 async function lesson(page: Page) {
   await page.goto('/problems/rc-high-pass');
   const work = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
@@ -23,8 +26,10 @@ for (const engine of ['native', 'ngspice']) test(`${engine} longer settled FFT u
   const spectrum = work.getByRole('region', { name: 'Spectrum analyzer', exact: true });
   const originalSpacing = Number(await spectrum.getAttribute('data-bin-width'));
   expect(originalSpacing).toBeGreaterThan(190);
+  await spectrum.locator('summary').filter({hasText:'Finer resolution & settled capture'}).click();
   await expect(spectrum.getByLabel('FFT capture record length', { exact: true })).toBeVisible();
   await spectrum.getByLabel('Use maximum depth over a longer record (changes Nyquist bandwidth)',{exact:true}).uncheck();
+  if(!await spectrum.getByLabel('FFT capture record length',{exact:true}).isVisible()) await spectrum.locator('summary').filter({hasText:'Finer resolution & settled capture'}).click();
   await spectrum.getByLabel('FFT capture record length', { exact: true }).fill('.04');
   await spectrum.getByLabel('FFT capture settling time', { exact: true }).fill('.005');
   await spectrum.getByRole('button', { name: 'Capture longer FFT record', exact: true }).click();
@@ -93,6 +98,7 @@ test('maximum-depth resolution capture measures a longer window and X zoom can l
   await work.getByRole('button', { name: 'Spectrum', exact: true }).click();
   const spectrum = work.getByRole('region', { name: 'Spectrum analyzer', exact: true });
   const originalSpacing = Number(await spectrum.getAttribute('data-bin-width'));
+  if(!await spectrum.getByLabel('FFT capture record length',{exact:true}).isVisible()) await spectrum.locator('summary').filter({hasText:'Finer resolution & settled capture'}).click();
   await spectrum.getByLabel('FFT capture record length', { exact: true }).fill('.04');
   await spectrum.getByLabel('FFT capture settling time', { exact: true }).fill('.005');
   await spectrum.getByRole('button', { name: 'Resolve spectrum with a longer capture', exact: true }).click();

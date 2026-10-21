@@ -39,7 +39,10 @@ test('Lab fills the viewport and places a real current probe on a wire with one 
     return {wire:api.getElements()[index].getCurrent(),resistor:api.getElements().find(el=>el.getType()==='ResistorElm')!.getCurrent(),circuit:api.exportCircuit()};
   },branch);
   expect(Math.abs(actual.wire)).toBeCloseTo(Math.abs(actual.resistor),8);
-  expect(actual.circuit).toBe(branch.circuit);
+  // Acquisition changes the solver timestep and capacitor's saved voltage,
+  // while probe placement must preserve every component, value and connection.
+  const topology = (text:string) => text.replace(/ (?:ts|vd)="[^"]*"/g, '');
+  expect(topology(actual.circuit)).toBe(topology(branch.circuit));
   const labelPoint=await native.locator('body').evaluate(()=>new Promise<{x:number;y:number}>((resolve,reject)=>{
     const api=(window as unknown as {CircuitJS1:CircuitJsApi}).CircuitJS1;
     const label=api.getElements().find(el=>el.getType()==='LabeledNodeElm')!;

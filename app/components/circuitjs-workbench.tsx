@@ -1,4 +1,5 @@
 "use client";
+import { automaticFftCapture } from '../../lib/fft-quality';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Download, FolderOpen, MousePointer2, Pause, Play, Radio, RotateCcw, Save, Trash2, Waves } from 'lucide-react';
 import { captureCircuitJs, circuitJsElementName, circuitJsNodeOptions, CIRCUITJS_PROBE_COLORS, MAX_CIRCUITJS_PROBES, readCircuitJsProbe, supportsCircuitJsCurrent, validateCircuitJsText, type CircuitJsApi, type CircuitJsElement, type CircuitJsProbe } from '../../lib/circuitjs';
@@ -7,7 +8,7 @@ import type { SimulationPayload } from '../../lib/simulator-contract';
 import type { CircuitDocument } from '../../lib/circuit-document';
 import { circuitJsGradingDocument } from '../../lib/circuitjs-grading';
 import { generateSpiceDeckFromCircuitDocument } from '../../lib/circuit-spice';
-import { circuitJsAnalysis, circuitJsAnalysisOptions, circuitJsAnalysisElements, type NativeAnalysisSettings, type NativeSourceOverride } from '../../lib/circuitjs-analysis';
+import { circuitJsCaptureTimeLimit, circuitJsAnalysis, circuitJsAnalysisOptions, circuitJsAnalysisElements, type NativeAnalysisSettings, type NativeSourceOverride } from '../../lib/circuitjs-analysis';
 import { ScopeResult, SimulationConsole } from './simulation-console';
 import { ACQUISITION_SAMPLE_OPTIONS, startCircuitJsAcquisition, type CircuitJsAcquisition } from '../../lib/circuitjs-acquisition';
 import type { JudgeKind } from '../../lib/challenges';
@@ -53,9 +54,18 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
   const [error, setError] = useState<string | null>(null);
   const [elements, setElements] = useState<CircuitJsElement[]>([]);
   const [probes, setProbes] = useState<CircuitJsProbe[]>([]);
-  const [selectedProbeId, setSelectedProbeId] = useState<string | null>(null);
+  const [primaryProbeId, setPrimaryProbeId] = useState<string | null>(null);
+  const selectedProbeId = primaryProbeId;
+  const [selectedSpiceTraceIds,setSelectedSpiceTraceIds] = useState<string[]>([]);
+  const [selectedProbeIds, setSelectedProbeIds] = useState<string[]>([]);
+  function setSelectedProbeId(id: string | null) { setPrimaryProbeId(id); setSelectedSpiceTraceIds([]); setSelectedProbeIds(id ? [id] : []); }
+
   const [selectedSpiceTraceId, setSelectedSpiceTraceId] = useState<string | null>(null);
   const [instrumentView, setInstrumentView] = useState<'scope' | 'spectrum' | 'logic' | 'dc' | 'all'>(preferredInstrument === 'dc' ? 'dc' : 'scope');
+  const [fftQuality, setFftQuality] = useState<'auto'|'short'>('auto');
+  useEffect(()=>{const timer=setTimeout(()=>{try{if(localStorage.getItem('anacode.fft.quality')==='short')setFftQuality('short');}catch{/* Default to automatic. */}},0);return()=>clearTimeout(timer);},[]);
+  const autoFftRecordsRef = useRef(new WeakSet<number[]>());
+  const autoFftPendingRef = useRef(false);
   const [fftLength, setFftLength] = useState<number | undefined>();
   const [spiceRunRequest, setSpiceRunRequest] = useState(0);
   const [spiceRunning, setSpiceRunning] = useState(false);
@@ -100,6 +110,11 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
   const themeRef = useRef(schematicTheme);
   const [analysisSettings, setAnalysisSettings] = useState<NativeAnalysisSettings>({ type: analysis?.initialNetlist.match(/^\s*\.ac\b/m) ? 'ac-sweep' : analysis?.initialNetlist.match(/^\s*\.op\b/m) ? 'operating-point' : 'transient', duration: .01, samples: 65536, startHz: 10, stopHz: 100000, dcStart: 0, dcStop: 5, dcStep: .05, ...analysisDefaults });
   const settingsRef = useRef(analysisSettings);
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => { if (event.key !== 'Escape') return; setSelectedProbeId(null); setSelectedSpiceTraceId(null); setLabelEditor(false); modeRef.current='edit';setMode('edit'); apiRef.current?.cancelDrawing(); const canvas=iframeRef.current?.contentDocument?.querySelector('canvas');if(canvas)canvas.style.cursor=''; };
+    document.addEventListener('keydown',escape,true);
+    return ()=>document.removeEventListener('keydown',escape,true);
+  }, []);
   const spiceCurrentBindingsRef = useRef<{element:CircuitJsElement;expression:string;post?:number}[]>([]);
   const [spiceLinked, setSpiceLinked] = useState(false);
   const previousElementsRef = useRef<CircuitJsElement[]>([]);
@@ -110,6 +125,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
   const nodes = circuitJsNodeOptions(elements);
   const recommendedKey = recommendedProbes?.join('|') ?? '';
   const acceptSpiceResult = useCallback((result: SimulationPayload | null, source?: 'schematic'|'deck') => {
+    if(result && autoFftPendingRef.current) { autoFftRecordsRef.current.add(result.x); autoFftPendingRef.current=false; }
     setSpicePayload(result && source==='schematic' && apiRef.current ? spiceProbePayloadAppearance(result,probesRef.current,apiRef.current,spiceCurrentBindingsRef.current) : result);
     setSpiceLinked(source === 'schematic');
     if (result) { setResultSource('spice'); setTab('instruments'); setInstrumentMaximized(false); setStatus(`${result.analysis === 'ac' ? 'AC response' : result.analysis === 'dc-sweep' ? 'DC sweep' : result.analysis === 'dc' ? 'DC operating point' : 'Transient response'} ready above.`); }
@@ -354,7 +370,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
         const nativeDocument = nativeWindow!.document;
         const click = (event: MouseEvent) => {
           if (event.target !== nativeDocument.querySelector('canvas')) return;
-          if (event.type === 'mousedown') { setSelectedProbeId(null); setSelectedSpiceTraceId(null); }
+          if (event.type === 'mousedown' && !event.ctrlKey && !event.metaKey) { setSelectedProbeId(null); setSelectedSpiceTraceId(null); }
           if (modeRef.current === 'edit') return;
           event.preventDefault(); event.stopImmediatePropagation();
           if (event.type !== 'mousedown' || cancelCaptureRef.current) return;
@@ -385,7 +401,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
         };
         const events = ['mousedown', 'mouseup', 'click'] as const;
         const escape = (event: KeyboardEvent) => {
-          if (event.key === 'Escape') { setSelectedProbeId(null); setSelectedSpiceTraceId(null); modeRef.current = 'edit'; setMode('edit'); const canvas = nativeDocument.querySelector('canvas'); if (canvas) canvas.style.cursor = ''; }
+          if (event.key === 'Escape') { api.cancelDrawing(); setLabelEditor(false); setSelectedProbeId(null); setSelectedSpiceTraceId(null); modeRef.current = 'edit'; setMode('edit'); const canvas = nativeDocument.querySelector('canvas'); if (canvas) canvas.style.cursor = ''; }
           if (modeRef.current !== 'edit' || event.key.toLowerCase() !== 'r' || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || event.repeat) return;
           if ((event.target as Element | null)?.closest?.('input,textarea,select,[contenteditable=true]')) return;
           const label = api.getHoveredElement(), angle = label?.getLabelAngle?.();
@@ -487,9 +503,10 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
       cancelCaptureRef.current = capture.cancel;
       const result = await capture.result;
       if (!mountedRef.current) return;
+      if(autoFftPendingRef.current) {autoFftRecordsRef.current.add(result.x);autoFftPendingRef.current=false;}
       setPayload(probePayloadAppearance(result, probesRef.current)); setResultSource('circuit'); setTab('instruments'); setStatus(`Captured ${result.x.length.toLocaleString()} solver samples across ${result.traces.length} probes.`);
     } catch (cause) { if (mountedRef.current) setError(cause instanceof Error ? cause.message : 'Capture failed.'); }
-    finally { cancelCaptureRef.current = null; if (mountedRef.current) setCapturing(false); }
+    finally { autoFftPendingRef.current=false; cancelCaptureRef.current = null; if (mountedRef.current) setCapturing(false); }
   }
   const displayedPayload = resultSource === 'spice' ? spicePayload : payload;
   const analysisAction = ({ 'ac-sweep': 'Run AC sweep', 'dc-sweep': 'Run DC sweep', 'operating-point': 'Measure DC operating point', transient: 'Run transient analysis' } as const)[analysisSettings.type];
@@ -503,18 +520,21 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
     const api=apiRef.current;
     return resultTraces(result).find(trace=>spiceProbeMatches(probe,trace,api,spiceCurrentBindingsRef.current));
   };
-  const selectProbe = (id: string) => {
-    setSelectedProbeId(id);
-    const probe = probesRef.current.find(probe => probe.id === id);
+  const selectProbe = (id: string, additive = false) => {
+    const next = additive ? selectedProbeIds.includes(id) ? selectedProbeIds.filter(value=>value!==id) : [...selectedProbeIds,id] : [id];
+    setSelectedProbeIds(next); setPrimaryProbeId(next.includes(id) ? id : next.at(-1) ?? null);
+    setSelectedSpiceTraceIds(next.flatMap(id=>{const probe=probesRef.current.find(p=>p.id===id);const trace=probe&&traceForProbe(probe,spicePayload);return trace?[trace.id]:[];}));
+    const primaryId = next.includes(id) ? id : next.at(-1);
+    const probe = probesRef.current.find(probe => probe.id === primaryId);
     setSelectedSpiceTraceId(probe ? traceForProbe(probe, spicePayload)?.id ?? null : null);
   };
-  const selectTrace = (id: string | null) => {
+  const selectTrace = (id: string | null, additive = false) => {
     setSelectedSpiceTraceId(resultSource === 'spice' ? id : null);
     if (!id) { setSelectedProbeId(null); return; }
     if(resultSource==='spice' && !spiceLinked) { setSelectedProbeId(null); return; }
     const trace = displayedPayload ? resultTraces(displayedPayload).find(trace=>trace.id===id) : undefined, api=apiRef.current;
     const probe = probesRef.current.find(probe => probe.id === id || (api && trace && resultSource==='spice' && spiceProbeMatches(probe,trace,api,spiceCurrentBindingsRef.current)));
-    if (probe) { if (!probe.enabled) updateProbes(probesRef.current.map(candidate=>candidate.id===probe.id?{...candidate,enabled:true}:candidate)); setSelectedProbeId(probe.id); return; }
+    if (probe) { if (!probe.enabled) updateProbes(probesRef.current.map(candidate=>candidate.id===probe.id?{...candidate,enabled:true}:candidate)); selectProbe(probe.id, additive); return; }
     if (!api || !trace || capturing) { setSelectedProbeId(null); return; }
     if(/^i\(/i.test((trace.node??trace.name).replace(/^∠/,''))) {
       const binding=spiceCurrentBindingsRef.current.find(binding=>binding.expression.toLowerCase()===(trace.node??trace.name).replace(/^∠/,'').toLowerCase());
@@ -546,6 +566,20 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
     recordWithSettings({ duration: request.recordDuration ?? Number(duration), samples: Math.min(131072, request.recordDuration !== undefined ? request.minimumSamples : Math.max(Number(samples), request.minimumSamples)), settleDuration: request.settleDuration });
   }
   useEffect(() => { captureRef.current = () => { void capture(); }; });
+  useEffect(() => {
+    if(fftQuality!=='auto' || !['spectrum','all'].includes(instrumentView) || !displayedPayload || displayedPayload.analysis!=='transient' || !ready || capturing || spiceRunning || (resultSource==='spice'&&!spiceLinked) || autoFftRecordsRef.current.has(displayedPayload.x)) return;
+    const timer=setTimeout(()=>{
+      autoFftRecordsRef.current.add(displayedPayload.x);
+      try { const request=automaticFftCapture(displayedPayload.x,displayedPayload.traces,apiRef.current ? circuitJsCaptureTimeLimit(apiRef.current) : 10); if(request){autoFftPendingRef.current=true;requestFftCapture(request);} }
+      catch(cause){setError(cause instanceof Error?cause.message:'Automatic FFT capture failed.');}
+    },0);
+    return ()=>clearTimeout(timer);
+  });
+  function changeFftQuality(quality:'auto'|'short') {
+    setFftQuality(quality);try{localStorage.setItem('anacode.fft.quality',quality);}catch{/* Session choice still works. */}
+    if(quality==='short') { setFftLength(8192); recordWithSettings({duration:Number(defaultDuration),samples:8192,settleDuration:0}); }
+    else if(displayedPayload)autoFftRecordsRef.current.delete(displayedPayload.x);
+  }
   return <section className={styles.workbench} data-fill-window={fillWindow || undefined} data-resizing={resizing || undefined} aria-label="CircuitJS schematic and simulation workspace">
     <NativeColorPickerBridge frame={iframeRef} ready={ready}/>
     <div className={styles.toolbar}>
@@ -590,7 +624,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
       {labelEditor && <form className={styles.netLabelEditor} onSubmit={event => { event.preventDefault(); const name = netName.trim(); if (!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(name)) { setError('Use a net name starting with a letter, up to 32 letters, digits or underscores.'); return; } changeMode('edit'); const issue = apiRef.current?.addNetLabel?.(name, netStyle); if (issue) { setError(issue); return; } iframeRef.current?.contentWindow?.focus(); setLabelEditor(false); setError(null); setStatus('Place the label on a wire endpoint or terminal. Equal names connect electrically throughout this circuit.'); }}><label>Net name<input aria-label="Global net name" value={netName} onChange={event => setNetName(event.target.value)} maxLength={32} placeholder="VREF" required/></label><label>Style<select aria-label="Net label style" value={netStyle} onChange={event => setNetStyle(event.target.value as typeof netStyle)}><option value="plain">Tag</option><option value="flag">Flag</option></select></label><button type="submit">Place label</button><button type="button" onClick={() => setLabelEditor(false)}>Cancel</button></form>}
       <div className={styles.frameWrap} data-schematic-theme={schematicTheme} style={{ height: editorHeight }}>
         <iframe ref={iframeRef} className={styles.frame} title="CircuitJS schematic editor" src="/circuitjs/circuitjs.html?running=false&hideSidebar=true&hideInfoBox=true&usResistors=true&cct=%24%204%200.000001%2010%2050%205%2050%205e-11" allow="clipboard-read; clipboard-write"/>
-        <SchematicProbeOverlay api={apiRef} frame={iframeRef} probes={probes} disabled={capturing} onChange={updateProbes} onMessage={setStatus} selectedProbeId={selectedProbeId} onSelectProbe={selectProbe}/>
+        <SchematicProbeOverlay api={apiRef} frame={iframeRef} probes={probes} disabled={capturing} onChange={updateProbes} onMessage={setStatus} selectedProbeIds={selectedProbeIds} onSelectProbe={selectProbe}/>
       </div>
       <WorkspaceDivider label="Resize schematic height" orientation="horizontal" value={editorHeight} minimum={300} maximum={1200} defaultValue={640} step={30} onChange={value => { setEditorHeight(value); persistLayout({ editorHeight: value }); }} onActive={active => { setResizing(active); if (!active) persistLayout(); }} className={styles.horizontalDivider}/>
       <ReusableBlockLibrary api={nativeApi} challengeSlug={analysis?.challengeSlug} onCircuitChange={() => { setPayload(null); setSpicePayload(null); setStatus('Block selected. Place it in the schematic and connect its terminals.'); }}/>
@@ -626,7 +660,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
       {(spicePayload || analysisSettings.type === 'ac-sweep') && <div className={styles.sourceSwitch} role="group" aria-label="Analysis displays"><button type="button" aria-pressed={resultSource === 'circuit'} onClick={() => { setResultSource('circuit'); setTimeControlsOpen(true); }}>Circuit probes</button><button type="button" aria-pressed={resultSource === 'spice'} onClick={() => { setResultSource('spice'); setTimeControlsOpen(false); }}>{analysisSettings.type === 'ac-sweep' || spicePayload?.analysis === 'ac' ? 'AC sweep' : 'SPICE response'}</button></div>}
       {displayedPayload && <div className={styles.resultHeading} role="status"><h2>{resultName(displayedPayload)}</h2><span>{displayedPayload.engine === 'circuitjs1' ? 'Circuit probes' : 'SPICE'} · {displayedPayload.x.length ? `${displayedPayload.x.length.toLocaleString()} points` : `${displayedPayload.operatingPoint.length} readings`}</span>{displayedPayload.analysis === 'transient' && analysisSettings.type !== 'transient' && <small>Choose “{analysisAction}” above to show its response.</small>}</div>}
       {displayedPayload && displayedPayload.warnings.map((warning) => <p className={styles.note} key={warning}>{warning}</p>)}
-      {displayedPayload ? <ScopeResult payload={displayedPayload} preferredInstrument={preferredInstrument === 'dc' ? 'dc' : 'scope'} recordDuration={Number(duration)+(analysisSettings.settleDuration??0)} onMaximizedChange={setInstrumentMaximized} view={instrumentView} onViewChange={setInstrumentView} fftLength={fftLength} onFftLengthChange={setFftLength} selectedTraceId={selectedTraceId} onSelectTrace={selectTrace} onRequestCapture={resultSource==='spice' && !spiceLinked ? undefined : requestFftCapture}/> : <div className={styles.empty}><Waves size={30}/><strong>{spiceRunning ? 'Simulating the current circuit…' : resultSource === 'spice' ? analysisAction : 'Watch your circuit respond'}</strong><p>{resultSource === 'spice' ? analysisSettings.type === 'ac-sweep' ? 'Run the AC sweep above. Bode magnitude and phase will appear here.' : analysisSettings.type === 'dc-sweep' ? 'Run the DC sweep above. The source-to-output transfer curve will appear here.' : 'Run the selected analysis above to display its results here.' : 'Set Duration and Samples / probe above, then capture all enabled probes together. Scope, FFT and logic use that same measured record.'}</p></div>}</div>
+      {displayedPayload ? <ScopeResult payload={displayedPayload} preferredInstrument={preferredInstrument === 'dc' ? 'dc' : 'scope'} recordDuration={Number(duration)+(analysisSettings.settleDuration??0)} onMaximizedChange={setInstrumentMaximized} view={instrumentView} onViewChange={setInstrumentView} fftQuality={fftQuality} onFftQualityChange={resultSource==='spice' && !spiceLinked ? undefined : changeFftQuality} fftBusy={capturing||spiceRunning} fftLength={fftLength} onFftLengthChange={setFftLength} selectedTraceIds={resultSource==='spice' ? selectedSpiceTraceIds.length ? selectedSpiceTraceIds : selectedTraceId ? [selectedTraceId] : [] : selectedProbeIds} selectedTraceId={selectedTraceId} onSelectTrace={selectTrace} onRequestCapture={resultSource==='spice' && !spiceLinked ? undefined : requestFftCapture}/> : <div className={styles.empty}><Waves size={30}/><strong>{spiceRunning ? 'Simulating the current circuit…' : resultSource === 'spice' ? analysisAction : 'Watch your circuit respond'}</strong><p>{resultSource === 'spice' ? analysisSettings.type === 'ac-sweep' ? 'Run the AC sweep above. Bode magnitude and phase will appear here.' : analysisSettings.type === 'dc-sweep' ? 'Run the DC sweep above. The source-to-output transfer curve will appear here.' : 'Run the selected analysis above to display its results here.' : 'Set Duration and Samples / probe above, then capture all enabled probes together. Scope, FFT and logic use that same measured record.'}</p></div>}</div>
     {analysis && <div ref={analysisRef} className={styles.analysisPane}>
       <SimulationConsole {...analysis} prepareCircuit={prepareCircuit} prepareGrading={analysis.judge ? prepareGrading : undefined} onResult={acceptSpiceResult} onRunningChange={setSpiceRunning} onError={setError} runRequest={spiceRunRequest} runRequestSource="schematic" hideWaveforms compact getCurrentInvalidationKey={currentInvalidationKey} invalidationKey={JSON.stringify([nativeApi?.getCircuitRevision?.() ?? circuitVersion, analysisSettings, duration, samples])}
         settingsSlot={<NativeAnalysisControls api={nativeApi} settings={{ ...analysisSettings, duration: Number(duration), samples: Number(samples) }} onChange={setAnalysisSettings} onApplySource={applySource} section="sources"/>}/>
@@ -645,7 +679,7 @@ export function CircuitJsWorkbench({ fillWindow = false, initialCircuit = CIRCUI
       </div>
       <div className={styles.probes}>{probes.map((probe, index) => <div className={styles.probe} key={probe.id} style={{ borderColor: `${probe.color}70` }}>
         <input type="checkbox" aria-label={`Enable ${probe.name}`} checked={probe.enabled} disabled={capturing} onChange={(event) => updateProbes(probes.map((entry) => entry.id === probe.id ? { ...entry, enabled: event.target.checked } : entry))}/>
-        <button type="button" aria-label={`Select probe ${index + 1} ${probe.name}`} aria-pressed={selectedProbeId === probe.id} style={{ color: probe.color }} onClick={() => selectProbe(probe.id)}>{index + 1}</button>
+        <button type="button" aria-label={`Select probe ${index + 1} ${probe.name}`} aria-pressed={selectedProbeIds.includes(probe.id)} style={{ color: probe.color }} onClick={event => selectProbe(probe.id,event.ctrlKey||event.metaKey)}>{index + 1}</button>
         <details className={styles.probeColor}><summary aria-label={`Probe ${index + 1} color`} style={{ color: probe.color }}>●</summary><InlineColorPicker label={`Probe ${index + 1} color`} value={probe.color} onChange={color => updateProbes(probes.map(entry => entry.id === probe.id ? { ...entry, color } : entry))}/></details>
         <input aria-label={`Probe ${index + 1} name`} value={probe.name} maxLength={80} onChange={(event) => updateProbes(probes.map((entry) => entry.id === probe.id ? { ...entry, name: event.target.value } : entry))}/>
         <output>{Number.isFinite(values[probe.id]) ? values[probe.id].toPrecision(4) : '—'} {probe.kind === 'current' ? 'A' : 'V'}</output>

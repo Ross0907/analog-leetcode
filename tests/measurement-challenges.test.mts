@@ -8,7 +8,7 @@ import { normalizeNgspiceResult } from '../lib/simulator-results';
 import { validateCircuitJsText } from '../lib/circuitjs';
 
 test('new transient and frequency exercises require edits and their solutions pass real ngspice', { timeout: 60000 }, async () => {
-  const edits = [['C1 out 0 100n', 'C1 out 0 47n'], ['R1 vin mid 20', 'R1 vin mid 200'], ['R1 out 0 10k', 'R1 out 0 1.59k'], ['C1 mid 0 10n', 'C1 mid 0 100n']];
+  const edits = [['C1 out 0 100n', 'C1 out 0 47n'], ['R1 vin mid 20', 'R1 vin mid 200'], ['R1 out 0 10k', 'R1 out 0 1.59k'], ['C1 mid 0 10n', 'C1 mid 0 100n'], ['R1 vin out 1k', 'R1 vin out 5k'], ['L1 vin out 1m', 'L1 vin out 20m'], ['C1 out 0 10n', 'C1 out 0 79.577n'], ['R1 vin mid 100', 'R1 vin mid 30']];
   const simulation = new Simulation(); await simulation.start();
   for (const [index, lesson] of measurementChallenges.entries()) {
     validateCircuitJsText(lesson.nativeCircuit!);

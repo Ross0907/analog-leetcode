@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+// These tests exercise manual acquisition/display controls; auto quality is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('anacode.fft.quality','short'));});
+
 async function openWorkbench(page: Page, path: string) {
   await page.goto(path);
   const workbench = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
@@ -45,7 +48,7 @@ test('lesson36 has real high-depth spectra for both probes, separate views and l
   await logic.getByRole('button', { name: 'Select V(bits)', exact: true }).click();
   await expect(workbench.getByRole('button', { name: 'Move probe 1 V(bits)', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await logic.getByLabel('Logic analyzer trace layout', { exact: true }).selectOption('overlap');
-  await expect(logic.getByRole('img', { name: 'Overlapping digital waveforms', exact: true }).locator('path')).toHaveCount(2);
+  await expect(logic.getByRole('img', { name: 'Overlapping digital waveforms', exact: true }).locator('path:not([aria-label])')).toHaveCount(2);
   await workbench.getByRole('button', { name: 'DC readings', exact: true }).click();
   const readings = workbench.getByRole('region', { name: 'DC readings', exact: true });
   await readings.getByRole('button', { name: 'Select V(out)', exact: true }).click();

@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test';
+
+// These tests exercise manual acquisition/display controls; auto quality is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('anacode.fft.quality','short'));});
 import type { CircuitJsApi } from '../../lib/circuitjs';
 
 test('paused edits analyze fresh nodes and run SPICE without cancelling the prepared result', async ({page}) => {
@@ -42,8 +45,8 @@ test('flash ADC captures four real stimulus cycles and longer acquisition keeps 
   const logic=workspace.getByRole('region',{name:'Logic analyzer',exact:true});
   await logic.getByLabel('Low ≤ V',{exact:true}).fill('1.995');
   await logic.getByLabel('High ≥ V',{exact:true}).fill('2.005');
-  const path=logic.getByRole('img',{name:'V(vin) digital waveform',exact:true}).locator('path');
-  await expect.poll(async()=>((await path.getAttribute('d'))?.match(/V9(?:\D|$)/g)??[]).length).toBeGreaterThanOrEqual(4);
+  const path=logic.getByRole('img',{name:'V(vin) digital waveform',exact:true}).locator('path:not([aria-label])');
+  await expect.poll(async()=>((await path.getAttribute('d'))?.match(/ 9H/g)??[]).length).toBeGreaterThanOrEqual(4);
   expect(Number(await logic.getAttribute('data-x-max'))).toBeCloseTo(.008,5);
   await workspace.getByRole('button',{name:'2× longer',exact:true}).click();
   await expect(workspace.getByLabel('Capture duration in seconds',{exact:true})).toHaveValue('0.016');
@@ -52,7 +55,7 @@ test('flash ADC captures four real stimulus cycles and longer acquisition keeps 
   // thresholds describe the input's actual 1.99 V / 2.01 V test levels.
   await logic.getByLabel('Low ≤ V',{exact:true}).fill('1.995');
   await logic.getByLabel('High ≥ V',{exact:true}).fill('2.005');
-  await expect.poll(async()=>((await path.getAttribute('d'))?.match(/V9(?:\D|$)/g)??[]).length).toBeGreaterThanOrEqual(8);
+  await expect.poll(async()=>((await path.getAttribute('d'))?.match(/ 9H/g)??[]).length).toBeGreaterThanOrEqual(8);
   expect(Number(await logic.getAttribute('data-x-max'))).toBeCloseTo(.016,5);
   await workspace.screenshot({path:'artifacts/qa/flash-adc-repeat-capture.png'});
 });

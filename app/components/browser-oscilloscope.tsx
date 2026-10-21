@@ -74,6 +74,7 @@ export interface BrowserOscilloscopeProps {
   title?: string;
   height?: number;
   className?: string;
+  markers?: {x:number;y:number;label:string}[];
   initialXRange?: readonly [number, number];
   initialXPerDivision?: OscilloscopeScale;
   initialYPerDivision?: OscilloscopeScale;
@@ -149,6 +150,7 @@ function OscilloscopePlot({
   height = 410,
   className,
   initialXRange,
+  markers,
   initialXPerDivision = "auto",
   initialYPerDivision = "auto",
   initialTrigger,
@@ -166,7 +168,7 @@ function OscilloscopePlot({
   const preferences = useWorkspacePreferences();
   const theme = useInstrumentTheme();
   const panel = useInstrumentPanel(instrumentId ?? controlId);
-  const { selectedTraceId, selectTrace } = useTraceSelection();
+  const { selectedTraceIds, selectTrace } = useTraceSelection();
   const [timeWindow, setTimeWindow] = useState<TimeWindowMode>('elapsed');
   const [exportError, setExportError] = useState<string | null>(null);
   const [appearances, setAppearances] = useTraceAppearance();
@@ -208,7 +210,7 @@ function OscilloscopePlot({
   const channelLimit = clamp(Math.trunc(maxChannels), 1, 32);
   const sampleLimit = clamp(Math.trunc(maxSamples), 1_000, 1_000_000);
   const boundedHeight = clamp(panel.maximized ? 540 : height, 260, 720);
-  const activeTraces = useMemo(() => traces.length > channelLimit ? [] : traces.filter((trace) => !removed.has(trace.id)).map((trace) => ({ ...trace, highlighted: (trace.sourceId ?? trace.id) === selectedTraceId, name: names[trace.id] ?? trace.name, color: instrumentTraceColor(safeColor(appearances[trace.id]?.color ?? trace.color, probeColor(trace.id)), theme), lineWidth: appearances[trace.id]?.width ?? trace.lineWidth ?? 1.7, displayOffset: appearances[trace.id]?.offset ?? trace.displayOffset ?? 0 })), [channelLimit, traces, removed, names, appearances, theme, selectedTraceId]);
+  const activeTraces = useMemo(() => traces.length > channelLimit ? [] : traces.filter((trace) => !removed.has(trace.id)).map((trace) => ({ ...trace, highlighted: selectedTraceIds.includes(trace.sourceId ?? trace.id), name: names[trace.id] ?? trace.name, color: instrumentTraceColor(safeColor(appearances[trace.id]?.color ?? trace.color, probeColor(trace.id)), theme), lineWidth: appearances[trace.id]?.width ?? trace.lineWidth ?? 1.7, displayOffset: appearances[trace.id]?.offset ?? trace.displayOffset ?? 0 })), [channelLimit, traces, removed, names, appearances, theme, selectedTraceIds]);
   const resolvedVisibility = useMemo(
     () => Object.fromEntries(activeTraces.map((trace) => [trace.id, visibility[trace.id] ?? trace.initiallyVisible !== false])),
     [activeTraces, visibility],
@@ -400,7 +402,13 @@ function OscilloscopePlot({
       context.beginPath(); context.moveTo(plot.left, y); context.lineTo(plot.left + plot.width, y); context.stroke();
     }
     context.restore();
+    if(markers) {context.save();context.font='11px system-ui,sans-serif';context.fillStyle=theme==='dark'?'#f3cf6a':'#854d0e';context.strokeStyle=context.fillStyle;
+      markers.forEach((marker,index)=>{const transformed=transformX(marker.x,effectiveXScale);if(transformed<xView.minimum||transformed>xView.maximum||marker.y<yBounds.minimum||marker.y>yBounds.maximum)return;
+        const px=plot.left+(transformed-xView.minimum)/(xView.maximum-xView.minimum)*plot.width,py=plot.top+(1-(marker.y-yBounds.minimum)/(yBounds.maximum-yBounds.minimum))*plot.height;
+        context.beginPath();context.arc(px,py,4,0,Math.PI*2);context.stroke();const textWidth=context.measureText(marker.label).width;context.fillText(marker.label,Math.max(plot.left,Math.min(px+6,plot.left+plot.width-textWidth)),plot.top+14+index*14);
+      });context.restore();}
   }, [
+    markers,
     boundedHeight,
     theme,
     domain,
@@ -637,7 +645,7 @@ function OscilloscopePlot({
           const color = safeColor(trace.color, probeColor(trace.id));
           return (
             <div className="anacode-scope__channel" data-selected={trace.highlighted || undefined} style={{ ...styles.channel, borderColor: `${color}80`, boxShadow: trace.highlighted ? `0 0 0 2px ${color}80` : undefined }} key={trace.id}>
-              <button type="button" aria-label={`Select ${trace.name}`} aria-pressed={trace.highlighted} onClick={() => selectTrace(trace.sourceId ?? trace.id)} onContextMenu={event => { event.preventDefault(); selectTrace(trace.sourceId ?? trace.id); setTraceMenu({ id: trace.id, x: event.clientX, y: event.clientY }); }} style={{ ...styles.channelButton, color }} title="Select this trace and its schematic probe">
+              <button type="button" aria-label={`Select ${trace.name}`} aria-pressed={trace.highlighted} onClick={event => selectTrace(trace.sourceId ?? trace.id,event.ctrlKey||event.metaKey)} onContextMenu={event => { event.preventDefault(); selectTrace(trace.sourceId ?? trace.id); setTraceMenu({ id: trace.id, x: event.clientX, y: event.clientY }); }} style={{ ...styles.channelButton, color }} title="Select this trace and its schematic probe">
                 <span>{trace.name}{trace.displayOffset !== 0 && <small style={{ marginLeft: 5 }}>↕ {formatQuantity(trace.displayOffset ?? 0, trace.unit ?? yUnit)}</small>}</span>
               </button>
               <button
@@ -660,12 +668,6 @@ function OscilloscopePlot({
         {traces.length > channelLimit && <span role="alert" style={styles.limitNote}>This capture exceeds {channelLimit} channels. Remove probes and capture again.</span>}
       </div>
 
-      <AxisRangeControls x={[inverseTransformX(xView.minimum, effectiveXScale), inverseTransformX(xView.maximum, effectiveXScale)]} y={[yBounds.minimum, yBounds.maximum]} xUnit={effectiveXUnit} yUnit={yUnit} xBounds={[xBounds.minimum, xBounds.maximum]} onApply={(nextX, nextY) => {
-        if (effectiveXScale === 'log' && nextX[0] <= 0) return;
-        const left = transformX(nextX[0], effectiveXScale), right = transformX(nextX[1], effectiveXScale);
-        setXCenter((left + right) / 2); setXPerDivision((right - left) / HORIZONTAL_DIVISIONS);
-        if (nextY) { setYCenter((nextY[0] + nextY[1]) / 2); setYPerDivision((nextY[1] - nextY[0]) / VERTICAL_DIVISIONS); }
-      }}/>
       <div className="anacode-scope__viewport" ref={viewportRef} style={{ ...styles.viewport, height: boundedHeight }}>
         <canvas
           ref={canvasRef}
@@ -684,6 +686,12 @@ function OscilloscopePlot({
         />
         {selection && <div aria-hidden="true" style={{ position: 'absolute', pointerEvents: 'none', left: Math.min(selection.start.x, selection.end.x), top: Math.min(selection.start.y, selection.end.y), width: Math.abs(selection.end.x - selection.start.x), height: Math.abs(selection.end.y - selection.start.y), border: '1px solid var(--blue)', background: 'color-mix(in srgb, var(--blue) 12%, transparent)' }}/>}
       </div>
+      <AxisRangeControls x={[inverseTransformX(xView.minimum, effectiveXScale), inverseTransformX(xView.maximum, effectiveXScale)]} y={[yBounds.minimum, yBounds.maximum]} xUnit={effectiveXUnit} yUnit={yUnit} xBounds={[xBounds.minimum, xBounds.maximum]} onApply={(nextX, nextY) => {
+        if (effectiveXScale === 'log' && nextX[0] <= 0) return;
+        const left = transformX(nextX[0], effectiveXScale), right = transformX(nextX[1], effectiveXScale);
+        setXCenter((left + right) / 2); setXPerDivision((right - left) / HORIZONTAL_DIVISIONS);
+        if (nextY) { setYCenter((nextY[0] + nextY[1]) / 2); setYPerDivision((nextY[1] - nextY[0]) / VERTICAL_DIVISIONS); }
+      }}/>
       {hasOffsets && <p style={styles.interactionHint}>Display offsets separate traces. The readout table uses actual values; axis cursors use display coordinates. <button type="button" style={styles.iconButton} onClick={() => { setAppearances(current => ({ ...current, ...Object.fromEntries(activeTraces.map(trace => [trace.id, { ...current[trace.id], offset: 0 }])) })); setYPerDivision(null); setYCenter(null); }}>Clear offsets</button></p>}
       {exportError && <p role="alert" style={styles.interactionHint}>{exportError}</p>}
       <p style={styles.interactionHint}>Click to {preferences.clickAction === 'reset' ? 'reset range' : 'move cursor'} · Drag a cursor line to move it · Drag elsewhere to zoom · Ctrl+wheel: {preferences.wheelMode === 'horizontal' ? 'horizontal' : 'both axes'} · Ctrl+Shift+wheel: horizontal · Alt+wheel: vertical · Shift-drag to pan · Right-click a trace to style · Double-click to reset</p>

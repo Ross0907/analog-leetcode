@@ -274,7 +274,8 @@ test("live acquisition remains bounded, updates real samples and freezes without
   await page.mouse.up();
   expect(Number(await logic.getAttribute('data-x-max')) - Number(await logic.getAttribute('data-x-min'))).toBeLessThan(oldSpan * 0.6);
   await logic.getByRole('button', { name: 'Reset view', exact: true }).click();
-  const tracePoint = await lane.locator('path').evaluate((element) => {
+  await lane.scrollIntoViewIfNeeded();
+  const tracePoint = await lane.locator('path:not([aria-label])').evaluate((element) => {
     const path = element as SVGPathElement;
     const point = path.getPointAtLength(path.getTotalLength() * 0.3).matrixTransform(path.getScreenCTM()!);
     return { x: point.x, y: point.y };
@@ -284,11 +285,11 @@ test("live acquisition remains bounded, updates real samples and freezes without
   await expect(logicMenu).toBeVisible();
   await logicMenu.getByRole('combobox', { name: 'Line thickness', exact: true }).selectOption('4');
   await page.keyboard.press('Escape');
-  await expect(lane.locator('path')).toHaveAttribute('stroke-width', '4');
-  const frozen = await logic.getByRole('img', { name: 'Input rail digital waveform', exact: true }).locator('path').getAttribute('d');
+  await expect(lane.locator('path:not([aria-label])')).toHaveAttribute('stroke-width', '4');
+  const frozen = await logic.getByRole('img', { name: 'Input rail digital waveform', exact: true }).locator('path:not([aria-label])').getAttribute('d');
   const frozenTime = await native.locator('body').evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.getTime());
   await expect.poll(() => native.locator('body').evaluate(() => (window as Window & { CircuitJS1: CircuitJsApi }).CircuitJS1.getTime())).toBeGreaterThan(frozenTime);
-  await expect(logic.getByRole('img', { name: 'Input rail digital waveform', exact: true }).locator('path')).toHaveAttribute('d', frozen!);
+  await expect(logic.getByRole('img', { name: 'Input rail digital waveform', exact: true }).locator('path:not([aria-label])')).toHaveAttribute('d', frozen!);
   await workspace.getByLabel('Workspace layout', { exact: true }).selectOption('tabs');
   await workspace.getByRole('button', { name: 'Schematic', exact: true }).click();
   await expect(logic).toBeHidden();
@@ -333,3 +334,6 @@ test("SPICE reads changed native component values and never silently substitutes
 });
 
 
+
+// These tests exercise manual acquisition/display controls; auto quality is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('anacode.fft.quality','short'));});

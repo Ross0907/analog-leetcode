@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
 
+// These tests exercise manual acquisition/display controls; auto quality is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('anacode.fft.quality','short'));});
+
 test('AC lessons open a separate AC display and retain explicit time capture', async ({ page }) => {
   await page.goto('/problems/sallen-key-q');
   const work = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });

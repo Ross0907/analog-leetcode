@@ -4,19 +4,19 @@ import { createContext, use, useEffect, useMemo, useState, useSyncExternalStore,
 
 export type TraceAppearance = { color?: string; width?: number; offset?: number };
 export type CaptureRequest = { minimumSamples: number; fftLength: number; reason: string; recordDuration?: number; settleDuration?: number };
-type TraceSelection = { selectedTraceId: string | null; selectTrace: (id: string | null) => void };
+type TraceSelection = { selectedTraceId: string | null; selectedTraceIds: string[]; selectTrace: (id: string | null, additive?: boolean) => void };
 const SelectionContext = createContext<TraceSelection | null>(null);
 
-export function TraceSelectionProvider({ children, selectedTraceId, onSelectTrace }: { children: ReactNode; selectedTraceId?: string | null; onSelectTrace?: (id: string | null) => void }) {
+export function TraceSelectionProvider({ children, selectedTraceId, selectedTraceIds, onSelectTrace }: { children: ReactNode; selectedTraceId?: string | null; selectedTraceIds?: string[]; onSelectTrace?: (id: string | null, additive?: boolean) => void }) {
   const [localId, setLocalId] = useState<string | null>(null);
-  const value = useMemo(() => ({ selectedTraceId: selectedTraceId === undefined ? localId : selectedTraceId, selectTrace: (id: string | null) => { setLocalId(id); onSelectTrace?.(id); } }), [localId, selectedTraceId, onSelectTrace]);
+  const value = useMemo(() => ({ selectedTraceId: selectedTraceId === undefined ? localId : selectedTraceId, selectedTraceIds: selectedTraceIds ?? ((selectedTraceId ?? localId) ? [selectedTraceId ?? localId!] : []), selectTrace: (id: string | null, additive = false) => { setLocalId(id); onSelectTrace?.(id, additive); } }), [localId, selectedTraceId, selectedTraceIds, onSelectTrace]);
   return <SelectionContext value={value}>{children}</SelectionContext>;
 }
 
 export function useTraceSelection() {
   const shared = use(SelectionContext);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
-  return shared ?? { selectedTraceId, selectTrace: setSelectedTraceId };
+  return shared ?? { selectedTraceId, selectedTraceIds: selectedTraceId ? [selectedTraceId] : [], selectTrace: setSelectedTraceId };
 }
 type AppearanceState = [Record<string, TraceAppearance>, Dispatch<SetStateAction<Record<string, TraceAppearance>>>];
 const AppearanceContext = createContext<AppearanceState | null>(null);

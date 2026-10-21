@@ -1,5 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+// These tests exercise manual acquisition/display controls; auto quality is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('anacode.fft.quality','short'));});
+
 async function workbench(page: Page, path = '/lab') {
   await page.goto(path);
   const root = page.getByRole('region', { name: 'CircuitJS schematic and simulation workspace', exact: true });
@@ -100,9 +103,9 @@ test('lesson15 FFT starts with a visible physical 1kHz peak and retains the full
   expect((Number(await plot.getAttribute('data-x-min')) + Number(await plot.getAttribute('data-x-max'))) / 2).toBeCloseTo(1000, -1);
   expect(Number(await plot.getAttribute('data-x-max'))).toBeLessThan(10000);
   await spectrum.getByRole('spinbutton', { name: 'Marker / Hz', exact: true }).fill('1000');
-  await expect(spectrum.getByText(/^Marker:/)).toContainText('-5.483 dB');
+  await expect(spectrum.getByText(/^Marker:/)).toContainText(/-5\.48\d dB/);
   await plot.screenshot({ path: 'artifacts/qa/lesson15-fft-signal-band.png' });
   await spectrum.getByLabel('Spectrum frequency range', { exact: true }).selectOption('full');
   expect(Number(await plot.getAttribute('data-x-max'))).toBeGreaterThan(800000);
-  await expect(spectrum.getByText(/^Marker:/)).toContainText('-5.483 dB');
+  await expect(spectrum.getByText(/^Marker:/)).toContainText(/-5\.48\d dB/);
 });

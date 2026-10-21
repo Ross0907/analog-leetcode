@@ -87,9 +87,9 @@ test('default 65536-point SPICE capture follows native PWL and bitstream source 
   await workspace.getByRole('button', { name: 'Logic analyzer', exact: true }).click();
   await expect(logic).toBeVisible();
   await expect(workspace.getByRole('button', { name: 'Logic analyzer', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  const inputTrace = logic.getByRole('img', { name: 'V(vin) digital waveform', exact: true }).locator('path');
-  await expect(inputTrace).toHaveAttribute('d', /V9/);
-  await expect(inputTrace).toHaveAttribute('d', /V37/);
+  const inputTrace = logic.getByRole('img', { name: 'V(vin) digital waveform', exact: true }).locator('path:not([aria-label])');
+  await expect(inputTrace).toHaveAttribute('d', / 9H/);
+  await expect(inputTrace).toHaveAttribute('d', / 37H/);
   expect(errors).toEqual([]);
 });
 

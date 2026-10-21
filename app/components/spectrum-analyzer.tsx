@@ -1,5 +1,6 @@
 "use client";
 
+import { detectSpectrumPeaks } from '../../lib/fft-quality';
 import { useId, useMemo, useState } from 'react';
 import type { Trace } from '../../lib/simulator-contract';
 import { computeSpectrum, spectrumSignalStop, centeredSpectrumSpan, type WindowFunction } from '../../lib/waveform-analysis';
@@ -9,7 +10,8 @@ import { BrowserOscilloscope } from './browser-oscilloscope';
 import { useInstrumentPanel, useTraceSelection, type CaptureRequest } from './instrument-state';
 import styles from './spectrum-analyzer.module.css';
 
-export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: controlledLength, onLengthChange }: {
+export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: controlledLength, onLengthChange, quality, onQualityChange, busy }: {
+  quality?: 'auto'|'short'; onQualityChange?: (quality:'auto'|'short')=>void; busy?: boolean;
   time: number[]; traces: Trace[]; onRequestCapture?: (request: CaptureRequest) => void; length?: number; onLengthChange?: (length: number) => void;
 }) {
   const id = useId(), panel = useInstrumentPanel('spectrum');
@@ -17,7 +19,8 @@ export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: contr
   const [selectedId, setSelectedId] = useState(traces[0]?.id ?? '');
   const [localLength, setLocalLength] = useState<number | null>(null);
   const setLength = (value: number) => { setLocalLength(value); onLengthChange?.(value); };
-  const [windowName, setWindowName] = useState<WindowFunction>('hann');
+  const [windowName, setWindowName] = useState<WindowFunction>('blackman-harris');
+  const [showPeaks,setShowPeaks]=useState(true);
   const [removeDc, setRemoveDc] = useState(true), [logFrequency, setLogFrequency] = useState(false), [db, setDb] = useState(true);
   const [start, setStart] = useState(0), [stop, setStop] = useState(0), [marker, setMarker] = useState(0), [autoVersion, setAutoVersion] = useState(0);
   const [frequencyRange, setFrequencyRange] = useState<'signal' | 'full' | 'peak' | 'custom'>('peak');
@@ -29,7 +32,7 @@ export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: contr
   const length = controlledLength ?? localLength ?? (sampling?.supportedLength || 1024);
   const usedLength = Math.min(length, sampling?.supportedLength ?? 0);
   const request = sampling && usedLength < length ? fftCaptureRequest(sampling, length, traces.length) : null;
-  const autoSet = () => { setLength(sampling?.supportedLength || 64); setWindowName('hann'); setRemoveDc(true); setLogFrequency(false); setDb(true); setStart(0); setStop(0); setFrequencyRange('peak'); setMarker(0); setAutoVersion(version => version + 1); };
+  const autoSet = () => { setLength(sampling?.supportedLength || 64); setWindowName('blackman-harris'); setRemoveDc(true); setLogFrequency(false); setDb(true); setStart(0); setStop(0); setFrequencyRange('peak'); setMarker(0); setAutoVersion(version => version + 1); };
   const results = useMemo(() => {
     try {
       const record = usedLength >= 64 ? prepareFftRecord(time, usedLength) : null;
@@ -43,6 +46,7 @@ export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: contr
   const focusedId = traces.some(trace => trace.id === selectedTraceId) ? selectedTraceId : selectedId;
   const focused = results.find(result => result.trace.id === focusedId) ?? results[0];
   const spectrum = focused?.spectrum, trace = focused?.trace;
+  const peaks=useMemo(()=>spectrum && showPeaks ? detectSpectrumPeaks(spectrum.frequencies,spectrum.amplitudes) : [],[spectrum,showPeaks]);
   const centeredSpan = spectrum ? centeredSpectrumSpan(spectrum, logFrequency) : null;
   const visibleStart = frequencyRange === 'peak' ? centeredSpan?.start ?? 0 : start;
   const visibleStop = frequencyRange === 'peak' ? centeredSpan?.stop ?? signalStop ?? 0 : signalRange ? signalStop ?? 0 : stop;
@@ -73,6 +77,9 @@ export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: contr
       <label htmlFor={id + '-start'}>Start / Hz<input id={id + '-start'} type="number" min="0" value={Number(visibleStart.toPrecision(12))} onChange={event => { setFrequencyRange('custom'); setStop(visibleStop); setStart(Math.max(0, Number(event.target.value))); }}/></label>
       <label htmlFor={id + '-stop'}>Stop / Hz (0 = full)<input id={id + '-stop'} type="number" min="0" value={Number(visibleStop.toPrecision(12))} onChange={event => { setFrequencyRange('custom'); setStart(visibleStart); setStop(Math.max(0, Number(event.target.value))); }}/></label>
     </div>
+    {onQualityChange && <div className={styles.controls}><label>Capture quality<select aria-label="FFT capture quality" disabled={busy} value={quality??'auto'} onChange={event=>onQualityChange(event.target.value as 'auto'|'short')}><option value="auto">Automatic · longest useful record / maximum samples</option><option value="short">Short · fast preview</option></select></label><span role="status">{busy?'Acquiring the measured FFT record…':quality==='auto'?'Automatic quality · bounded to 10 s and the channel memory budget.':'Short capture selected.'}</span></div>}
+    <label className={styles.toggle}><input type="checkbox" checked={showPeaks} onChange={event=>setShowPeaks(event.target.checked)}/> Detect and label peaks</label>
+    {peaks.length>0 && <div className={styles.controls} aria-label="Detected FFT peaks">{peaks.map((peak,index)=><button key={peak.index} type="button" onClick={()=>setMarker(peak.frequency)} title="Set marker to measured peak bin">P{index+1}: {display(peak.frequency,'Hz')} · {display(db?peak.decibels:peak.amplitude,db?'dB':trace?.unit??'V')}</button>)}</div>}
     {samplingResult.error && <p role="alert" className={styles.note}>{samplingResult.error}</p>}
     {sampling && usedLength < length && <div className={styles.captureNotice} role="status"><p>Requested {length.toLocaleString()} FFT samples; {usedLength ? `showing ${usedLength.toLocaleString()} supported samples` : 'this record does not support a 64-point FFT'}. The record has {time.length.toLocaleString()} readings; adaptive solver steps do not all have equal spacing.</p>
       {request && onRequestCapture ? <button type="button" onClick={() => onRequestCapture(request)}>Capture more samples for {length.toLocaleString()}-point FFT</button> : <p>{request ? 'Choose a deeper capture with a smaller sample interval, then run again.' : `This depth exceeds this record's acquisition budget. Use up to ${sampling.supportedLength.toLocaleString()} supported FFT samples, or reduce the number of probes.`}</p>}
@@ -82,10 +89,11 @@ export function SpectrumAnalyzer({ time, traces, onRequestCapture, length: contr
     {frequencyRange === 'peak' && <p className={styles.note}>{centeredSpan ? "Centered on the selected channel's measured peak." : 'No interior peak can be centered; showing the available signal band.'} This is a display crop; Full Nyquist range restores every measured frequency bin.</p>}
     {spectrum && spectrum.periodicFrequency === null && <p className={styles.note}>This record does not establish a repeating waveform. Steps and settling responses have a broad spectrum; use a longer measured record to resolve repetitions. Increasing sample count alone cannot narrow these peaks.</p>}
     {spectrum && <div className={styles.recordSummary} aria-label="FFT record summary"><strong>{formatEngineering(1 / spectrum.binWidth, 's')} FFT window · {formatEngineering(spectrum.binWidth, 'Hz')} per bin</strong><span>Measured interval {formatEngineering(spectrum.recordStart, 's')} → {formatEngineering(spectrum.recordEnd, 's')} · {usedLength.toLocaleString()} samples · {formatEngineering(spectrum.sampleRate, 'Hz')} sample rate</span></div>}
-    {spectrum && longerRequest && onRequestCapture && (spectrum.displayPeakFrequency ?? 0) / spectrum.binWidth < 16 && <div className={styles.captureNotice}><strong>Short record: this peak is not well resolved.</strong><p>Capture {formatEngineering(longerRequest.recordDuration, 's')} with {longerRequest.fftLength.toLocaleString()} measured samples for {formatEngineering(1/longerRequest.recordDuration, 'Hz')} bins. New Nyquist: {formatEngineering(longerRequest.fftLength/longerRequest.recordDuration/2, 'Hz')}. Settling can be set below.</p><button type="button" onClick={()=>{setLength(longerRequest.fftLength);onRequestCapture(longerRequest);}}>Resolve spectrum with a longer capture</button></div>}
-    {plots.map(plot => plot.x.length > 1 ? <BrowserOscilloscope key={autoVersion + ':' + plot.unit + ':' + frequencyRange} instrumentId={'spectrum:' + plot.unit} onAutoSet={autoSet} initialXRange={[visibleStart, visibleStop > 0 ? visibleStop : plot.x.at(-1)!]} x={plot.x} traces={plot.traces} title={plots.length > 1 ? 'FFT spectrum · ' + plot.unit : 'FFT spectrum'} domain="frequency" xScale={logFrequency ? 'log' : 'linear'} xLabel="Frequency" xUnit="Hz" yLabel="Peak amplitude" yUnit={plot.unit} height={300}/> : <p key={plot.unit} className={styles.note}>Select a frequency span containing at least two bins.</p>)}
+    {quality !== 'auto' && spectrum && longerRequest && onRequestCapture && (spectrum.displayPeakFrequency ?? 0) / spectrum.binWidth < 16 && <div className={styles.captureNotice}><strong>Short record: this peak is not well resolved.</strong><p>Capture {formatEngineering(longerRequest.recordDuration, 's')} with {longerRequest.fftLength.toLocaleString()} measured samples for {formatEngineering(1/longerRequest.recordDuration, 'Hz')} bins. New Nyquist: {formatEngineering(longerRequest.fftLength/longerRequest.recordDuration/2, 'Hz')}. Settling can be set below.</p><button type="button" onClick={()=>{setLength(longerRequest.fftLength);onRequestCapture(longerRequest);}}>Resolve spectrum with a longer capture</button></div>}
+    {frequencyRange === 'custom' && spectrum && spectrum.frequencies.filter(frequency => frequency >= visibleStart && (visibleStop <= 0 || frequency <= visibleStop)).length < 2 && <p role="alert" className={styles.note}>Select a frequency span containing at least two bins.</p>}
+    {plots.map(plot => plot.x.length > 1 ? <BrowserOscilloscope markers={plot.traces.some(candidate=>candidate.sourceId===trace?.id) ? peaks.slice(0,4).map((peak,index)=>({x:peak.frequency,y:db?peak.decibels:peak.amplitude,label:`P${index+1} ${display(peak.frequency,'Hz')}`})) : []} key={autoVersion + ':' + plot.unit + ':' + frequencyRange} instrumentId={'spectrum:' + plot.unit} onAutoSet={autoSet} initialXRange={[visibleStart, visibleStop > 0 ? visibleStop : plot.x.at(-1)!]} x={plot.x} traces={plot.traces} title={plots.length > 1 ? 'FFT spectrum · ' + plot.unit : 'FFT spectrum'} domain="frequency" xScale={logFrequency ? 'log' : 'linear'} xLabel="Frequency" xUnit="Hz" yLabel="Peak amplitude" yUnit={plot.unit} height={300}/> : <p key={plot.unit} className={styles.note}>Select a frequency span containing at least two bins.</p>)}
     {spectrum && trace && <>
-      <details open className={styles.recordControls}><summary>Finer resolution &amp; settled capture</summary>
+      <details className={styles.recordControls}><summary>Finer resolution &amp; settled capture</summary>
         <p>Frequency spacing is 1 / FFT window. More samples over the same duration increase bandwidth, not frequency resolution. A longer record narrows the peak; windowing and real startup transients can still produce skirts.</p>
         <label className={styles.toggle}><input type="checkbox" checked={tradeBandwidth} onChange={event=>setTradeBandwidth(event.target.checked)}/> Use maximum depth over a longer record (changes Nyquist bandwidth)</label>
         <div className={styles.controls}><label>Record length / s<input aria-label="FFT capture record length" type="number" min="0" max="10" step="any" value={Number(desiredDuration.toPrecision(12))} onChange={event => setRequestedDuration(Number(event.target.value))}/></label><label>Settle before record / s<input aria-label="FFT capture settling time" type="number" min="0" max="10" step="any" value={settleDuration} onChange={event => setSettleDuration(Number(event.target.value))}/></label><button type="button" disabled={!longerRequest || !onRequestCapture} onClick={() => { if (longerRequest && onRequestCapture) { setLength(longerRequest.fftLength); onRequestCapture(longerRequest); } }}>Capture longer FFT record</button></div>

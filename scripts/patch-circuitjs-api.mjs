@@ -127,7 +127,7 @@ for (const file of ['CircuitElm.java', 'ResistorElm.java', 'VoltageElm.java', 'S
   replace(file, 'g.context.setLineWidth(3.0);', 'g.setLineWidth(3.0);');
 }
 replace('CircuitElm.java', '    static int valueFontSize = 12;', '    static int valueFontSize = 13;');
-replaceEvery('CircuitElm.java', 'valueFont = new Font("SansSerif", 0, valueFontSize);', 'valueFont = new Font("Georgia, serif", 0, valueFontSize);', 2);
+replaceEvery('CircuitElm.java', 'valueFont = new Font("SansSerif", 0, valueFontSize);', 'valueFont = new Font("Arial, Helvetica, sans-serif", 0, valueFontSize);', 2);
 replace('CircuitElm.java', '    void drawValues(Graphics g, String s, double hs) {', `    void drawValues(Graphics g, String s, double hs) {
         // Leave room around enlarged artwork while retaining native values,
         // orientation and the user's value-font-size preference.
@@ -448,7 +448,14 @@ replace('UIManager.java', 'g.context.setFillStyle("#323740");', 'g.context.setFi
 replace('UIManager.java', 'g.setColor(menus.printableCheckItem.getState() ? "#eee" : "#111");', 'g.setColor(menus.printableCheckItem.getState() ? "#eee" : anacodeLight ? "#edf2f7" : "#20242b");');
 replace('UIManager.java', '    Color getBackgroundColor() {\n\tif (menus.printableCheckItem.getState())\n\t    return Color.white;\n\treturn Color.black;\n    }', '    Color getBackgroundColor() {\n\tif (menus.printableCheckItem.getState())\n\t    return Color.white;\n\treturn new Color(anacodeLight ? "#fafbfc" : "#17191d");\n    }');
 replaceEvery('VoltageElm.java', 'g.setColor(needsHighlight() ? selectColor : Color.gray);', 'g.setColor(needsHighlight() ? selectColor : whiteColor);', 2);
-replace('JSInterface.java', '    void addElement(String type)', `    String getTheme() { return app.ui.anacodeLight ? "light" : "dark"; }
+replace('JSInterface.java', '    void addElement(String type)', `    void cancelInteraction() {
+        addElement("Select");
+        app.mouse.clearSelection();
+        app.mouse.setMouseElm(null);
+        app.mouse.dragElm = null;
+        app.repaint();
+    }
+    String getTheme() { return app.ui.anacodeLight ? "light" : "dark"; }
     void setTheme(String theme) { app.ui.anacodeLight = !theme.equals("dark"); applyTheme(getTheme()); app.repaint(); }
     native void applyTheme(String theme) /*-{
         $doc.documentElement.setAttribute('data-theme', theme);
@@ -457,7 +464,7 @@ replace('JSInterface.java', '    void addElement(String type)', `    String getT
     void addElement(String type)`);
 replace('JSInterface.java', '\t$wnd.CircuitJS1 = {', `\t$wnd.CircuitJS1 = {
             startWire: $entry(function() { that.@com.lushprojects.circuitjs1.client.JSInterface::addElement(Ljava/lang/String;)("WireElm"); }),
-            cancelDrawing: $entry(function() { that.@com.lushprojects.circuitjs1.client.JSInterface::addElement(Ljava/lang/String;)("Select"); }),
+            cancelDrawing: $entry(function() { that.@com.lushprojects.circuitjs1.client.JSInterface::cancelInteraction()(); }),
             setTheme: $entry(function(theme) { that.@com.lushprojects.circuitjs1.client.JSInterface::setTheme(Ljava/lang/String;)(theme); }),
             getTheme: $entry(function() { return that.@com.lushprojects.circuitjs1.client.JSInterface::getTheme()(); }),`);
 // Fast acquisition bypasses animation pacing only. The upstream accepted-step,
