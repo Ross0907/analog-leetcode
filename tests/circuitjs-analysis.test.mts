@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { circuitJsAnalysis, circuitJsAnalysisOptions, type NativeAnalysisSettings } from '../lib/circuitjs-analysis';
+import { circuitJsCaptureTimeLimit, circuitJsAnalysis, circuitJsAnalysisOptions, type NativeAnalysisSettings } from '../lib/circuitjs-analysis';
 import type { CircuitJsApi, CircuitJsElement } from '../lib/circuitjs';
 import { validateSimulatorNetlist } from '../lib/simulator-netlist-policy';
 
@@ -188,4 +188,13 @@ test('native LM324 variants require an explicit SPICE replacement instead of sil
     assert.match(replacement.deck,/X_U1 node1 node3 node4 node5 node3 LM741/);
     assert.match(replacement.notes.join(' '),/Explicit replacement.*native live circuit keeps its original IC/);
   }
+});
+
+test('automatic capture budget follows the fastest source and bounded repeated PWL table', () => {
+  assert.equal(circuitJsCaptureTimeLimit(api(divider())), 10);
+  const sources = [element('VoltageElm', [0,1], 'wf="1" fr="1000"'), element('VoltageElm', [0,2], 'wf="2" fr="10000"')];
+  assert.equal(circuitJsCaptureTimeLimit(api(sources)), .1999);
+  const repeating = element('VoltageElm', [0,1], 'pwl="0 0 .0005 1 .001 0" pwlr=".001"');
+  const limit = circuitJsCaptureTimeLimit(api([repeating]));
+  assert(limit > .510 && limit < .511);
 });

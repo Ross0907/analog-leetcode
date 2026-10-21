@@ -8,17 +8,17 @@ public credit page are distributed under `public/analog-canvas/`.
 
 Run `node scripts/build-analog-canvas-symbols.mjs` to regenerate the selected
 JSON and SVG previews. `--check` verifies the fixed source hash and exact
-generated outputs. This selects existing artwork; it does not generate new
-symbol bodies. The upstream catalog preserves its individual provenance and
+generated outputs. This selects upstream artwork and applies the disclosed presentation
+adaptations below. The upstream catalog preserves its individual provenance and
 house-derived status for every selected definition.
 
 The presentation adapter renders the catalog primitives. MOS uses the
 upstream `textbook-3terminal` default variant and its supplied source arrow;
 the hidden bulk lead is omitted according to that variant. The requested
 equal-length MOS gate bars are a small presentation adaptation: the shorter
-bar extends to the longer bar's existing ±12.5-unit endpoints. The other
-primitives, arrow and electrical pins are unchanged. The original source and
-selected JSON remain byte-for-byte upstream; the renderer and generated MOS
+bar extends to the longer bar's existing ±12.5-unit endpoints. The arrow and electrical pins are unchanged; resistor, ground and
+line-weight presentation adaptations are described below. The original source and
+selected JSON remain byte-for-byte upstream; the renderer and generated
 previews disclose this derivative treatment. Verification against upstream
 main `7e26ec6ed2b725f080bcc479d2b66c1674b25402` on 2026-10-04 found the
 same source hash and unequal original bars. DC voltage uses the
@@ -47,8 +47,7 @@ objects, values, direction and ordering, then requests native analysis once.
 Saved user documents and file imports retain their authored coordinates. Unsupported
 artwork retains the separately attributed KiCad or native CircuitJS rendering.
 
-The fitted R/C/L bodies use the same two-world-unit stroke as native wires
-and display leads; active-device bodies retain a finer 1.25-unit stroke.
+All fitted symbol outlines, plates and display leads use the same two-world-unit stroke as native wires. Thin filled catalog rectangles become stroked centerlines; arrowheads remain filled. The resistor uses a symmetric, evenly spaced zigzag and ground uses three rounded bars, as requested in the reference images. These are disclosed presentation derivatives; original catalog definitions and electrical pins are retained. Schematic captions use Arial/Helvetica sans-serif with lining digits.
 The adapter compensates for
 symbol-fit scale while normal viewport zoom scales everything together. BJT
 fitting uses the full available native pin pitch (without the previous extra

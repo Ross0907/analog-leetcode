@@ -83,7 +83,7 @@ test('ground bars always face downward without moving their electrical post', ()
   }
 });
 
-test('symbol-fitting preserves the finer body pen independently of native wire thickness', () => {
+test('every symbol outline matches the native wire pen after fitting', () => {
   const original=globalThis.Path2D;
   class Path { moveTo() {} lineTo() {} }
   Object.assign(globalThis,{Path2D:Path});
@@ -91,9 +91,9 @@ test('symbol-fitting preserves the finer body pen independently of native wire t
     for(const scale of [.25,.56,1,1.25]) {
       const context={lineWidth:0,stroke(){},fill(){}};
       drawAnalogPrimitive(context,{kind:'line',from:{x:0,y:0},to:{x:20,y:0},style:{strokeRole:'emphasis'}},scale);
-      assert.equal(context.lineWidth*scale,1.25);
+      assert.equal(context.lineWidth*scale,2);
       for(const symbolId of ['resistor','capacitor','inductor','inductor-compact']) {
-        drawAnalogPrimitive(context,{kind:'line',from:{x:0,y:0},to:{x:20,y:0}},scale,symbolId);
+        drawAnalogPrimitive(context,{kind:'line',from:{x:0,y:0},to:{x:20,y:0}},scale);
         assert.equal(context.lineWidth*scale,2,`${symbolId} must match the native wire stroke after fitting.`);
       }
     }

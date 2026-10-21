@@ -56,6 +56,23 @@ export function circuitJsAnalysisElements(api: CircuitJsApi): CircuitJsElement[]
   }
   return elements;
 }
+/** Respect source-event and repeated-PWL budgets when planning automatic captures. */
+export function circuitJsCaptureTimeLimit(api: CircuitJsApi): number {
+  let limit = 10;
+  for (const element of circuitJsAnalysisElements(api)) {
+    if (!sourceTypes.includes(element.getType())) continue;
+    const attrs = attributesOf(element), period = Number(attrs.get('pwlr') ?? 0);
+    if (period > 0 && attrs.has('pwl')) {
+      const points = attrs.get('pwl')!.trim().split(/\s+/).length / 2;
+      if (points > 1) limit = Math.min(limit, Math.floor(1023 / (points - 1)) * period * (1 - 1e-9));
+    } else if (!attrs.has('pwl') && Number(attrs.get('wf') ?? 0) !== 0) {
+      const frequency = Number(attrs.get('fr'));
+      if (frequency > 0) limit = Math.min(limit, (SIMULATOR_NETLIST_LIMITS.transientEvents - 1) / frequency);
+    }
+  }
+  return limit;
+}
+
 export function circuitJsAnalysisOptions(api: CircuitJsApi): { sources: NativeAnalysisOption[]; models: NativeModelOption[] } {
   const sources: NativeAnalysisOption[] = [], models: NativeModelOption[] = [];
   const topLevelCount = api.getElements().length;

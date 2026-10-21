@@ -7,7 +7,6 @@ const definitions = {
   NTransistorElm: ['npn', 'B', 'C', 'E'], PTransistorElm: ['pnp', 'B', 'C', 'E'],
   NMosfetElm: ['nmos', 'G', 'S', 'D'], PMosfetElm: ['pmos', 'G', 'D', 'S'],
 };
-const passiveSymbols = new Set(['resistor', 'capacitor', 'inductor', 'inductor-compact']);
 export function analogSymbolDefinition(element) {
   const type = element.getType();
   if (type === 'BatteryElm') return ['battery', '-', '+'];
@@ -17,6 +16,9 @@ export function analogSymbolDefinition(element) {
   return definitions[type];
 }
 export function analogPrimitives(symbol) {
+  // Presentation derivatives requested by the user; original catalog and pins stay intact.
+  if (symbol.id === 'resistor') return [{kind:'path',data:'M 0 -20 L 0 -14 L -5 -11.5 L 5 -7 L -5 -2.5 L 5 2.5 L -5 7 L 5 11.5 L 0 14 L 0 20',style:{lineCap:'round',lineJoin:'round'}}];
+  if (symbol.id === 'ground') return [{kind:'line',from:{x:0,y:-10},to:{x:0,y:0}},...[[10,0],[6,6],[2.5,12]].map(([half,y])=>({kind:'line',from:{x:-half,y},to:{x:half,y},style:{lineCap:'round'}}))];
   const variant = symbol.variants?.find((item) => item.id === symbol.defaultVariantId);
   const primitives = [...symbol.primitives.filter((primitive) => !variant?.hiddenPrimitiveParts?.includes(primitive.part)), ...(variant?.additionalPrimitives ?? [])];
   // Requested presentation adaptation: align the two MOS gate bars to the
@@ -80,10 +82,19 @@ export function analogPlacement(symbol, definition, element) {
   }
   return { matrix, pins, posts };
 }
-export function drawAnalogPrimitive(context, primitive, symbolScale = 1, symbolId = '') {
-  // Passive bodies and their leads use the same two-unit wire pen. Keep the
-  // finer active-device outlines, compensating both for uniform symbol fitting.
-  context.lineWidth = (passiveSymbols.has(symbolId) ? 2 : 1.25) / symbolScale;
+// Thin filled catalog rectangles are plates/bars, not arrowheads. Render their
+// centreline with the wire pen so viewport fitting cannot make them heavier.
+export function uniformBar(p) {
+  if(p.kind !== 'polygon' || p.points.length !== 4 || p.fill !== 'foreground') return p;
+  const xs=[...new Set(p.points.map(v=>v.x))],ys=[...new Set(p.points.map(v=>v.y))];
+  if(xs.length!==2 || ys.length!==2)return p;
+  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  return x1-x0>y1-y0 ? {kind:'line',from:{x:x0,y:(y0+y1)/2},to:{x:x1,y:(y0+y1)/2},style:p.style} : {kind:'line',from:{x:(x0+x1)/2,y:y0},to:{x:(x0+x1)/2,y:y1},style:p.style};
+}
+export function drawAnalogPrimitive(context, primitive, symbolScale = 1) {
+  // Every outline, plate and lead matches the two-world-unit native wire pen.
+  context.lineWidth = 2 / symbolScale;
+  primitive = uniformBar(primitive);
   context.lineCap = primitive.style?.lineCap ?? 'butt'; context.lineJoin = primitive.style?.lineJoin ?? 'miter';
   context.miterLimit = primitive.style?.miterLimit ?? 10;
   const path = primitive.kind === 'path' ? new Path2D(primitive.data) : new Path2D();
@@ -102,7 +113,7 @@ export function drawSourceWaveform(context, waveform, center, scale = 1) {
   context.save();
   try {
     context.translate(center.x, center.y);
-    context.lineWidth = 1.25;
+    context.lineWidth = 2;
     context.lineCap = 'round'; context.lineJoin = 'round';
     if (waveform === -2 || waveform === 6) {
       context.font = `${5.8 * scale}px system-ui,sans-serif`;
@@ -119,8 +130,8 @@ export function drawSourceWaveform(context, waveform, center, scale = 1) {
 /** Palette exports use the same untouched primitive coordinates and default variant. */
 export function analogSvg(symbol) {
   const point = (p) => `${p.x},${p.y}`;
-  const elements = analogPrimitives(symbol).map((p) => {
-    const style = `fill="${p.fill === 'foreground' ? '#252b32' : 'none'}" stroke="${p.stroke === 'none' ? 'none' : '#252b32'}" stroke-width="${passiveSymbols.has(symbol.id) ? 2 : p.style?.strokeRole === 'emphasis' ? 2.2 : p.style?.strokeRole === 'ground' ? 2 : 1.5}" stroke-linecap="${p.style?.lineCap ?? 'butt'}" stroke-linejoin="${p.style?.lineJoin ?? 'miter'}"`;
+  const elements = analogPrimitives(symbol).map(uniformBar).map((p) => {
+    const style = `fill="${p.fill === 'foreground' ? '#252b32' : 'none'}" stroke="${p.stroke === 'none' ? 'none' : '#252b32'}" stroke-width="2" stroke-linecap="${p.style?.lineCap ?? 'butt'}" stroke-linejoin="${p.style?.lineJoin ?? 'miter'}"`;
     if (p.kind === 'line') return `<line x1="${p.from.x}" y1="${p.from.y}" x2="${p.to.x}" y2="${p.to.y}" ${style}/>`;
     if (p.kind === 'path') return `<path d="${p.data}" ${style}/>`;
     if (p.kind === 'circle') return `<circle cx="${p.center.x}" cy="${p.center.y}" r="${p.radius}" ${style}/>`;
@@ -152,7 +163,7 @@ export async function createAnalogCanvasRenderer() {
       context.save();
       try {
         context.transform(...matrix);
-        analogPrimitives(symbol).forEach((primitive) => drawAnalogPrimitive(context, primitive, Math.hypot(matrix[0], matrix[1]), symbol.id));
+        analogPrimitives(symbol).forEach((primitive) => drawAnalogPrimitive(context, primitive, Math.hypot(matrix[0], matrix[1])));
       } finally { context.restore(); }
       // Keep the time-axis indicator upright regardless of source rotation.
       if (symbol.id === 'voltage-source') {

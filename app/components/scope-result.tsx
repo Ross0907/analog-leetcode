@@ -15,20 +15,24 @@ export type ScopeResultProps = {
   recordDuration?: number;
   onMaximizedChange?: (maximized: boolean) => void;
   selectedTraceId?: string | null;
-  onSelectTrace?: (id: string | null) => void;
+  selectedTraceIds?: string[];
+  onSelectTrace?: (id: string | null, additive?: boolean) => void;
   onRequestCapture?: (request: CaptureRequest) => void;
   view?: InstrumentView;
   onViewChange?: (view: InstrumentView) => void;
+  fftQuality?: 'auto'|'short';
+  onFftQualityChange?: (quality:'auto'|'short')=>void;
+  fftBusy?: boolean;
   fftLength?: number;
   onFftLengthChange?: (length: number) => void;
 };
 export type InstrumentView = 'scope' | 'spectrum' | 'logic' | 'dc' | 'all';
 
-export const ScopeResult = memo(function ScopeResult({ payload, preferredInstrument = 'scope', recordDuration, onMaximizedChange, selectedTraceId, onSelectTrace, ...controls }: ScopeResultProps) {
-  return <TraceSelectionProvider selectedTraceId={selectedTraceId} onSelectTrace={onSelectTrace}><TraceAppearanceProvider><InstrumentPresentationProvider key={payload.analysis + ':' + preferredInstrument} onMaximizedChange={onMaximizedChange}><ResultViews payload={payload} preferredInstrument={preferredInstrument} recordDuration={recordDuration} {...controls}/></InstrumentPresentationProvider></TraceAppearanceProvider></TraceSelectionProvider>;
+export const ScopeResult = memo(function ScopeResult({ payload, preferredInstrument = 'scope', recordDuration, onMaximizedChange, selectedTraceId, selectedTraceIds, onSelectTrace, ...controls }: ScopeResultProps) {
+  return <TraceSelectionProvider selectedTraceIds={selectedTraceIds} selectedTraceId={selectedTraceId} onSelectTrace={onSelectTrace}><TraceAppearanceProvider><InstrumentPresentationProvider key={payload.analysis + ':' + preferredInstrument} onMaximizedChange={onMaximizedChange}><ResultViews payload={payload} preferredInstrument={preferredInstrument} recordDuration={recordDuration} {...controls}/></InstrumentPresentationProvider></TraceAppearanceProvider></TraceSelectionProvider>;
 });
 
-function ResultViews({ payload, preferredInstrument, recordDuration, onRequestCapture, view: controlledView, onViewChange, fftLength, onFftLengthChange }: ScopeResultProps) {
+function ResultViews({ payload, preferredInstrument, recordDuration, onRequestCapture, view: controlledView, onViewChange, fftLength, onFftLengthChange, fftQuality, onFftQualityChange, fftBusy }: ScopeResultProps) {
   const [localView, setLocalView] = useState<InstrumentView>(preferredInstrument ?? 'scope');
   const view = controlledView ?? localView;
   const panels = useInstrumentPanel('measurement-views');
@@ -93,7 +97,7 @@ function ResultViews({ payload, preferredInstrument, recordDuration, onRequestCa
         title={`${title}${groups.length > 1 ? ` · ${group.unit === "A" ? "Current" : "Voltage"}` : ""}`}
         height={360}
       />)}
-      {payload.analysis === "transient" && (view === 'all' || view === 'spectrum') && <SpectrumAnalyzer time={payload.x} traces={payload.traces} onRequestCapture={onRequestCapture} length={fftLength} onLengthChange={onFftLengthChange}/>}
+      {payload.analysis === "transient" && (view === 'all' || view === 'spectrum') && <SpectrumAnalyzer quality={fftQuality} onQualityChange={onFftQualityChange} busy={fftBusy} time={payload.x} traces={payload.traces} onRequestCapture={onRequestCapture} length={fftLength} onLengthChange={onFftLengthChange}/>}
       {payload.analysis === "transient" && view === 'logic' && <LogicAnalyzer payload={payload} recordDuration={recordDuration}/>}
       {payload.analysis === "transient" && view === 'dc' && <DcReadout sampleTime={payload.x.at(-1)} values={payload.traces.map(trace => ({ id: trace.id, name: trace.name, color: trace.color, value: trace.values.at(-1) ?? NaN, unit: trace.unit }))}/>}
     </div>
